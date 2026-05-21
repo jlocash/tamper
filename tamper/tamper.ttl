@@ -84,6 +84,12 @@ tamper:fileSize a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:domain tamper:MediaAsset ;
     rdfs:range xsd:long .
 
+tamper:checksum a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "checksum"@en ;
+    rdfs:comment "The checksum of the media file, formatted as \"algorithm:checksum\" (e.g \"sha256:5e70b96ad27dc8581424be7069ee9de8da9388b716e6fe213d88385f19baf80a\")."@en ;
+    rdfs:domain tamper:MediaAsset ;
+    rdfs:range xsd:string .
+
 #################################################################
 # Datatype Properties - Container-specific
 #################################################################

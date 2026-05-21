@@ -5,6 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "ffmpeg-python>=0.2.0",
+    "pillow>=12.2.0",
     "pytest>=9.0.3",
+    "python-magic>=0.4.27",
     "rdflib>=7.6.0",
 ]
