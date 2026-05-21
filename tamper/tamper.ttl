@@ -1,0 +1,210 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix tamper: <https://example.org/tamper/ontology#> .
+
+<https://example.org/tamper/ontology>
+    a owl:Ontology ;
+    rdfs:label "Tamper Ontology"@en ;
+    rdfs:comment "An ontology for representing media assets, their structure, and provenance for forensic analysis."@en ;
+    owl:versionIRI <https://example.org/tamper/ontology/0.1.0> ;
+    owl:versionInfo "0.1.0" .
+
+#################################################################
+# Classes
+#################################################################
+
+tamper:MediaAsset a owl:Class ;
+    rdfs:label "Media Asset"@en ;
+    rdfs:comment "A digital media file such as an image, audio, or video."@en .
+
+tamper:ImageAsset a owl:Class ;
+    rdfs:label "Image Asset"@en ;
+    rdfs:comment "A digital image file."@en ;
+    rdfs:subClassOf tamper:MediaAsset .
+
+tamper:StreamContainer a owl:Class ;
+    rdfs:label "Stream Container"@en ;
+    rdfs:comment "A media asset that contains one or more streams (e.g., video or audio files)."@en ;
+    rdfs:subClassOf tamper:MediaAsset .
+
+tamper:AudioAsset a owl:Class ;
+    rdfs:label "Audio Asset"@en ;
+    rdfs:comment "A digital audio file containing one or more audio streams."@en ;
+    rdfs:subClassOf tamper:StreamContainer .
+
+tamper:VideoAsset a owl:Class ;
+    rdfs:label "Video Asset"@en ;
+    rdfs:comment "A digital video file containing video and potentially audio streams."@en ;
+    rdfs:subClassOf tamper:StreamContainer .
+
+tamper:Stream a owl:Class ;
+    rdfs:label "Stream"@en ;
+    rdfs:comment "A component stream within a media container."@en .
+
+tamper:VideoStream a owl:Class ;
+    rdfs:label "Video Stream"@en ;
+    rdfs:comment "A stream containing video frame data."@en ;
+    rdfs:subClassOf tamper:Stream .
+
+tamper:AudioStream a owl:Class ;
+    rdfs:label "Audio Stream"@en ;
+    rdfs:comment "A stream containing audio sample data."@en ;
+    rdfs:subClassOf tamper:Stream .
+
+tamper:SubtitleStream a owl:Class ;
+    rdfs:label "Subtitle Stream"@en ;
+    rdfs:comment "A stream containing subtitle or caption data."@en ;
+    rdfs:subClassOf tamper:Stream .
+
+#################################################################
+# Object Properties
+#################################################################
+
+tamper:hasStream a owl:ObjectProperty ;
+    rdfs:label "has stream"@en ;
+    rdfs:comment "Relates a stream container to its constituent streams."@en ;
+    rdfs:domain tamper:StreamContainer ;
+    rdfs:range tamper:Stream .
+
+#################################################################
+# Datatype Properties - Common
+#################################################################
+
+tamper:mediaType a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "media type"@en ;
+    rdfs:comment "The MIME type of the media asset (e.g., 'image/jpeg', 'video/mp4')."@en ;
+    rdfs:domain tamper:MediaAsset ;
+    rdfs:range xsd:string .
+
+tamper:fileSize a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "file size"@en ;
+    rdfs:comment "The size of the media file in bytes."@en ;
+    rdfs:domain tamper:MediaAsset ;
+    rdfs:range xsd:long .
+
+#################################################################
+# Datatype Properties - Container-specific
+#################################################################
+
+tamper:containerFormat a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "container format"@en ;
+    rdfs:comment "The container format name (e.g., 'MPEG-4', 'Matroska', 'FLAC')."@en ;
+    rdfs:domain tamper:StreamContainer ;
+    rdfs:range xsd:string .
+
+tamper:duration a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "duration"@en ;
+    rdfs:comment "The temporal duration of the media."@en ;
+    rdfs:domain [
+        a owl:Class ;
+        owl:unionOf ( tamper:StreamContainer tamper:Stream )
+    ] ;
+    rdfs:range xsd:duration .
+
+#################################################################
+# Datatype Properties - Stream-specific
+#################################################################
+
+tamper:streamIndex a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "stream index"@en ;
+    rdfs:comment "The zero-based index of the stream within its container."@en ;
+    rdfs:domain tamper:Stream ;
+    rdfs:range xsd:nonNegativeInteger .
+
+tamper:codec a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "codec"@en ;
+    rdfs:comment "The codec used to encode the stream (e.g., 'h264', 'aac', 'mp3')."@en ;
+    rdfs:domain tamper:Stream ;
+    rdfs:range xsd:string .
+
+tamper:bitRate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "bit rate"@en ;
+    rdfs:comment "The bit rate of the stream in bits per second."@en ;
+    rdfs:domain tamper:Stream ;
+    rdfs:range xsd:nonNegativeInteger .
+
+tamper:language a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "language"@en ;
+    rdfs:comment "The ISO 639 language code for the stream content."@en ;
+    rdfs:domain tamper:Stream ;
+    rdfs:range xsd:string .
+
+#################################################################
+# Datatype Properties - Visual (Images and Video Streams)
+#################################################################
+
+tamper:width a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "width"@en ;
+    rdfs:comment "The width in pixels."@en ;
+    rdfs:domain [
+        a owl:Class ;
+        owl:unionOf ( tamper:ImageAsset tamper:VideoStream )
+    ] ;
+    rdfs:range xsd:positiveInteger .
+
+tamper:height a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "height"@en ;
+    rdfs:comment "The height in pixels."@en ;
+    rdfs:domain [
+        a owl:Class ;
+        owl:unionOf ( tamper:ImageAsset tamper:VideoStream )
+    ] ;
+    rdfs:range xsd:positiveInteger .
+
+tamper:colorSpace a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "color space"@en ;
+    rdfs:comment "The color space of the visual data (e.g., 'sRGB', 'bt709', 'bt2020')."@en ;
+    rdfs:domain [
+        a owl:Class ;
+        owl:unionOf ( tamper:ImageAsset tamper:VideoStream )
+    ] ;
+    rdfs:range xsd:string .
+
+tamper:bitDepth a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "bit depth"@en ;
+    rdfs:comment "The number of bits per pixel channel."@en ;
+    rdfs:domain [
+        a owl:Class ;
+        owl:unionOf ( tamper:ImageAsset tamper:VideoStream )
+    ] ;
+    rdfs:range xsd:positiveInteger .
+
+#################################################################
+# Datatype Properties - Video Stream specific
+#################################################################
+
+tamper:frameRate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "frame rate"@en ;
+    rdfs:comment "The frame rate in frames per second."@en ;
+    rdfs:domain tamper:VideoStream ;
+    rdfs:range xsd:decimal .
+
+tamper:pixelFormat a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "pixel format"@en ;
+    rdfs:comment "The pixel format of the video stream (e.g., 'yuv420p', 'rgb24')."@en ;
+    rdfs:domain tamper:VideoStream ;
+    rdfs:range xsd:string .
+
+#################################################################
+# Datatype Properties - Audio Stream specific
+#################################################################
+
+tamper:sampleRate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "sample rate"@en ;
+    rdfs:comment "The audio sample rate in Hertz."@en ;
+    rdfs:domain tamper:AudioStream ;
+    rdfs:range xsd:positiveInteger .
+
+tamper:channels a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "channels"@en ;
+    rdfs:comment "The number of audio channels."@en ;
+    rdfs:domain tamper:AudioStream ;
+    rdfs:range xsd:positiveInteger .
+
+tamper:bitsPerSample a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "bits per sample"@en ;
+    rdfs:comment "The number of bits per audio sample."@en ;
+    rdfs:domain tamper:AudioStream ;
+    rdfs:range xsd:positiveInteger .
