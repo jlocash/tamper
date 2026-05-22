@@ -1,11 +1,10 @@
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
 @prefix tamper: <https://example.org/tamper/ontology#> .
 
-<https://example.org/tamper/ontology>
-    a owl:Ontology ;
+<https://example.org/tamper/ontology> a owl:Ontology ;
     rdfs:label "Tamper Ontology"@en ;
     rdfs:comment "An ontology for representing media assets, their structure, and provenance for forensic analysis."@en ;
     owl:versionIRI <https://example.org/tamper/ontology/0.1.0> ;
@@ -103,10 +102,8 @@ tamper:containerFormat a owl:DatatypeProperty, owl:FunctionalProperty ;
 tamper:duration a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "duration"@en ;
     rdfs:comment "The temporal duration of the media."@en ;
-    rdfs:domain [
-        a owl:Class ;
-        owl:unionOf ( tamper:StreamContainer tamper:Stream )
-    ] ;
+    rdfs:domain [ a owl:Class ;
+                  owl:unionOf ( tamper:StreamContainer tamper:Stream ) ] ;
     rdfs:range xsd:duration .
 
 #################################################################
@@ -144,37 +141,29 @@ tamper:language a owl:DatatypeProperty, owl:FunctionalProperty ;
 tamper:width a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "width"@en ;
     rdfs:comment "The width in pixels."@en ;
-    rdfs:domain [
-        a owl:Class ;
-        owl:unionOf ( tamper:ImageAsset tamper:VideoStream )
-    ] ;
+    rdfs:domain [ a owl:Class ;
+                  owl:unionOf ( tamper:ImageAsset tamper:VideoStream ) ] ;
     rdfs:range xsd:positiveInteger .
 
 tamper:height a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "height"@en ;
     rdfs:comment "The height in pixels."@en ;
-    rdfs:domain [
-        a owl:Class ;
-        owl:unionOf ( tamper:ImageAsset tamper:VideoStream )
-    ] ;
+    rdfs:domain [ a owl:Class ;
+                  owl:unionOf ( tamper:ImageAsset tamper:VideoStream ) ] ;
     rdfs:range xsd:positiveInteger .
 
 tamper:colorSpace a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "color space"@en ;
     rdfs:comment "The color space of the visual data (e.g., 'sRGB', 'bt709', 'bt2020')."@en ;
-    rdfs:domain [
-        a owl:Class ;
-        owl:unionOf ( tamper:ImageAsset tamper:VideoStream )
-    ] ;
+    rdfs:domain [ a owl:Class ;
+                  owl:unionOf ( tamper:ImageAsset tamper:VideoStream ) ] ;
     rdfs:range xsd:string .
 
 tamper:bitDepth a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "bit depth"@en ;
     rdfs:comment "The number of bits per pixel channel."@en ;
-    rdfs:domain [
-        a owl:Class ;
-        owl:unionOf ( tamper:ImageAsset tamper:VideoStream )
-    ] ;
+    rdfs:domain [ a owl:Class ;
+                  owl:unionOf ( tamper:ImageAsset tamper:VideoStream ) ] ;
     rdfs:range xsd:positiveInteger .
 
 #################################################################
@@ -214,3 +203,9 @@ tamper:bitsPerSample a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:comment "The number of bits per audio sample."@en ;
     rdfs:domain tamper:AudioStream ;
     rdfs:range xsd:positiveInteger .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( tamper:ImageAsset tamper:AudioAsset tamper:VideoAsset ) .
+
+[] a owl:AllDisjointClasses ;
+    owl:members ( tamper:VideoStream tamper:AudioStream tamper:SubtitleStream ) .
