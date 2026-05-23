@@ -7,7 +7,7 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-05-21 22:52:15.906073
+    Date: 2026-05-23 16:21:03.044453
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
@@ -30,13 +30,14 @@ class TAMPER(DefinedNamespace):
     colorSpace: URIRef  # The color space of the visual data (e.g., 'sRGB', 'bt709', 'bt2020').
     containerFormat: URIRef  # The container format name (e.g., 'MPEG-4', 'Matroska', 'FLAC').
     duration: URIRef  # The temporal duration of the media.
+    filePath: URIRef  # The relative path to the media file.
     fileSize: URIRef  # The size of the media file in bytes.
     frameRate: URIRef  # The frame rate in frames per second.
     hasStream: URIRef  # Relates a stream container to its constituent streams.
     height: URIRef  # The height in pixels.
     language: URIRef  # The ISO 639 language code for the stream content.
     mediaType: URIRef  # The MIME type of the media asset (e.g., 'image/jpeg', 'video/mp4').
-    pixelFormat: URIRef  # The pixel format of the video stream (e.g., 'yuv420p', 'rgb24').
+    pixelFormat: URIRef  # The pixel format (e.g., 'yuv420p', 'rgb24').
     sampleRate: URIRef  # The audio sample rate in Hertz.
     streamIndex: URIRef  # The zero-based index of the stream within its container.
     width: URIRef  # The width in pixels.

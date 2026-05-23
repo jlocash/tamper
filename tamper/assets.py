@@ -1,5 +1,6 @@
 import hashlib
 from os import PathLike
+from pathlib import Path
 
 import ffmpeg
 from magic import Magic
@@ -85,6 +86,7 @@ def build_asset_from_file(g: Graph, asset_file: PathLike[str]) -> URIRef:
     asset = Describer(g, about=asset_uri)
     asset.value(TAMPER.mediaType, mimetype)
     asset.value(TAMPER.checksum, "sha256:"+checksum)
+    asset.value(TAMPER.filePath, str(Path(asset_file).absolute()))
 
     if mimetype.startswith("image/"):
         asset.rdftype(TAMPER.ImageAsset)

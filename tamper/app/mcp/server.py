@@ -11,6 +11,7 @@ from tamper.assets import build_asset_from_file
 from tamper.core.ontology import ProvOntology
 from tamper.namespaces import TAMPER
 from tamper.core import Ontology
+from tamper.utils.make_tarball import make_tarball
 
 mcp = FastMCP("Tamper MCP Server")
 
@@ -58,6 +59,21 @@ def sparql_update(sparql_update_str: str) -> None:
         kg.update(sparql_update_str)
         kg.commit()
     except InconsistencyError as e:
+        raise ToolError(str(e)) from e
+
+
+@mcp.tool
+def export_dataset(output_filename: PathLike[str]) -> None:
+    """
+    Exports the RDF dataset and all referenced media asset files to a tarball archive.
+    The dataset is stored in TriG format in <archive root>/dataset.trig.
+    Media assets are stored under <archive root>/assets and are renamed to <checksum>.<ext>.
+
+    :param output_filename: The filename of the output tarball.
+    """
+    try:
+        make_tarball(kg.dataset, output_filename)
+    except Exception as e:
         raise ToolError(str(e)) from e
 
 
