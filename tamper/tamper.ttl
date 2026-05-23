@@ -83,6 +83,12 @@ tamper:fileSize a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:domain tamper:MediaAsset ;
     rdfs:range xsd:long .
 
+tamper:filePath a owl:DatatypeProperty ;
+    rdfs:label "file path"@en ;
+    rdfs:comment "The relative path to the media file."@en ;
+    rdfs:domain tamper:MediaAsset ;
+    rdfs:range xsd:string .
+
 tamper:checksum a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "checksum"@en ;
     rdfs:comment "The checksum of the media file, formatted as \"algorithm:checksum\" (e.g \"sha256:5e70b96ad27dc8581424be7069ee9de8da9388b716e6fe213d88385f19baf80a\")."@en ;
@@ -166,6 +172,13 @@ tamper:bitDepth a owl:DatatypeProperty, owl:FunctionalProperty ;
                   owl:unionOf ( tamper:ImageAsset tamper:VideoStream ) ] ;
     rdfs:range xsd:positiveInteger .
 
+tamper:pixelFormat a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "pixel format"@en ;
+    rdfs:comment "The pixel format (e.g., 'yuv420p', 'rgb24')."@en ;
+    rdfs:domain [ a owl:Class ;
+                  owl:unionOf ( tamper:ImageAsset tamper:VideoStream ) ] ;
+    rdfs:range xsd:string .
+
 #################################################################
 # Datatype Properties - Video Stream specific
 #################################################################
@@ -175,12 +188,6 @@ tamper:frameRate a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:comment "The frame rate in frames per second."@en ;
     rdfs:domain tamper:VideoStream ;
     rdfs:range xsd:decimal .
-
-tamper:pixelFormat a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:label "pixel format"@en ;
-    rdfs:comment "The pixel format of the video stream (e.g., 'yuv420p', 'rgb24')."@en ;
-    rdfs:domain tamper:VideoStream ;
-    rdfs:range xsd:string .
 
 #################################################################
 # Datatype Properties - Audio Stream specific
