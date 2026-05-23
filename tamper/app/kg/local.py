@@ -40,6 +40,7 @@ class LocalKnowledgeGraph(KnowledgeGraph):
         self.format = fmt
         self.path = Path(path)
         self.dataset = Dataset()
+        self._open()
 
     def _open(self):
         if not self.path.exists():

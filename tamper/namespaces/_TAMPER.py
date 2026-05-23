@@ -7,15 +7,18 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-05-23 16:21:03.044453
+    Date: 2026-05-23 20:55:17.020311
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
 
     AudioAsset: URIRef  # A digital audio file containing one or more audio streams.
     AudioStream: URIRef  # A stream containing audio sample data.
+    CompressImage: URIRef  # Applies JPEG compression to an image.
     ImageAsset: URIRef  # A digital image file.
+    ImageOperation: URIRef  # An operation that results in the creation of an image.
     MediaAsset: URIRef  # A digital media file such as an image, audio, or video.
+    Operation: URIRef  # An operation is a process that results in the creation of a new media asset.
     Stream: URIRef  # A component stream within a media container.
     StreamContainer: URIRef  # A media asset that contains one or more streams (e.g., video or audio files).
     SubtitleStream: URIRef  # A stream containing subtitle or caption data.
@@ -38,6 +41,7 @@ class TAMPER(DefinedNamespace):
     language: URIRef  # The ISO 639 language code for the stream content.
     mediaType: URIRef  # The MIME type of the media asset (e.g., 'image/jpeg', 'video/mp4').
     pixelFormat: URIRef  # The pixel format (e.g., 'yuv420p', 'rgb24').
+    qualityFactor: URIRef  # JPEG compression quality factor (0 - 100)
     sampleRate: URIRef  # The audio sample rate in Hertz.
     streamIndex: URIRef  # The zero-based index of the stream within its container.
     width: URIRef  # The width in pixels.

@@ -60,6 +60,21 @@ tamper:SubtitleStream a owl:Class ;
     rdfs:comment "A stream containing subtitle or caption data."@en ;
     rdfs:subClassOf tamper:Stream .
 
+tamper:Operation a owl:Class ;
+    rdfs:label "Operation"@en ;
+    rdfs:comment "An operation is a process that results in the creation of a new media asset."@en ;
+    rdfs:subClassOf prov:Activity .
+
+tamper:ImageOperation a owl:Class ;
+    rdfs:label "Image Operation"@en ;
+    rdfs:comment "An operation that results in the creation of an image."@en ;
+    rdfs:subClassOf tamper:Operation .
+
+tamper:CompressImage a owl:Class ;
+    rdfs:label "Compress Image"@en ;
+    rdfs:comment "Applies JPEG compression to an image."@en ;
+    rdfs:subClassOf tamper:ImageOperation .
+
 #################################################################
 # Object Properties
 #################################################################
@@ -213,6 +228,17 @@ tamper:bitsPerSample a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:comment "The number of bits per audio sample."@en ;
     rdfs:domain tamper:AudioStream ;
     rdfs:range xsd:positiveInteger .
+
+#################################################################
+# Datatype Properties - Operation specific
+#################################################################
+
+tamper:qualityFactor a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "quality factor"@en ;
+    rdfs:comment "JPEG compression quality factor (0 - 100)" ;
+    rdfs:domain tamper:CompressImage ;
+    rdfs:range xsd:nonNegativeInteger .
+
 
 [] a owl:AllDisjointClasses ;
     owl:members ( tamper:ImageAsset tamper:AudioAsset tamper:VideoAsset ) .

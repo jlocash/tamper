@@ -4,13 +4,14 @@ from pathlib import Path
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from rdflib import Graph
+from rdflib import Graph, URIRef
 
 from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
 from tamper.assets import build_asset_from_file
 from tamper.core.ontology import ProvOntology
 from tamper.namespaces import TAMPER
 from tamper.core import Ontology
+from tamper.ops.image.compress import CompressImage
 from tamper.utils.make_tarball import make_tarball
 
 mcp = FastMCP("Tamper MCP Server")
@@ -34,9 +35,34 @@ def track_media_asset(file_path: PathLike[str]) -> str:
 
 
 @mcp.tool
+def compress_image(output_dir: str, image_uri: str, quality_factor: int) -> str:
+    """
+    Runs an image compression operation on the given URI. The provided image URI must resolve to an image asset in the
+    knowledge graph AND it must have an associated file path. Assets not containing a file path are not supported.
+
+    :param output_dir: The directory where the compressed image will be stored.
+    :param image_uri: The URI of the image to compress. The URI must resolve to an image asset in the knowledge graph.
+    :param quality_factor: The quality factor (0-100) for the compression.
+    :return: The subgraph created as a result of the compression operation, serialized in Turtle format.
+    """
+    op = CompressImage(kg.dataset.default_graph, output_dir, URIRef(image_uri), quality_factor)
+    subgraph, new_image_uri = op.apply()
+    try:
+        kg.insert_statements_default(subgraph)
+        kg.commit()
+        return subgraph.serialize(format="turtle")
+    except InconsistencyError as e:
+        raise ToolError(str(e)) from e
+
+
+@mcp.tool
 def sparql_query(sparql_query_str: str) -> str | bool:
     """
-    Executes a (read-only) SPARQL query against the knowledge graph.
+    Executes a (read-only) SPARQL query against the knowledge graph. The vocabulary should ALWAYS be fetched prior to
+    executing any queries. Available vocabularies are exposed via MCP resources at:
+    - ontology://tamper (the Tamper core ontology)
+    - ontology://prov-o (the PROV-O ontology)
+
     :param sparql_query_str: The SPARQL query to execute. Must be one of the following: SELECT, ASK, CONSTRUCT, DESCRIBE.
     :return: In the case of a CONSTRUCT query, the result is the graph serialized in Turtle format. Otherwise, the result is a JSON object containing the results of the query.
     """
