@@ -1,51 +1,18 @@
-import abc
-from datetime import datetime
 import os
 from os import PathLike
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from uuid import uuid4
 
-from PIL import Image
+import cv2
 from rdflib import Graph, URIRef, PROV, XSD
 from rdflib.extras.describer import Describer
 
-from tamper.assets import get_file_sha256, build_asset_from_file
+from tamper.assets import get_file_sha256
 from tamper.namespaces import TAMPER
+from .image_operation import ImageOperation
 
 
-class Operation(abc.ABC):
-    __rdf_type__ = TAMPER.Operation
-
-    def __init__(self, graph: Graph, out_dir: PathLike[str]):
-        self.graph = graph
-        self.out_dir = Path(out_dir)
-
-    def apply(self) -> tuple[Graph, URIRef]:
-        subgraph = Graph()
-        op_uri = URIRef(f"operation://{uuid4()}")
-        op = Describer(subgraph, about=op_uri)
-        op.rdftype(self.__rdf_type__)
-        op.value(PROV.startedAtTime, datetime.now())
-
-        self._parameters(op)
-        new_asset_file = self._apply()
-        asset_uri = build_asset_from_file(subgraph, new_asset_file)
-        op.rev(PROV.wasGeneratedBy, asset_uri)
-        op.value(PROV.endedAtTime, datetime.now())
-
-        return subgraph, asset_uri
-
-    @abc.abstractmethod
-    def _parameters(self, op: Describer):
-        pass
-
-    @abc.abstractmethod
-    def _apply(self):
-        raise NotImplementedError("Subclasses must implement this method")
-
-
-class CompressImage(Operation):
+class CompressImage(ImageOperation):
     __rdf_type__ = TAMPER.CompressImage
 
     def __init__(self, graph: Graph, out_dir: PathLike[str], image_uri: URIRef, quality: int):
@@ -62,12 +29,10 @@ class CompressImage(Operation):
         if asset_file is None:
             raise ValueError("No file path found for asset")
 
-        img = Image.open(str(asset_file))
-        temp_file = NamedTemporaryFile(suffix=".jpg", delete=False)
-        img.save(temp_file.name, "JPEG", quality=self.quality)
-
+        img = cv2.imread(str(asset_file))
+        temp_file = NamedTemporaryFile(suffix=".jpg", delete=False, delete_on_close=False)
+        cv2.imwrite(temp_file.name, img, [cv2.IMWRITE_JPEG_QUALITY, self.quality])
         checksum = get_file_sha256(temp_file.name)
         new_img_file = self.out_dir / (checksum + ".jpg")
         os.rename(temp_file.name, new_img_file)
-
         return new_img_file

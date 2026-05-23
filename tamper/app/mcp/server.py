@@ -11,7 +11,7 @@ from tamper.assets import build_asset_from_file
 from tamper.core.ontology import ProvOntology
 from tamper.namespaces import TAMPER
 from tamper.core import Ontology
-from tamper.ops.image.compress import CompressImage
+from tamper.ops.image import CompressImage, AddGaussianNoise
 from tamper.utils.make_tarball import make_tarball
 
 mcp = FastMCP("Tamper MCP Server")
@@ -38,7 +38,7 @@ def track_media_asset(file_path: PathLike[str]) -> str:
 def compress_image(output_dir: str, image_uri: str, quality_factor: int) -> str:
     """
     Runs an image compression operation on the given URI. The provided image URI must resolve to an image asset in the
-    knowledge graph AND it must have an associated file path. Assets not containing a file path are not supported.
+    knowledge graph, AND it must have an associated file path. Assets not containing a file path are not supported.
 
     :param output_dir: The directory where the compressed image will be stored.
     :param image_uri: The URI of the image to compress. The URI must resolve to an image asset in the knowledge graph.
@@ -46,12 +46,35 @@ def compress_image(output_dir: str, image_uri: str, quality_factor: int) -> str:
     :return: The subgraph created as a result of the compression operation, serialized in Turtle format.
     """
     op = CompressImage(kg.dataset.default_graph, output_dir, URIRef(image_uri), quality_factor)
-    subgraph, new_image_uri = op.apply()
     try:
+        subgraph, new_image_uri = op.apply()
         kg.insert_statements_default(subgraph)
         kg.commit()
         return subgraph.serialize(format="turtle")
-    except InconsistencyError as e:
+    except (InconsistencyError, ValueError) as e:
+        raise ToolError(str(e)) from e
+
+
+@mcp.tool
+def add_gaussian_noise(output_dir: str, image_uri: str, mean: float, std: float) -> str:
+    """
+    Adds Gaussian noise to an image. The image URI must resolve to an image asset in the knowledge graph, AND it must
+    have an associated file path. Assets not containing a file path are not supported.
+
+    :param output_dir: The directory where the compressed image will be stored.
+    :param image_uri: The URI of the image to compress. The URI must resolve to an image asset in the knowledge graph.
+    :param mean: The mean value of the Gaussian noise.
+    :param std: The standard deviation of the Gaussian noise.
+    :return: The subgraph created as a result of the compression operation, serialized in Turtle format.
+    """
+
+    op = AddGaussianNoise(kg.dataset.default_graph, output_dir, URIRef(image_uri), mean, std)
+    try:
+        subgraph, new_image_uri = op.apply()
+        kg.insert_statements_default(subgraph)
+        kg.commit()
+        return subgraph.serialize(format="turtle")
+    except (InconsistencyError, ValueError) as e:
         raise ToolError(str(e)) from e
 
 

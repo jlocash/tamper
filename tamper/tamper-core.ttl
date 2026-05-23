@@ -75,6 +75,11 @@ tamper:CompressImage a owl:Class ;
     rdfs:comment "Applies JPEG compression to an image."@en ;
     rdfs:subClassOf tamper:ImageOperation .
 
+tamper:AddGaussianNoise a owl:Class ;
+    rdfs:label "Add Gaussian Noise"@en ;
+    rdfs:comment "Adds gaussian noise to an image."@en ;
+    rdfs:subClassOf tamper:ImageOperation .
+
 #################################################################
 # Object Properties
 #################################################################
@@ -238,6 +243,16 @@ tamper:qualityFactor a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:comment "JPEG compression quality factor (0 - 100)" ;
     rdfs:domain tamper:CompressImage ;
     rdfs:range xsd:nonNegativeInteger .
+
+tamper:gaussianMean a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "gaussian mean"@en ;
+    rdfs:domain tamper:AddGaussianNoise ;
+    rdfs:range xsd:decimal .
+
+tamper:gaussianStd a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "gaussian std"@en ;
+    rdfs:domain tamper:AddGaussianNoise ;
+    rdfs:range xsd:decimal .
 
 
 [] a owl:AllDisjointClasses ;

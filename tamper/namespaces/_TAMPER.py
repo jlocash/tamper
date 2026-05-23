@@ -7,11 +7,12 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-05-23 20:55:17.020311
+    Date: 2026-05-23 21:36:45.399543
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
 
+    AddGaussianNoise: URIRef  # Adds gaussian noise to an image.
     AudioAsset: URIRef  # A digital audio file containing one or more audio streams.
     AudioStream: URIRef  # A stream containing audio sample data.
     CompressImage: URIRef  # Applies JPEG compression to an image.
@@ -36,6 +37,8 @@ class TAMPER(DefinedNamespace):
     filePath: URIRef  # The relative path to the media file.
     fileSize: URIRef  # The size of the media file in bytes.
     frameRate: URIRef  # The frame rate in frames per second.
+    gaussianMean: URIRef  # 
+    gaussianStd: URIRef  # 
     hasStream: URIRef  # Relates a stream container to its constituent streams.
     height: URIRef  # The height in pixels.
     language: URIRef  # The ISO 639 language code for the stream content.

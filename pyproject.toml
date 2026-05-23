@@ -7,9 +7,13 @@ requires-python = ">=3.14"
 dependencies = [
     "fastmcp>=3.3.1",
     "ffmpeg-python>=0.2.0",
+    "numpy>=2.4.6",
+    "opencv-python>=4.13.0.92",
     "owlrl>=7.1.4",
-    "pillow>=12.2.0",
     "pytest>=9.0.3",
     "python-magic>=0.4.27",
     "rdflib>=7.6.0",
 ]
+
+[dependency-groups]
+dev = []
