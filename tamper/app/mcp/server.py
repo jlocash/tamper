@@ -9,7 +9,7 @@ from rdflib import Graph
 from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
 from tamper.assets import build_asset_from_file
 from tamper.namespaces import TAMPER
-from tamper.ontology import Ontology
+from tamper.core import Ontology
 
 mcp = FastMCP("Tamper MCP Server")
 

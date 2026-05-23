@@ -2,12 +2,12 @@
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
-@prefix tamper: <https://example.org/tamper/ontology#> .
+@prefix tamper: <https://example.org/tamper/core#> .
 
-<https://example.org/tamper/ontology> a owl:Ontology ;
+<https://example.org/tamper/core> a owl:Ontology ;
     rdfs:label "Tamper Ontology"@en ;
     rdfs:comment "An ontology for representing media assets, their structure, and provenance for forensic analysis."@en ;
-    owl:versionIRI <https://example.org/tamper/ontology/0.1.0> ;
+    owl:versionIRI <https://example.org/tamper/core/0.1.0> ;
     owl:versionInfo "0.1.0" .
 
 #################################################################

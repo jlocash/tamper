@@ -5,7 +5,7 @@ from rdflib import URIRef, Graph, Dataset
 from owlrl import OWLRL_Semantics
 
 from tamper.namespaces import TAMPER
-from tamper.ontology import Ontology
+from tamper.core import Ontology
 from .knowledge_graph import KnowledgeGraph
 from pathlib import Path
 

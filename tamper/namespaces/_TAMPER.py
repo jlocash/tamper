@@ -10,7 +10,7 @@ class TAMPER(DefinedNamespace):
     Date: 2026-05-21 22:52:15.906073
     """
 
-    _NS = Namespace("https://example.org/tamper/ontology#")
+    _NS = Namespace("https://example.org/tamper/core#")
 
     AudioAsset: URIRef  # A digital audio file containing one or more audio streams.
     AudioStream: URIRef  # A stream containing audio sample data.
