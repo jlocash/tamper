@@ -1,1 +1,1 @@
-from .ontology import Ontology
+from .ontology import Ontology, ProvOntology

@@ -8,6 +8,7 @@ from rdflib import Graph
 
 from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
 from tamper.assets import build_asset_from_file
+from tamper.core.ontology import ProvOntology
 from tamper.namespaces import TAMPER
 from tamper.core import Ontology
 
@@ -67,6 +68,16 @@ def get_ontology() -> str:
     :return: The Tamper ontology serialized in Turtle format.
     """
     return Ontology.serialize(format="turtle")
+
+
+@mcp.resource("ontology://prov-o")
+def get_prov_ontology() -> str:
+    """
+    Retrieves the PROV-O ontology.
+
+    :return: The PROV-O ontology serialized in Turtle format.
+    """
+    return ProvOntology.serialize(format="turtle")
 
 
 if __name__ == "__main__":

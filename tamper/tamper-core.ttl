@@ -2,11 +2,13 @@
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov:   <http://www.w3.org/ns/prov#> .
 @prefix tamper: <https://example.org/tamper/core#> .
 
 <https://example.org/tamper/core> a owl:Ontology ;
     rdfs:label "Tamper Ontology"@en ;
     rdfs:comment "An ontology for representing media assets, their structure, and provenance for forensic analysis."@en ;
+    owl:imports <http://www.w3.org/ns/prov#> ;
     owl:versionIRI <https://example.org/tamper/core/0.1.0> ;
     owl:versionInfo "0.1.0" .
 
@@ -16,7 +18,8 @@
 
 tamper:MediaAsset a owl:Class ;
     rdfs:label "Media Asset"@en ;
-    rdfs:comment "A digital media file such as an image, audio, or video."@en .
+    rdfs:comment "A digital media file such as an image, audio, or video."@en ;
+    rdfs:subClassOf prov:Entity .
 
 tamper:ImageAsset a owl:Class ;
     rdfs:label "Image Asset"@en ;
