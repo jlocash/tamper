@@ -2,6 +2,7 @@ import os
 from os import PathLike
 from pathlib import Path
 
+import ray
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from rdflib import Graph, URIRef
@@ -13,6 +14,8 @@ from tamper.namespaces import TAMPER
 from tamper.core import Ontology
 from tamper.ops.image import CompressImage, AddGaussianNoise
 from tamper.utils.make_tarball import make_tarball
+
+ray.init()
 
 mcp = FastMCP("Tamper MCP Server")
 
@@ -45,9 +48,10 @@ def compress_image(output_dir: str, image_uri: str, quality_factor: int) -> str:
     :param quality_factor: The quality factor (0-100) for the compression.
     :return: The subgraph created as a result of the compression operation, serialized in Turtle format.
     """
-    op = CompressImage(kg.dataset.default_graph, output_dir, URIRef(image_uri), quality_factor)
+    op_actor = CompressImage.remote(kg.dataset.default_graph, output_dir, URIRef(image_uri), quality_factor)
     try:
-        subgraph, new_image_uri = op.apply()
+        future = op_actor.apply.remote()
+        subgraph, new_image_uri = ray.get(future)
         kg.insert_statements_default(subgraph)
         kg.commit()
         return subgraph.serialize(format="turtle")
@@ -68,9 +72,10 @@ def add_gaussian_noise(output_dir: str, image_uri: str, mean: float, std: float)
     :return: The subgraph created as a result of the compression operation, serialized in Turtle format.
     """
 
-    op = AddGaussianNoise(kg.dataset.default_graph, output_dir, URIRef(image_uri), mean, std)
+    op_actor = AddGaussianNoise.remote(kg.dataset.default_graph, output_dir, URIRef(image_uri), mean, std)
     try:
-        subgraph, new_image_uri = op.apply()
+        future = op_actor.apply.remote()
+        subgraph, new_image_uri = ray.get(future)
         kg.insert_statements_default(subgraph)
         kg.commit()
         return subgraph.serialize(format="turtle")

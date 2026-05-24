@@ -5,6 +5,7 @@ from tempfile import NamedTemporaryFile
 
 import cv2
 import numpy as np
+import ray
 from rdflib import Graph, URIRef, PROV, XSD
 from rdflib.extras.describer import Describer
 
@@ -12,7 +13,7 @@ from tamper.assets import get_file_sha256
 from tamper.namespaces import TAMPER
 from .image_operation import ImageOperation
 
-
+@ray.remote
 class AddGaussianNoise(ImageOperation):
     __rdf_type__ = TAMPER.AddGaussianNoise
 
@@ -25,7 +26,7 @@ class AddGaussianNoise(ImageOperation):
     def _parameters(self, op: Describer):
         op.value(TAMPER.gaussianMean, self.mean, datatype=XSD.decimal)
         op.value(TAMPER.gaussianStd, self.std, datatype=XSD.decimal)
-        op.value(PROV.used, self.image_uri)
+        op.rel(PROV.used, self.image_uri)
 
     def _apply(self) -> Path:
         img_file = self.graph.value(subject=self.image_uri, predicate=TAMPER.filePath)

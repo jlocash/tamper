@@ -11,7 +11,10 @@ from tamper.assets import get_file_sha256
 from tamper.namespaces import TAMPER
 from .image_operation import ImageOperation
 
+import ray
 
+
+@ray.remote
 class CompressImage(ImageOperation):
     __rdf_type__ = TAMPER.CompressImage
 
@@ -22,7 +25,7 @@ class CompressImage(ImageOperation):
 
     def _parameters(self, op: Describer):
         op.value(TAMPER.qualityFactor, self.quality, datatype=XSD.nonNegativeInteger)
-        op.value(PROV.used, self.image_uri)
+        op.rel(PROV.used, self.image_uri)
 
     def _apply(self) -> Path:
         asset_file = self.graph.value(subject=self.image_uri, predicate=TAMPER.filePath)
