@@ -1,0 +1,58 @@
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix p-plan: <http://purl.org/net/p-plan#> .
+@prefix tamper: <https://example.org/tamper/core#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+tamper:StepShape a sh:NodeShape ;
+    sh:targetClass p-plan:Step ;
+
+    # Executor calls next(...hasInputVariable) — exactly one required.
+    sh:property [
+        sh:path     p-plan:hasInputVariable ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class    p-plan:Variable ;
+        sh:message  "Each step must have exactly one p-plan:hasInputVariable referencing a p-plan:Variable." ;
+    ] ;
+
+    # Executor calls next(...hasOutputVariable) — exactly one required.
+    sh:property [
+        sh:path     p-plan:hasOutputVariable ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class    p-plan:Variable ;
+        sh:message  "Each step must have exactly one p-plan:hasOutputVariable referencing a p-plan:Variable." ;
+    ] ;
+
+    # operation_map lookup requires this to be present.
+    sh:property [
+        sh:path     tamper:operationType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message  "Each step must have exactly one tamper:operationType." ;
+    ] ;
+
+    # A step cannot consume and produce the same variable (self-loop).
+    sh:sparql [
+        sh:message "A step's input and output variable must be different." ;
+        sh:select  """
+            PREFIX p-plan: <http://purl.org/net/p-plan#>
+            SELECT $this WHERE {
+                $this p-plan:hasInputVariable  ?in .
+                $this p-plan:hasOutputVariable ?out .
+                FILTER(?in = ?out)
+            }
+        """ ;
+    ] .
+
+
+tamper:VariableShape a sh:NodeShape ;
+    sh:targetClass p-plan:Variable ;
+
+    # TopologicalSorter requires each variable to have at most one producer,
+    # otherwise the dependency graph is ambiguous.
+    sh:property [
+        sh:path     [ sh:inversePath p-plan:hasOutputVariable ] ;
+        sh:maxCount 1 ;
+        sh:message  "A variable may be the output of at most one step." ;
+    ] .

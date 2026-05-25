@@ -5,34 +5,26 @@ from tempfile import NamedTemporaryFile
 
 import cv2
 import numpy as np
-import ray
-from rdflib import Graph, URIRef, PROV, XSD
+from rdflib import Graph, URIRef, PROV, XSD, RDF
 from rdflib.extras.describer import Describer
 
 from tamper.assets import get_file_sha256
 from tamper.namespaces import TAMPER
 from .image_operation import ImageOperation
 
-@ray.remote
+
 class AddGaussianNoise(ImageOperation):
     __rdf_type__ = TAMPER.AddGaussianNoise
 
-    def __init__(self, graph: Graph, out_dir: PathLike[str], image_uri: URIRef, mean: float, std: float):
-        super().__init__(graph, out_dir)
-        self.image_uri = image_uri
+    def __init__(self, mean: float, std: float):
         self.mean = mean
         self.std = std
 
     def _parameters(self, op: Describer):
         op.value(TAMPER.gaussianMean, self.mean, datatype=XSD.decimal)
         op.value(TAMPER.gaussianStd, self.std, datatype=XSD.decimal)
-        op.rel(PROV.used, self.image_uri)
 
-    def _apply(self) -> Path:
-        img_file = self.graph.value(subject=self.image_uri, predicate=TAMPER.filePath)
-        if img_file is None:
-            raise ValueError("No file path found for asset")
-
+    def _apply(self, img_file: Path, out_dir: Path) -> Path:
         img = cv2.imread(str(img_file))
 
         noise = np.random.normal(self.mean, self.std, img.shape)
@@ -43,7 +35,22 @@ class AddGaussianNoise(ImageOperation):
         cv2.imwrite(tmp_file.name, noisy_img)
 
         checksum = get_file_sha256(tmp_file.name)
-        new_img_file = self.out_dir / (checksum + suffix)
+        new_img_file = out_dir / (checksum + suffix)
         os.rename(tmp_file.name, new_img_file)
 
         return new_img_file
+
+    @classmethod
+    def from_rdf(cls, graph: Graph, uri: URIRef):
+        # if not (uri, RDF.type, cls.__rdf_type__) in graph:
+        #     raise ValueError(f"Node is not of type {cls.__rdf_type__}")
+
+        mean = graph.value(subject=uri, predicate=TAMPER.gaussianMean)
+        if mean is None:
+            raise ValueError("No mean found")
+
+        std = graph.value(subject=uri, predicate=TAMPER.gaussianStd)
+        if std is None:
+            raise ValueError("No std found")
+
+        return cls(mean=float(mean), std=float(std))
