@@ -1,4 +1,3 @@
-import logging
 from graphlib import TopologicalSorter
 from pathlib import Path
 
@@ -10,8 +9,6 @@ from rdflib import Graph, Node, RDF
 from tamper.namespaces import P_PLAN, TAMPER
 from tamper.ops.image import CompressImage, AddGaussianNoise
 
-logger = logging.getLogger(__name__)
-
 operation_map = {
     TAMPER.CompressImage: CompressImage,
     TAMPER.AddGaussianNoise: AddGaussianNoise,
@@ -21,8 +18,6 @@ operation_map = {
 @ray.remote
 class RemoteGraph:
     def __init__(self, graph: Graph):
-        print("Initializing RemoteGraph with graph:")
-        graph.print()
         self.graph = graph
 
     def add_statements(self, statements: Graph):
@@ -85,30 +80,48 @@ class PermutationPlanExecutor:
             for step_uri in self.plan_graph.subjects(RDF.type, P_PLAN.Step)
         }
 
-        futures: dict[Node, ObjectRef[Node]] = {var: ray.put(val) for var, val in initial_variables.items()}
+        # maps variable URIs to asset URIs
+        var_futures: dict[Node, ObjectRef[Node]] = {var: ray.put(val) for var, val in initial_variables.items()}
+
+        # steps that have been submitted
+        ref_to_step: dict[ObjectRef[Node], Node] = {}
+
+        # steps that are ready but can't be submitted because max_in_flight is reached
+        pending: list[Node] = []
 
         # sort steps based on dependency order
         sorter = TopologicalSorter(step_topology)
-        step_order = list(sorter.static_order())
+        sorter.prepare()
 
-        in_flight: list[ObjectRef] = []
+        # start workers
+        while sorter.is_active():
+            # get_ready() eagerly pops all ready nodes
+            # we need to track them in case max_in_flight is reached so they aren't silently discarded
+            pending.extend(sorter.get_ready())
 
-        for step_uri in step_order:
-            if len(in_flight) >= max_in_flight:
-                _, in_flight = ray.wait(in_flight, num_returns=1)
+            while pending and len(ref_to_step) < max_in_flight:
+                step_uri = pending.pop(0)
+                input_var_uri = next(self.plan_graph.objects(step_uri, P_PLAN.hasInputVariable))
+                output_var_uri = next(self.plan_graph.objects(step_uri, P_PLAN.hasOutputVariable))
 
-            input_var_uri = next(self.plan_graph.objects(step_uri, P_PLAN.hasInputVariable))
-            output_var_uri = next(self.plan_graph.objects(step_uri, P_PLAN.hasOutputVariable))
+                if input_var_uri not in var_futures:
+                    raise RuntimeError(f"Missing input variables for step {step_uri}")
 
-            if input_var_uri not in futures:
-                raise RuntimeError(f"Missing input variables for step {step_uri}")
+                print(f"Executing step {step_uri.n3()}")
+                ref = execute_step.remote(plan_graph_ref, step_uri, self.result_graph, out_dir,
+                                          var_futures[input_var_uri])
 
-            ref_uri = execute_step.remote(plan_graph_ref, step_uri, self.result_graph,
-                                          out_dir, futures[input_var_uri])
-            futures[output_var_uri] = ref_uri
-            in_flight.append(ref_uri)
+                var_futures[output_var_uri] = ref
+                ref_to_step[ref] = step_uri
 
-        ray.get(list(futures.values()))
+            # wait for at least one to complete, then mark done to unlock dependents
+            done_refs, _ = ray.wait(list(ref_to_step), num_returns=1)
+            for ref in done_refs:
+                step_uri = ref_to_step.pop(ref)
+                sorter.done(step_uri)
+                print(f"Step {step_uri.n3()} competed")
+
+        ray.get(list(var_futures.values()))
 
         final_result_graph = ray.get(self.result_graph.get_graph.remote())
         return final_result_graph
