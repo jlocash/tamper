@@ -1,7 +1,8 @@
 import os
+import shutil
+import tempfile
 from os import PathLike
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 import cv2
 from rdflib import Graph, URIRef, PROV, XSD, Node, RDF
@@ -23,11 +24,12 @@ class CompressImage(ImageOperation):
 
     def _apply(self, asset_file: Path, out_dir: Path) -> Path:
         img = cv2.imread(str(asset_file))
-        temp_file = NamedTemporaryFile(suffix=".jpg", delete=False)
-        cv2.imwrite(temp_file.name, img, [cv2.IMWRITE_JPEG_QUALITY, self.quality_factor])
-        checksum = get_file_sha256(temp_file.name)
+        fd, tmp_path = tempfile.mkstemp(suffix=".jpg")
+        os.close(fd)
+        cv2.imwrite(tmp_path, img, [cv2.IMWRITE_JPEG_QUALITY, self.quality_factor])
+        checksum = get_file_sha256(tmp_path)
         new_img_file = out_dir / (checksum + ".jpg")
-        os.rename(temp_file.name, new_img_file)
+        shutil.move(tmp_path, new_img_file)
         return new_img_file
 
     @classmethod

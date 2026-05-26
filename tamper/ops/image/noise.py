@@ -1,7 +1,8 @@
 import os
+import shutil
+import tempfile
 from os import PathLike
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 
 import cv2
 import numpy as np
@@ -31,12 +32,13 @@ class AddGaussianNoise(ImageOperation):
         noisy_img = np.clip(img + noise, 0, 255).astype(np.uint8)
 
         suffix = Path(img_file).suffix
-        tmp_file = NamedTemporaryFile(suffix=suffix, delete=False, delete_on_close=False)
-        cv2.imwrite(tmp_file.name, noisy_img)
+        fd, tmp_path = tempfile.mkstemp(suffix=suffix)
+        os.close(fd)
+        cv2.imwrite(tmp_path, noisy_img)
 
-        checksum = get_file_sha256(tmp_file.name)
+        checksum = get_file_sha256(tmp_path)
         new_img_file = out_dir / (checksum + suffix)
-        os.rename(tmp_file.name, new_img_file)
+        shutil.move(tmp_path, new_img_file)
 
         return new_img_file
 
