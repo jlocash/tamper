@@ -1,4 +1,5 @@
 from graphlib import TopologicalSorter
+from os import PathLike
 from pathlib import Path
 
 import ray
@@ -71,10 +72,13 @@ class PermutationPlanExecutor:
                 deps.add(input_producer)
         return deps
 
-    def execute(self, out_dir: Path, initial_variables: dict[Node, Node], max_in_flight: int = 32) -> Graph:
+    def execute(self, out_dir: PathLike[str], initial_variables: dict[Node, Node], max_in_flight: int = 32) -> Graph:
+        out_dir = Path(out_dir)
+
         # make immutable copy of plan_graph shared by all workers
         plan_graph_ref = ray.put(self.plan_graph)
 
+        # map steps to their immediate precursors
         step_topology = {
             step_uri: self._get_step_dependencies(step_uri)
             for step_uri in self.plan_graph.subjects(RDF.type, P_PLAN.Step)
