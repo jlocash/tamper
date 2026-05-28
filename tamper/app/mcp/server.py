@@ -1,35 +1,52 @@
 import os
+import re
+from contextlib import asynccontextmanager
+from graphlib import CycleError
 from os import PathLike
 from pathlib import Path
 
 import ray
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 from fastmcp.exceptions import ToolError
-from rdflib import Graph, URIRef
+from rdflib import Graph, URIRef, RDF, RDFS
+from rdflib.plugins.parsers.notation3 import BadSyntax
 
+from tamper.namespaces import P_PLAN
+from tamper.core.ontology import PPlanOntology
+from tamper.permutations import PermutationPlanExecutor, validate_plan_graph, GraphValidationError
 from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
 from tamper.assets import build_asset_from_file
 from tamper.core.ontology import ProvOntology
 from tamper.namespaces import TAMPER
 from tamper.core import Ontology
-from tamper.ops.image import CompressImage, AddGaussianNoise
 from tamper.utils.make_tarball import make_tarball
 
-ray.init()
+TAMPER_HOME_DIR = Path(os.environ['TAMPER_HOME'])
+TAMPER_PLANS_DIR = TAMPER_HOME_DIR / "plans"
 
-mcp = FastMCP("Tamper MCP Server")
 
-dataset_file = os.environ['TAMPER_DATASET_FILE']
-kg = LocalKnowledgeGraph(Path(dataset_file))
+@asynccontextmanager
+async def lifespan(server: FastMCP):
+    TAMPER_HOME_DIR.mkdir(parents=True, exist_ok=True)
+    TAMPER_PLANS_DIR.mkdir(parents=True, exist_ok=True)
+
+    tamper_dataset_file = TAMPER_HOME_DIR / "dataset.trig"
+    kg = LocalKnowledgeGraph(tamper_dataset_file)
+
+    yield {"kg": kg}
+
+
+mcp = FastMCP("Tamper MCP Server", lifespan=lifespan)
 
 
 @mcp.tool
-def track_media_asset(file_path: PathLike[str]) -> str:
+async def track_media_asset(file_path: PathLike[str], ctx: Context) -> str:
     """
     Tracks a media asset in the knowledge graph.
     :param file_path: The file path of the media asset.
     :return: The serialized media asset graph in Turtle format.
     """
+    kg = ctx.request_context.lifespan_context["kg"]
     g = Graph()
     build_asset_from_file(g, file_path)
     kg.insert_statements_default(g)
@@ -38,53 +55,204 @@ def track_media_asset(file_path: PathLike[str]) -> str:
 
 
 @mcp.tool
-def compress_image(output_dir: str, image_uri: str, quality_factor: int) -> str:
+async def list_plans():
     """
-    Runs an image compression operation on the given URI. The provided image URI must resolve to an image asset in the
-    knowledge graph, AND it must have an associated file path. Assets not containing a file path are not supported.
+    Lists the available permutation plans.
 
-    :param output_dir: The directory where the compressed image will be stored.
-    :param image_uri: The URI of the image to compress. The URI must resolve to an image asset in the knowledge graph.
-    :param quality_factor: The quality factor (0-100) for the compression.
-    :return: The subgraph created as a result of the compression operation, serialized in Turtle format.
+    :return: A list of available permutation plans.
     """
-    op_actor = CompressImage.remote(kg.dataset.default_graph, output_dir, URIRef(image_uri), quality_factor)
-    try:
-        future = op_actor.apply.remote()
-        subgraph, new_image_uri = ray.get(future)
-        kg.insert_statements_default(subgraph)
-        kg.commit()
-        return subgraph.serialize(format="turtle")
-    except (InconsistencyError, ValueError) as e:
-        raise ToolError(str(e)) from e
+
+    plans = []
+    for plan_file in TAMPER_PLANS_DIR.glob("*.ttl"):
+        plan_graph = Graph()
+        plan_graph.parse(plan_file, format="turtle")
+
+        plan_uri = plan_graph.value(predicate=RDF.type, object=P_PLAN.Plan)
+        label = plan_graph.value(plan_uri, RDFS.label)
+        comment = plan_graph.value(plan_uri, RDFS.comment)
+
+        plans.append({
+            "name": plan_file.stem,
+            "uri": plan_uri,
+            "num_steps": len(set(plan_graph.subjects(RDF.type, P_PLAN.Step))),
+            "label": label,
+            "description": comment,
+        })
+
+    return plans
 
 
 @mcp.tool
-def add_gaussian_noise(output_dir: str, image_uri: str, mean: float, std: float) -> str:
+async def create_plan(plan_graph_ttl: str, plan_name: str):
     """
-    Adds Gaussian noise to an image. The image URI must resolve to an image asset in the knowledge graph, AND it must
-    have an associated file path. Assets not containing a file path are not supported.
+    Creates a permutation plan.
 
-    :param output_dir: The directory where the compressed image will be stored.
-    :param image_uri: The URI of the image to compress. The URI must resolve to an image asset in the knowledge graph.
-    :param mean: The mean value of the Gaussian noise.
-    :param std: The standard deviation of the Gaussian noise.
-    :return: The subgraph created as a result of the compression operation, serialized in Turtle format.
+    :param plan_graph_ttl: The permutation plan graph, in RDF Turtle format.
+    :param plan_name: The name to be associated with the permutation plan. This name may be used
+        to retrieve the plan later
     """
+    # Matches alphanumeric strings joined by single hyphens
+    pattern = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    if not bool(re.match(pattern, plan_name)):
+        raise ToolError(f"plan name is not valid (must satisfy {pattern})")
 
-    op_actor = AddGaussianNoise.remote(kg.dataset.default_graph, output_dir, URIRef(image_uri), mean, std)
     try:
-        future = op_actor.apply.remote()
-        subgraph, new_image_uri = ray.get(future)
-        kg.insert_statements_default(subgraph)
-        kg.commit()
-        return subgraph.serialize(format="turtle")
-    except (InconsistencyError, ValueError) as e:
-        raise ToolError(str(e)) from e
+        plan_graph = Graph()
+        plan_graph.parse(data=plan_graph_ttl, format="turtle")
+
+        # Run graph validation
+        validate_plan_graph(plan_graph)
+
+        # Create plan file
+        plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
+        plan_graph.serialize(plan_file, format="turtle")
+    except BadSyntax as e:
+        raise ToolError(f"Graph contains syntax errors: {str(e)}") from e
+    except GraphValidationError as e:
+        raise ToolError(f"Graph failed shape validation: {str(e)}") from e
 
 
 @mcp.tool
-def sparql_query(sparql_query_str: str) -> str | bool:
+async def get_plan(plan_name: str):
+    """
+    Retrieves the graph associated with the given plan name.
+
+    :param plan_name: The name of the plan.
+    :return: The graph associated with the given plan name, in RDF Turtle format.
+    """
+    plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    if not plan_file.exists():
+        raise ToolError(f"Plan with name {plan_file} does not exist")
+
+    plan_graph_ttl = plan_file.read_text()
+    return plan_graph_ttl
+
+
+@mcp.tool
+async def delete_plan(plan_name: str):
+    """
+    Deletes the graph associated with the given plan name.
+
+    :param plan_name: The name of the plan.
+    """
+    plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    if not plan_file.exists():
+        raise ToolError(f"Plan with name {plan_file} does not exist")
+    plan_file.unlink()
+
+
+@mcp.tool(task=True)
+async def execute_permutation_plan(plan_graph_ttl: str, output_dir: PathLike[str], initial_variables: dict[str, str],
+                                   ctx: Context):
+    """
+    Executes a permutation plan on the knowledge graph. A permutation plan can be thought of as a blueprint for
+        materializing branches of the knowledge graph. It takes the shape of a DAG and contains steps and variables,
+        which correspond to media operations and assets. The plan is executed in topological order according to the
+        shape of the graph and order of steps that can be executed. As soon as a step's input variables are ready, it
+        is submitted and executed concurrently with all other ready steps.
+
+    To see the vocabularies for tamper or p-plan, please retrieve the `ontology://tamper` and `ontology://p-plan` MCP
+        Resources
+
+    Example plan graph:
+
+    ```turtle
+    @prefix p-plan: <http://purl.org/net/p-plan#> .
+    @prefix tamper: <https://example.org/tamper/core#> .
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+    <plan://example-plan> a p-plan:Plan .
+
+    # ---------
+    # Variables (media assets)
+    # ---------
+    <plan://v0> a p-plan:Variable;
+        p-plan:isVariableOfPlan <plan://example-plan> ;
+        rdfs:label "The original image" .
+
+    <plan://v1> a p-plan:Variable;
+        p-plan:isVariableOfPlan <plan://example-plan> ;
+        rdfs:label "The compressed image" .
+
+    <plan://v2> a p-plan:Variable;
+        p-plan:isVariableOfPlan <plan://example-plan> ;
+        rdfs:label "The noisy compressed image" .
+
+    <plan://v3> a p-plan:Variable;
+        p-plan:isVariableOfPlan <plan://example-plan> ;
+        rdfs:label "The 2x compressed image" .
+
+    # ---------
+    # Steps (media operations)
+    # ---------
+    <plan://s1> a p-plan:Step ;
+        p-plan:isStepOfPlan <plan://example-plan> ;
+        p-plan:hasInputVariable <plan://v0> ;
+        p-plan:hasOutputVariable <plan://v1> ;
+        tamper:operationType tamper:CompressImage ;
+        tamper:qualityFactor 90 .
+
+    <plan://s2> a p-plan:Step ;
+        p-plan:isStepOfPlan <plan://example-plan> ;
+        p-plan:hasInputVariable <plan://v1> ;
+        p-plan:hasOutputVariable <plan://v2> ;
+        tamper:operationType tamper:AddGaussianNoise ;
+        tamper:gaussianMean 0.0 ;
+        tamper:gaussianStd 1.0 .
+
+    <plan://s3> a p-plan:Step ;
+        p-plan:isStepOfPlan <plan://example-plan> ;
+        p-plan:hasInputVariable <plan://v1> ;
+        p-plan:hasOutputVariable <plan://v3> ;
+        tamper:operationType tamper:CompressImage ;
+        tamper:qualityFactor 90 .
+    ```
+
+    Example initial_variables (assumes "asset://myimage" resolves to a valid asset in the knowledge graph):
+
+    `{ "plan://v0": "asset://myimage" }`
+
+    :param plan_graph_ttl: The permutation graph in RDF Turtle format. The graph should follow the p-plan ontology
+        which can be found here: http://purl.org/net/p-plan. In essence, every p-plan:Variable should correspond to a
+        media asset, and each p-plan:Step should correspond to a media operation.
+    :param output_dir: The directory where generated media files will be stored.
+    :param initial_variables: A dictionary mapping p-plan:Variable URIs in the permutation plan to asset URIs in the
+        knowledge graph. These bindings should provide only the variables not produced by some step in the plan. For
+        example, if a plan compresses an image and then adds noise to the compressed image, then the bindings should
+        satisfy the original image being compressed. Without appropriate bindings, those variables remain ambiguous.
+    """
+
+    kg = ctx.request_context.lifespan_context["kg"]
+
+    # parse plan graph
+    plan_graph = Graph()
+    plan_graph.parse(data=plan_graph_ttl, format="turtle")
+
+    try:
+        validate_plan_graph(plan_graph)
+    except GraphValidationError as e:
+        raise ToolError(f"Plan graph failed shape validation: {str(e)}") from e
+
+    # Create URIRefs of initial vars
+    initial_variables = {URIRef(k): URIRef(v) for k, v in initial_variables.items()}
+
+    # create a starting result graph
+    asset_uris = " ".join(uri.n3() for uri in initial_variables.values())
+    result = kg.query("DESCRIBE " + asset_uris)
+    result_graph = result.graph
+
+    # initialize plan executor
+    try:
+        executor = PermutationPlanExecutor(plan_graph, result_graph)
+        result_graph = executor.execute(output_dir, initial_variables)
+        kg.insert_statements_default(result_graph)
+        return result_graph.serialize(format="turtle")
+    except CycleError as e:
+        raise ToolError("Plan graph cannot contain cycles") from e
+
+
+@mcp.tool
+async def sparql_query(sparql_query_str: str, ctx: Context):
     """
     Executes a (read-only) SPARQL query against the knowledge graph. The vocabulary should ALWAYS be fetched prior to
     executing any queries. Available vocabularies are exposed via MCP resources at:
@@ -94,6 +262,7 @@ def sparql_query(sparql_query_str: str) -> str | bool:
     :param sparql_query_str: The SPARQL query to execute. Must be one of the following: SELECT, ASK, CONSTRUCT, DESCRIBE.
     :return: In the case of a CONSTRUCT query, the result is the graph serialized in Turtle format. Otherwise, the result is a JSON object containing the results of the query.
     """
+    kg = ctx.request_context.lifespan_context["kg"]
     result = kg.query(sparql_query_str)
     if result.graph:
         result.graph.bind("tamper", TAMPER)
@@ -102,13 +271,14 @@ def sparql_query(sparql_query_str: str) -> str | bool:
 
 
 @mcp.tool
-def sparql_update(sparql_update_str: str) -> None:
+async def sparql_update(sparql_update_str: str, ctx: Context) -> None:
     """
     Executes a SPARQL update against the knowledge graph.
 
     :param sparql_update_str: The SPARQL update to execute.
     :return: None. Throws if the update fails.
     """
+    kg = ctx.request_context.lifespan_context["kg"]
     try:
         kg.update(sparql_update_str)
         kg.commit()
@@ -117,7 +287,7 @@ def sparql_update(sparql_update_str: str) -> None:
 
 
 @mcp.tool
-def export_dataset(output_filename: PathLike[str]) -> None:
+async def export_dataset(output_filename: PathLike[str], ctx: Context) -> None:
     """
     Exports the RDF dataset and all referenced media asset files to a tarball archive.
     The dataset is stored in TriG format in <archive root>/dataset.trig.
@@ -125,6 +295,7 @@ def export_dataset(output_filename: PathLike[str]) -> None:
 
     :param output_filename: The filename of the output tarball.
     """
+    kg = ctx.request_context.lifespan_context["kg"]
     try:
         make_tarball(kg.dataset, output_filename)
     except Exception as e:
@@ -150,5 +321,16 @@ def get_prov_ontology() -> str:
     return ProvOntology.serialize(format="turtle")
 
 
+@mcp.resource("ontology://p-plan")
+def get_p_plan_ontology() -> str:
+    """
+    Retrieves the P-Plan ontology.
+
+    :return: The P-Plan ontology serialized in Turtle format.
+    """
+    return PPlanOntology.serialize(format="turtle")
+
+
 if __name__ == "__main__":
+    ray.init()
     mcp.run()

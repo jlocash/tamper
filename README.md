@@ -81,7 +81,7 @@ uv pip install -e .
 
 ```shell
 # Define the file where our RDF dataset will live
-export TAMPER_DATASET_FILE=$(pwd)/dataset.trig
+export TAMPER_HOME=$HOME/.tamper
 
 # Run the MCP server
 fastmcp run tamper/app/mcp/server.py --project .   
@@ -91,5 +91,5 @@ fastmcp run tamper/app/mcp/server.py --project .
 ```shell
 fastmcp install claude-code tamper/app/mcp/server.py \
   --project $(pwd) \
-  --env TAMPER_DATASET_FILE=$(pwd)/dataset.trig
+  --env TAMPER_HOME=$HOME/.tamper
 ```
