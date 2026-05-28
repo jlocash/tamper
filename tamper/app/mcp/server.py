@@ -27,10 +27,16 @@ TAMPER_PLANS_DIR = TAMPER_HOME_DIR / "plans"
 
 @asynccontextmanager
 async def lifespan(server: FastMCP):
-    TAMPER_HOME_DIR.mkdir(parents=True, exist_ok=True)
-    TAMPER_PLANS_DIR.mkdir(parents=True, exist_ok=True)
+    if not TAMPER_HOME_DIR.exists():
+        print(f"Initializing Tamper home directory at {TAMPER_HOME_DIR}")
+        TAMPER_HOME_DIR.mkdir(parents=True, exist_ok=True)
+    if not TAMPER_PLANS_DIR.exists():
+        print(f"Initializing Tamper plans directory at {TAMPER_PLANS_DIR}")
+        TAMPER_PLANS_DIR.mkdir(parents=True, exist_ok=True)
 
     tamper_dataset_file = TAMPER_HOME_DIR / "dataset.trig"
+    print(f"Using dataset file at {tamper_dataset_file}")
+
     kg = LocalKnowledgeGraph(tamper_dataset_file)
 
     yield {"kg": kg}
