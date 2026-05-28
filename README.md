@@ -84,7 +84,7 @@ uv pip install -e .
 export TAMPER_HOME=$HOME/.tamper
 
 # Run the MCP server
-fastmcp run tamper/app/mcp/server.py --project .   
+fastmcp run   
 ```
 
 ### Install to Claude Code
