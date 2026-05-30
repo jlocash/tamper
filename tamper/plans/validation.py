@@ -11,7 +11,7 @@ class GraphValidationError(Exception):
 
 def validate_plan_graph(plan_graph: Graph):
     """
-    Validates a permutation plan graph according to a predefined set of SHACL rules.
+    Validates an operation plan graph according to a predefined set of SHACL rules.
 
     :return: Nothing
     :raises GraphValidationError: when the graph fails SHACL validation

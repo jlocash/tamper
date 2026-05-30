@@ -13,7 +13,7 @@ from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from tamper.namespaces import P_PLAN
 from tamper.core.ontology import PPlanOntology
-from tamper.permutations import PermutationPlanExecutor, validate_plan_graph, GraphValidationError
+from tamper.plans import OperationPlanExecutor, validate_plan_graph, GraphValidationError
 from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
 from tamper.assets import build_asset_from_file
 from tamper.core.ontology import ProvOntology
@@ -63,9 +63,9 @@ async def track_media_asset(file_path: PathLike[str], ctx: Context) -> str:
 @mcp.tool
 async def list_plans():
     """
-    Lists the available permutation plans.
+    Lists the available operation plans.
 
-    :return: A list of available permutation plans.
+    :return: A list of available operation plans.
     """
 
     plans = []
@@ -91,10 +91,10 @@ async def list_plans():
 @mcp.tool
 async def create_plan(plan_graph_ttl: str, plan_name: str):
     """
-    Creates a permutation plan.
+    Creates an operation plan.
 
-    :param plan_graph_ttl: The permutation plan graph, in RDF Turtle format.
-    :param plan_name: The name to be associated with the permutation plan. This name may be used
+    :param plan_graph_ttl: The operation plan graph, in RDF Turtle format.
+    :param plan_name: The name to be associated with the operation plan. This name may be used
         to retrieve the plan later
     """
     # Matches alphanumeric strings joined by single hyphens
@@ -148,10 +148,10 @@ async def delete_plan(plan_name: str):
 
 
 @mcp.tool(task=True)
-async def execute_permutation_plan(plan_graph_ttl: str, output_dir: PathLike[str], initial_variables: dict[str, str],
-                                   ctx: Context):
+async def execute_operation_plan(plan_graph_ttl: str, output_dir: PathLike[str], initial_variables: dict[str, str],
+                                 ctx: Context):
     """
-    Executes a permutation plan on the knowledge graph. A permutation plan can be thought of as a blueprint for
+    Executes an operation plan on the knowledge graph. An operation plan can be thought of as a blueprint for
         materializing branches of the knowledge graph. It takes the shape of a DAG and contains steps and variables,
         which correspond to media operations and assets. The plan is executed in topological order according to the
         shape of the graph and order of steps that can be executed. As soon as a step's input variables are ready, it
@@ -218,11 +218,11 @@ async def execute_permutation_plan(plan_graph_ttl: str, output_dir: PathLike[str
 
     `{ "plan://v0": "asset://myimage" }`
 
-    :param plan_graph_ttl: The permutation graph in RDF Turtle format. The graph should follow the p-plan ontology
+    :param plan_graph_ttl: The operation plan graph in RDF Turtle format. The graph should follow the p-plan ontology
         which can be found here: http://purl.org/net/p-plan. In essence, every p-plan:Variable should correspond to a
         media asset, and each p-plan:Step should correspond to a media operation.
     :param output_dir: The directory where generated media files will be stored.
-    :param initial_variables: A dictionary mapping p-plan:Variable URIs in the permutation plan to asset URIs in the
+    :param initial_variables: A dictionary mapping p-plan:Variable URIs in the operation plan to asset URIs in the
         knowledge graph. These bindings should provide only the variables not produced by some step in the plan. For
         example, if a plan compresses an image and then adds noise to the compressed image, then the bindings should
         satisfy the original image being compressed. Without appropriate bindings, those variables remain ambiguous.
@@ -249,7 +249,7 @@ async def execute_permutation_plan(plan_graph_ttl: str, output_dir: PathLike[str
 
     # initialize plan executor
     try:
-        executor = PermutationPlanExecutor(plan_graph, result_graph)
+        executor = OperationPlanExecutor(plan_graph, result_graph)
         result_graph = executor.execute(output_dir, initial_variables)
         kg.insert_statements_default(result_graph)
         return result_graph.serialize(format="turtle")

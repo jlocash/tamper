@@ -1,13 +1,11 @@
-import abc
 from os import PathLike
-from pathlib import Path
 
 import ffmpeg
-from rdflib import URIRef, RDF, Literal, XSD, Node
+from rdflib import RDF, Literal, XSD, Node
 from rdflib.graph import Graph
 
 from .operation import Operation
-from namespaces import TAMPER
+from tamper.namespaces import TAMPER
 
 
 class TranscodeVideo(Operation):
