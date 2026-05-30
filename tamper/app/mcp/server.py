@@ -154,72 +154,82 @@ async def execute_operation_plan(plan_graph_ttl: str, output_dir: PathLike[str],
         shape of the graph and order of steps that can be executed. As soon as a step's input variables are ready, it
         is submitted and executed concurrently with all other ready steps.
 
-    To see the vocabularies for tamper or p-plan, please retrieve the `ontology://tamper` and `ontology://p-plan` MCP
-        Resources
+    To see the vocabularies for tamper or the plan terms, please retrieve the `vocabulary://tamper/core` and
+        `vocabulary://tamper/plan` MCP Resources.
 
     Example plan graph:
 
     ```turtle
-    @prefix p-plan: <http://purl.org/net/p-plan#> .
+    @prefix plan:   <https://example.org/tamper/plan#> .
     @prefix tamper: <https://example.org/tamper/core#> .
-    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 
-    <plan://example-plan> a p-plan:Plan .
+    <plan://example-plan> a plan:OperationPlan .
 
     # ---------
     # Variables (media assets)
     # ---------
-    <plan://v0> a p-plan:Variable;
-        p-plan:isVariableOfPlan <plan://example-plan> ;
+    <plan://v0> a plan:Variable ;
+        plan:isVariableOfPlan <plan://example-plan> ;
         rdfs:label "The original image" .
 
-    <plan://v1> a p-plan:Variable;
-        p-plan:isVariableOfPlan <plan://example-plan> ;
+    <plan://v1> a plan:Variable ;
+        plan:isVariableOfPlan <plan://example-plan> ;
         rdfs:label "The compressed image" .
 
-    <plan://v2> a p-plan:Variable;
-        p-plan:isVariableOfPlan <plan://example-plan> ;
+    <plan://v2> a plan:Variable ;
+        plan:isVariableOfPlan <plan://example-plan> ;
         rdfs:label "The noisy compressed image" .
 
-    <plan://v3> a p-plan:Variable;
-        p-plan:isVariableOfPlan <plan://example-plan> ;
-        rdfs:label "The 2x compressed image" .
+    <plan://v3> a plan:Variable ;
+        plan:isVariableOfPlan <plan://example-plan> ;
+        rdfs:label "The re-compressed image" .
 
     # ---------
-    # Steps (media operations)
+    # Steps (media operations). Each step points at a plan:OperationParameters
+    # bundle that names the operation (plan:operationType) and carries its parameters.
     # ---------
-    <plan://s1> a p-plan:Step ;
-        p-plan:isStepOfPlan <plan://example-plan> ;
-        p-plan:hasInputVariable <plan://v0> ;
-        p-plan:hasOutputVariable <plan://v1> ;
-        tamper:operationType tamper:CompressImage ;
-        tamper:qualityFactor 90 .
+    <plan://s1> a plan:Step ;
+        plan:isStepOfPlan <plan://example-plan> ;
+        plan:hasInputVariable <plan://v0> ;
+        plan:hasOutputVariable <plan://v1> ;
+        plan:operationParameters [
+            a plan:OperationParameters ;
+            plan:operationType tamper:CompressJPEG ;
+            tamper:qualityFactor 90
+        ] .
 
-    <plan://s2> a p-plan:Step ;
-        p-plan:isStepOfPlan <plan://example-plan> ;
-        p-plan:hasInputVariable <plan://v1> ;
-        p-plan:hasOutputVariable <plan://v2> ;
-        tamper:operationType tamper:AddGaussianNoise ;
-        tamper:gaussianMean 0.0 ;
-        tamper:gaussianStd 1.0 .
+    <plan://s2> a plan:Step ;
+        plan:isStepOfPlan <plan://example-plan> ;
+        plan:hasInputVariable <plan://v1> ;
+        plan:hasOutputVariable <plan://v2> ;
+        plan:operationParameters [
+            a plan:OperationParameters ;
+            plan:operationType tamper:AddGaussianNoise ;
+            tamper:gaussianMean 0.0 ;
+            tamper:gaussianStd 1.0
+        ] .
 
-    <plan://s3> a p-plan:Step ;
-        p-plan:isStepOfPlan <plan://example-plan> ;
-        p-plan:hasInputVariable <plan://v1> ;
-        p-plan:hasOutputVariable <plan://v3> ;
-        tamper:operationType tamper:CompressImage ;
-        tamper:qualityFactor 90 .
+    <plan://s3> a plan:Step ;
+        plan:isStepOfPlan <plan://example-plan> ;
+        plan:hasInputVariable <plan://v1> ;
+        plan:hasOutputVariable <plan://v3> ;
+        plan:operationParameters [
+            a plan:OperationParameters ;
+            plan:operationType tamper:CompressJPEG ;
+            tamper:qualityFactor 50
+        ] .
     ```
 
     Example initial_variables (assumes "asset://myimage" resolves to a valid asset in the knowledge graph):
 
     `{ "plan://v0": "asset://myimage" }`
 
-    :param plan_graph_ttl: The operation plan graph in RDF Turtle format. The graph should follow the p-plan ontology
-        which can be found here: http://purl.org/net/p-plan. In essence, every p-plan:Variable should correspond to a
-        media asset, and each p-plan:Step should correspond to a media operation.
+    :param plan_graph_ttl: The operation plan graph in RDF Turtle format. The graph should follow the plan vocabulary
+        (`vocabulary://tamper/plan`). In essence, every plan:Variable should correspond to a media asset, and each
+        plan:Step should correspond to a media operation defined by its plan:operationParameters.
     :param output_dir: The directory where generated media files will be stored.
-    :param initial_variables: A dictionary mapping p-plan:Variable URIs in the operation plan to asset URIs in the
+    :param initial_variables: A dictionary mapping plan:Variable URIs in the operation plan to asset URIs in the
         knowledge graph. These bindings should provide only the variables not produced by some step in the plan. For
         example, if a plan compresses an image and then adds noise to the compressed image, then the bindings should
         satisfy the original image being compressed. Without appropriate bindings, those variables remain ambiguous.
@@ -259,8 +269,8 @@ async def sparql_query(sparql_query_str: str, ctx: Context):
     """
     Executes a (read-only) SPARQL query against the knowledge graph. The vocabulary should ALWAYS be fetched prior to
     executing any queries. Available vocabularies are exposed via MCP resources at:
-    - ontology://tamper (the Tamper core ontology)
-    - ontology://prov-o (the PROV-O ontology)
+    - vocabulary://tamper/core (the Tamper core ontology)
+    - vocabulary://prov-o (the PROV-O ontology)
 
     :param sparql_query_str: The SPARQL query to execute. Must be one of the following: SELECT, ASK, CONSTRUCT, DESCRIBE.
     :return: In the case of a CONSTRUCT query, the result is the graph serialized in Turtle format. Otherwise, the result is a JSON object containing the results of the query.
