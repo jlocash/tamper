@@ -80,6 +80,21 @@ tamper:AddGaussianNoise a owl:Class ;
     rdfs:comment "Adds gaussian noise to an image."@en ;
     rdfs:subClassOf tamper:ImageOperation .
 
+tamper:Resize a owl:Class ;
+    rdfs:label "Resize"@en ;
+    rdfs:comment "Resamples an image to a target width and height using a specified interpolation method."@en ;
+    rdfs:subClassOf tamper:ImageOperation .
+
+tamper:MedianFilter a owl:Class ;
+    rdfs:label "Median Filter"@en ;
+    rdfs:comment "Applies a median filter over a square neighbourhood, commonly used to suppress noise residuals."@en ;
+    rdfs:subClassOf tamper:ImageOperation .
+
+tamper:GaussianBlur a owl:Class ;
+    rdfs:label "Gaussian Blur"@en ;
+    rdfs:comment "Convolves an image with a Gaussian kernel of a given size and standard deviation."@en ;
+    rdfs:subClassOf tamper:ImageOperation .
+
 tamper:VideoOperation a owl:Class ;
     rdfs:label "Video Operation"@en ;
     rdfs:comment "An operation that results in the creation of a video."@en ;
@@ -262,6 +277,37 @@ tamper:gaussianMean a owl:DatatypeProperty, owl:FunctionalProperty ;
 tamper:gaussianStd a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "gaussian std"@en ;
     rdfs:domain tamper:AddGaussianNoise ;
+    rdfs:range xsd:decimal .
+
+tamper:targetWidth a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "target width"@en ;
+    rdfs:comment "The target width in pixels for a resize operation."@en ;
+    rdfs:domain tamper:Resize ;
+    rdfs:range xsd:positiveInteger .
+
+tamper:targetHeight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "target height"@en ;
+    rdfs:comment "The target height in pixels for a resize operation."@en ;
+    rdfs:domain tamper:Resize ;
+    rdfs:range xsd:positiveInteger .
+
+tamper:interpolation a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "interpolation"@en ;
+    rdfs:comment "The interpolation method used when resampling (e.g., 'nearest', 'linear', 'cubic', 'area', 'lanczos4')."@en ;
+    rdfs:domain tamper:Resize ;
+    rdfs:range xsd:string .
+
+tamper:kernelSize a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "kernel size"@en ;
+    rdfs:comment "The side length, in pixels, of the square convolution kernel. Must be a positive odd integer."@en ;
+    rdfs:domain [ a owl:Class ;
+                  owl:unionOf ( tamper:MedianFilter tamper:GaussianBlur ) ] ;
+    rdfs:range xsd:positiveInteger .
+
+tamper:blurSigma a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "blur sigma"@en ;
+    rdfs:comment "The Gaussian kernel standard deviation. A value of 0 lets the implementation derive it from the kernel size."@en ;
+    rdfs:domain tamper:GaussianBlur ;
     rdfs:range xsd:decimal .
 
 tamper:videoEncoder a owl:DatatypeProperty, owl:FunctionalProperty ;

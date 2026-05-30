@@ -17,12 +17,15 @@ from rdflib import Graph, Node, RDF, PROV, Literal
 from assets import build_asset_from_file, get_file_sha256
 from core.ops.video import TranscodeVideo
 from tamper.namespaces import P_PLAN, TAMPER
-from tamper.core.ops.image import CompressJPEG, AddGaussianNoise
+from tamper.core.ops.image import CompressJPEG, AddGaussianNoise, Resize, MedianFilter, GaussianBlur
 
 operation_map = {
     TAMPER.CompressJPEG: CompressJPEG,
     TAMPER.TranscodeVideo: TranscodeVideo,
     TAMPER.AddGaussianNoise: AddGaussianNoise,
+    TAMPER.Resize: Resize,
+    TAMPER.MedianFilter: MedianFilter,
+    TAMPER.GaussianBlur: GaussianBlur,
 }
 
 

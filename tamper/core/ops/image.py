@@ -17,6 +17,8 @@ class CompressJPEG(Operation):
 
     def __init__(self, quality_factor: int):
         super().__init__()
+        if not 0 <= quality_factor <= 100:
+            raise ValueError(f"quality_factor must be between 0 and 100, got {quality_factor}")
         self.quality_factor = quality_factor
 
     def transform(self, input_asset_file: PathLike[str], output_asset_file: PathLike[str]):
@@ -40,9 +42,134 @@ class CompressJPEG(Operation):
         return cls(quality_factor=int(quality_factor))
 
 
+_INTERPOLATIONS = {
+    "nearest": cv2.INTER_NEAREST,
+    "linear": cv2.INTER_LINEAR,
+    "cubic": cv2.INTER_CUBIC,
+    "area": cv2.INTER_AREA,
+    "lanczos4": cv2.INTER_LANCZOS4,
+}
+
+
+class Resize(Operation):
+    def __init__(self, width: int, height: int, interpolation: str = "linear"):
+        super().__init__()
+        if interpolation not in _INTERPOLATIONS:
+            raise ValueError(
+                f"Unknown interpolation '{interpolation}', expected one of {sorted(_INTERPOLATIONS)}"
+            )
+        self.width = width
+        self.height = height
+        self.interpolation = interpolation
+
+    def graph(self) -> Graph:
+        g = Graph()
+        g.add((self.subject, RDF.type, TAMPER.Resize))
+        g.add((self.subject, TAMPER.targetWidth, Literal(self.width, datatype=XSD.positiveInteger)))
+        g.add((self.subject, TAMPER.targetHeight, Literal(self.height, datatype=XSD.positiveInteger)))
+        g.add((self.subject, TAMPER.interpolation, Literal(self.interpolation)))
+        return g
+
+    def transform(self, input_image_file: PathLike[str], output_image_file: PathLike[str]):
+        img = cv2.imread(str(input_image_file))
+        resized = cv2.resize(
+            img, (self.width, self.height), interpolation=_INTERPOLATIONS[self.interpolation]
+        )
+        ext = Path(input_image_file).suffix or ".png"
+        ok, buf = cv2.imencode(ext, resized)
+        if not ok:
+            raise RuntimeError(f"Encoding to {ext} failed")
+        Path(output_image_file).write_bytes(buf.tobytes())
+
+    @classmethod
+    def copy_from_graph(cls, graph: Graph, subject: Node):
+        width = graph.value(subject=subject, predicate=TAMPER.targetWidth)
+        if width is None:
+            raise ValueError(f"Graph is missing property {TAMPER.targetWidth} for subject {subject}")
+
+        height = graph.value(subject=subject, predicate=TAMPER.targetHeight)
+        if height is None:
+            raise ValueError(f"Graph is missing property {TAMPER.targetHeight} for subject {subject}")
+
+        interpolation = graph.value(subject=subject, predicate=TAMPER.interpolation)
+        if interpolation is None:
+            raise ValueError(f"Graph is missing property {TAMPER.interpolation} for subject {subject}")
+
+        return cls(width=int(width), height=int(height), interpolation=str(interpolation))
+
+
+class MedianFilter(Operation):
+    def __init__(self, kernel_size: int):
+        super().__init__()
+        if kernel_size < 3 or kernel_size % 2 == 0:
+            raise ValueError(f"kernel_size must be an odd integer >= 3, got {kernel_size}")
+        self.kernel_size = kernel_size
+
+    def graph(self) -> Graph:
+        g = Graph()
+        g.add((self.subject, RDF.type, TAMPER.MedianFilter))
+        g.add((self.subject, TAMPER.kernelSize, Literal(self.kernel_size, datatype=XSD.positiveInteger)))
+        return g
+
+    def transform(self, input_image_file: PathLike[str], output_image_file: PathLike[str]):
+        img = cv2.imread(str(input_image_file))
+        filtered = cv2.medianBlur(img, self.kernel_size)
+        ext = Path(input_image_file).suffix or ".png"
+        ok, buf = cv2.imencode(ext, filtered)
+        if not ok:
+            raise RuntimeError(f"Encoding to {ext} failed")
+        Path(output_image_file).write_bytes(buf.tobytes())
+
+    @classmethod
+    def copy_from_graph(cls, graph: Graph, subject: Node):
+        kernel_size = graph.value(subject=subject, predicate=TAMPER.kernelSize)
+        if kernel_size is None:
+            raise ValueError(f"Graph is missing property {TAMPER.kernelSize} for subject {subject}")
+        return cls(kernel_size=int(kernel_size))
+
+
+class GaussianBlur(Operation):
+    def __init__(self, kernel_size: int, sigma: float = 0.0):
+        super().__init__()
+        if kernel_size < 1 or kernel_size % 2 == 0:
+            raise ValueError(f"kernel_size must be an odd positive integer, got {kernel_size}")
+        self.kernel_size = kernel_size
+        self.sigma = sigma
+
+    def graph(self) -> Graph:
+        g = Graph()
+        g.add((self.subject, RDF.type, TAMPER.GaussianBlur))
+        g.add((self.subject, TAMPER.kernelSize, Literal(self.kernel_size, datatype=XSD.positiveInteger)))
+        g.add((self.subject, TAMPER.blurSigma, Literal(self.sigma, datatype=XSD.float)))
+        return g
+
+    def transform(self, input_image_file: PathLike[str], output_image_file: PathLike[str]):
+        img = cv2.imread(str(input_image_file))
+        blurred = cv2.GaussianBlur(img, (self.kernel_size, self.kernel_size), sigmaX=self.sigma)
+        ext = Path(input_image_file).suffix or ".png"
+        ok, buf = cv2.imencode(ext, blurred)
+        if not ok:
+            raise RuntimeError(f"Encoding to {ext} failed")
+        Path(output_image_file).write_bytes(buf.tobytes())
+
+    @classmethod
+    def copy_from_graph(cls, graph: Graph, subject: Node):
+        kernel_size = graph.value(subject=subject, predicate=TAMPER.kernelSize)
+        if kernel_size is None:
+            raise ValueError(f"Graph is missing property {TAMPER.kernelSize} for subject {subject}")
+
+        sigma = graph.value(subject=subject, predicate=TAMPER.blurSigma)
+        if sigma is None:
+            raise ValueError(f"Graph is missing property {TAMPER.blurSigma} for subject {subject}")
+
+        return cls(kernel_size=int(kernel_size), sigma=float(sigma))
+
+
 class AddGaussianNoise(Operation):
     def __init__(self, mean: float, std: float):
         super().__init__()
+        if std < 0:
+            raise ValueError(f"std must be non-negative, got {std}")
         self.mean = mean
         self.std = std
 

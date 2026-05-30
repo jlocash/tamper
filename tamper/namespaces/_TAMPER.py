@@ -7,7 +7,7 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-05-30 00:03:12.620522
+    Date: 2026-05-30 01:26:31.948235
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
@@ -16,10 +16,13 @@ class TAMPER(DefinedNamespace):
     AudioAsset: URIRef  # A digital audio file containing one or more audio streams.
     AudioStream: URIRef  # A stream containing audio sample data.
     CompressImage: URIRef  # Applies JPEG compression to an image.
+    GaussianBlur: URIRef  # Convolves an image with a Gaussian kernel of a given size and standard deviation.
     ImageAsset: URIRef  # A digital image file.
     ImageOperation: URIRef  # An operation that results in the creation of an image.
     MediaAsset: URIRef  # A digital media file such as an image, audio, or video.
+    MedianFilter: URIRef  # Applies a median filter over a square neighbourhood, commonly used to suppress noise residuals.
     Operation: URIRef  # An operation is a process that results in the creation of a new media asset.
+    Resize: URIRef  # Resamples an image to a target width and height using a specified interpolation method.
     Stream: URIRef  # A component stream within a media container.
     StreamContainer: URIRef  # A media asset that contains one or more streams (e.g., video or audio files).
     SubtitleStream: URIRef  # A stream containing subtitle or caption data.
@@ -30,6 +33,7 @@ class TAMPER(DefinedNamespace):
     bitDepth: URIRef  # The number of bits per pixel channel.
     bitRate: URIRef  # The bit rate of the stream in bits per second.
     bitsPerSample: URIRef  # The number of bits per audio sample.
+    blurSigma: URIRef  # The Gaussian kernel standard deviation. A value of 0 lets the implementation derive it from the kernel size.
     channels: URIRef  # The number of audio channels.
     checksum: URIRef  # The checksum of the media file, formatted as "algorithm:checksum" (e.g "sha256:5e70b96ad27dc8581424be7069ee9de8da9388b716e6fe213d88385f19baf80a").
     codec: URIRef  # The codec used to encode the stream (e.g., 'h264', 'aac', 'mp3').
@@ -44,11 +48,15 @@ class TAMPER(DefinedNamespace):
     gaussianStd: URIRef  # 
     hasStream: URIRef  # Relates a stream container to its constituent streams.
     height: URIRef  # The height in pixels.
+    interpolation: URIRef  # The interpolation method used when resampling (e.g., 'nearest', 'linear', 'cubic', 'area', 'lanczos4').
+    kernelSize: URIRef  # The side length, in pixels, of the square convolution kernel. Must be a positive odd integer.
     language: URIRef  # The ISO 639 language code for the stream content.
     mediaType: URIRef  # The MIME type of the media asset (e.g., 'image/jpeg', 'video/mp4').
     pixelFormat: URIRef  # The pixel format (e.g., 'yuv420p', 'rgb24').
     qualityFactor: URIRef  # JPEG compression quality factor (0 - 100)
     sampleRate: URIRef  # The audio sample rate in Hertz.
     streamIndex: URIRef  # The zero-based index of the stream within its container.
+    targetHeight: URIRef  # The target height in pixels for a resize operation.
+    targetWidth: URIRef  # The target width in pixels for a resize operation.
     videoEncoder: URIRef  # The name of the video encoder used for transcoding (e.g., 'libx264', 'libx265', 'libvpx-vp9').
     width: URIRef  # The width in pixels.

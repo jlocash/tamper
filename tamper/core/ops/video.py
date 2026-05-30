@@ -13,6 +13,10 @@ from namespaces import TAMPER
 class TranscodeVideo(Operation):
     def __init__(self, video_encoder: str, crf: int):
         super().__init__()
+        if not video_encoder:
+            raise ValueError("video_encoder must be a non-empty string")
+        if not 0 <= crf <= 63:
+            raise ValueError(f"crf must be between 0 and 63, got {crf}")
         self.video_encoder = video_encoder
         self.crf = crf
 
