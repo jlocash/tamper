@@ -1,5 +1,7 @@
 # tamper
 
+[![CI](https://github.com/jlocash/tamper/actions/workflows/ci.yml/badge.svg)](https://github.com/jlocash/tamper/actions/workflows/ci.yml)
+
 Tamper is a framework for expressing the relationships between multimedia files.
 
 
