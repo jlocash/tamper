@@ -7,7 +7,7 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-05-23 21:36:45.399543
+    Date: 2026-05-30 00:03:12.620522
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
@@ -23,7 +23,9 @@ class TAMPER(DefinedNamespace):
     Stream: URIRef  # A component stream within a media container.
     StreamContainer: URIRef  # A media asset that contains one or more streams (e.g., video or audio files).
     SubtitleStream: URIRef  # A stream containing subtitle or caption data.
+    TranscodeVideo: URIRef  # Re-encodes a video's video stream using a specified encoder and quality (CRF). The audio stream is copied without re-encoding.
     VideoAsset: URIRef  # A digital video file containing video and potentially audio streams.
+    VideoOperation: URIRef  # An operation that results in the creation of a video.
     VideoStream: URIRef  # A stream containing video frame data.
     bitDepth: URIRef  # The number of bits per pixel channel.
     bitRate: URIRef  # The bit rate of the stream in bits per second.
@@ -33,6 +35,7 @@ class TAMPER(DefinedNamespace):
     codec: URIRef  # The codec used to encode the stream (e.g., 'h264', 'aac', 'mp3').
     colorSpace: URIRef  # The color space of the visual data (e.g., 'sRGB', 'bt709', 'bt2020').
     containerFormat: URIRef  # The container format name (e.g., 'MPEG-4', 'Matroska', 'FLAC').
+    crf: URIRef  # Constant Rate Factor — a perceptual-quality target for the encoder. Lower values mean higher quality and larger file size; 0 is lossless on x264.
     duration: URIRef  # The temporal duration of the media.
     filePath: URIRef  # The relative path to the media file.
     fileSize: URIRef  # The size of the media file in bytes.
@@ -47,4 +50,5 @@ class TAMPER(DefinedNamespace):
     qualityFactor: URIRef  # JPEG compression quality factor (0 - 100)
     sampleRate: URIRef  # The audio sample rate in Hertz.
     streamIndex: URIRef  # The zero-based index of the stream within its container.
+    videoEncoder: URIRef  # The name of the video encoder used for transcoding (e.g., 'libx264', 'libx265', 'libvpx-vp9').
     width: URIRef  # The width in pixels.

@@ -80,6 +80,16 @@ tamper:AddGaussianNoise a owl:Class ;
     rdfs:comment "Adds gaussian noise to an image."@en ;
     rdfs:subClassOf tamper:ImageOperation .
 
+tamper:VideoOperation a owl:Class ;
+    rdfs:label "Video Operation"@en ;
+    rdfs:comment "An operation that results in the creation of a video."@en ;
+    rdfs:subClassOf tamper:Operation .
+
+tamper:TranscodeVideo a owl:Class ;
+    rdfs:label "Transcode Video"@en ;
+    rdfs:comment "Re-encodes a video's video stream using a specified encoder and quality (CRF). The audio stream is copied without re-encoding."@en ;
+    rdfs:subClassOf tamper:VideoOperation .
+
 #################################################################
 # Object Properties
 #################################################################
@@ -253,6 +263,18 @@ tamper:gaussianStd a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "gaussian std"@en ;
     rdfs:domain tamper:AddGaussianNoise ;
     rdfs:range xsd:decimal .
+
+tamper:videoEncoder a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "video encoder"@en ;
+    rdfs:comment "The name of the video encoder used for transcoding (e.g., 'libx264', 'libx265', 'libvpx-vp9')."@en ;
+    rdfs:domain tamper:TranscodeVideo ;
+    rdfs:range xsd:string .
+
+tamper:crf a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "CRF"@en ;
+    rdfs:comment "Constant Rate Factor — a perceptual-quality target for the encoder. Lower values mean higher quality and larger file size; 0 is lossless on x264."@en ;
+    rdfs:domain tamper:TranscodeVideo ;
+    rdfs:range xsd:nonNegativeInteger .
 
 
 [] a owl:AllDisjointClasses ;
