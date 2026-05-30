@@ -70,7 +70,7 @@ tamper:ImageOperation a owl:Class ;
     rdfs:comment "An operation that results in the creation of an image."@en ;
     rdfs:subClassOf tamper:Operation .
 
-tamper:CompressImage a owl:Class ;
+tamper:CompressJPEG a owl:Class ;
     rdfs:label "Compress Image"@en ;
     rdfs:comment "Applies JPEG compression to an image."@en ;
     rdfs:subClassOf tamper:ImageOperation .
@@ -266,7 +266,7 @@ tamper:bitsPerSample a owl:DatatypeProperty, owl:FunctionalProperty ;
 tamper:qualityFactor a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "quality factor"@en ;
     rdfs:comment "JPEG compression quality factor (0 - 100)" ;
-    rdfs:domain tamper:CompressImage ;
+    rdfs:domain tamper:CompressJPEG ;
     rdfs:range xsd:nonNegativeInteger .
 
 tamper:gaussianMean a owl:DatatypeProperty, owl:FunctionalProperty ;

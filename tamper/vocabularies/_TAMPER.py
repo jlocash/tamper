@@ -7,7 +7,7 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-05-30 15:25:12.739518
+    Date: 2026-05-30 20:57:58.419752
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
@@ -15,7 +15,7 @@ class TAMPER(DefinedNamespace):
     AddGaussianNoise: URIRef  # Adds gaussian noise to an image.
     AudioAsset: URIRef  # A digital audio file containing one or more audio streams.
     AudioStream: URIRef  # A stream containing audio sample data.
-    CompressImage: URIRef  # Applies JPEG compression to an image.
+    CompressJPEG: URIRef  # Applies JPEG compression to an image.
     GaussianBlur: URIRef  # Convolves an image with a Gaussian kernel of a given size and standard deviation.
     ImageAsset: URIRef  # A digital image file.
     ImageOperation: URIRef  # An operation that results in the creation of an image.
