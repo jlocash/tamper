@@ -1,17 +1,25 @@
+import mimetypes
+import os
+import shutil
+import tempfile
+from datetime import datetime
 from graphlib import TopologicalSorter
 from os import PathLike
 from pathlib import Path
 
 import ray
+
+from magic import Magic
 from ray.actor import ActorHandle
 from ray.types import ObjectRef
-from rdflib import Graph, Node, RDF
+from rdflib import Graph, Node, RDF, PROV, Literal
 
+from assets import build_asset_from_file, get_file_sha256
 from tamper.namespaces import P_PLAN, TAMPER
-from tamper.ops.image import CompressImage, AddGaussianNoise
+from tamper.core.ops.image import CompressJPEG, AddGaussianNoise
 
 operation_map = {
-    TAMPER.CompressImage: CompressImage,
+    TAMPER.CompressJPEG: CompressJPEG,
     TAMPER.AddGaussianNoise: AddGaussianNoise,
 }
 
@@ -44,14 +52,33 @@ def execute_step(plan_graph: Graph, step_uri: Node, result_graph: ActorHandle[Re
         raise ValueError(f"Unsupported operation type: {op_type}")
 
     # prep operation
-    op = operation_map[op_type].from_rdf(plan_graph, step_uri)
+    op = operation_map[op_type].copy_from_graph(plan_graph, step_uri)
 
     asset_file = ray.get(result_graph.get_asset_file_path.remote(mapped_uri))
     if asset_file is None:
         raise ValueError(f"Asset {mapped_uri} does not have a local file path")
 
-    # apply operation
-    new_asset_uri, subgraph = op.apply(asset_file, mapped_uri, out_dir)
+    fd, tmp_path = tempfile.mkstemp()
+    os.close(fd)
+
+    start = datetime.now()
+    op.transform(asset_file, tmp_path)
+    end = datetime.now()
+
+    # move asset to final location
+    checksum = get_file_sha256(tmp_path)
+    mimetype = Magic(mime=True).from_file(tmp_path)
+    suffix = mimetypes.guess_extension(mimetype)
+    new_asset_file = out_dir / (checksum + suffix)
+    shutil.move(tmp_path, new_asset_file)
+
+    # construct the subgraph
+    subgraph = op.graph()
+    new_asset_uri = build_asset_from_file(subgraph, new_asset_file)
+    subgraph.add((op.subject, PROV.startedAtTime, Literal(start)))
+    subgraph.add((op.subject, PROV.endedAtTime, Literal(end)))
+    subgraph.add((op.subject, PROV.used, mapped_uri))
+    subgraph.add((new_asset_uri, PROV.wasGeneratedBy, op.subject))
 
     # update remote graph
     ray.get(result_graph.add_statements.remote(subgraph))
