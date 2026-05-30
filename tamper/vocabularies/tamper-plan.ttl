@@ -1,0 +1,106 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+@prefix prov: <http://www.w3.org/ns/prov#>.
+@prefix p-plan: <http://purl.org/net/p-plan#>.
+@prefix tamper: <https://example.org/tamper/core#>.
+@prefix plan: <https://example.org/tamper/plan#>.
+
+<https://example.org/tamper/plan> a owl:Ontology;
+  rdfs:label "Tamper Plan Ontology"@en;
+  rdfs:comment """An operation planning layer P-Plan. It extends P-Plan
+     by allowing input variables to be qualified and step operations to be contextualized."""@en;
+  owl:imports <http://purl.org/net/p-plan#>,
+    <http://www.w3.org/ns/prov#>,
+    <https://example.org/tamper/core>;
+  owl:versionIRI <https://example.org/tamper/plan/0.1.0>;
+  owl:versionInfo "0.1.0".
+
+plan:OperationPlan a owl:Class;
+  rdfs:label "Operation Plan"@en;
+  rdfs:comment "A blueprint of operations that derives new media assets, materializing branches of the knowledge graph."@en;
+  rdfs:subClassOf p-plan:Plan.
+
+plan:Step a owl:Class;
+  rdfs:label "Step"@en;
+  rdfs:comment """A single node in a plan. Purely structural: it wires inputs to an
+        output and points at the operation to run via plan:operationParameters."""@en;
+  rdfs:subClassOf p-plan:Step.
+
+plan:isStepOfPlan a owl:ObjectProperty ;
+  rdfs:label "is step of plan"@en ;
+  rdfs:comment "Relates a step to its associated plan"@en ;
+  rdfs:domain plan:Step ;
+  rdfs:range plan:OperationPlan ;
+  rdfs:subPropertyOf p-plan:isStepOfPlan .
+
+plan:Variable a owl:Class;
+  rdfs:label "Variable"@en;
+  rdfs:comment """A placeholder for a media asset within a plan. Like p-plan:Variable
+        it is NOT the asset itself, rather it is bound to an asset at execution time."""@en;
+  rdfs:subClassOf p-plan:Variable.
+
+plan:isVariableOfPlan a owl:ObjectProperty ;
+  rdfs:label "is variable of plan"@en ;
+  rdfs:comment "Relates a variable to its associated plan"@en ;
+  rdfs:domain plan:Variable ;
+  rdfs:range plan:OperationPlan ;
+  rdfs:subPropertyOf p-plan:isVariableOfPlan .
+
+plan:hasInputVariable a owl:ObjectProperty;
+  rdfs:label "has input variable"@en;
+  rdfs:comment """Relates a step to a variable it consumes. This is the unqualified
+        dependency edge used for topological ordering. For multi-input operations it is
+        recommended to use plan:qualifiedInput, so a step need only assert qualified inputs."""@en;
+  rdfs:domain plan:Step;
+  rdfs:range plan:Variable;
+  rdfs:subPropertyOf p-plan:hasInputVar;
+  owl:propertyChainAxiom ( plan:qualifiedInput plan:variable ).
+
+plan:hasOutputVariable a owl:ObjectProperty;
+  rdfs:label "has output variable"@en;
+  rdfs:comment """Relates a step to the variable it produces. A variable has exactly one
+        producer and an operation has one primary output."""@en;
+  rdfs:domain plan:Step;
+  rdfs:range plan:Variable;
+  rdfs:subPropertyOf p-plan:hasOutputVar.
+
+plan:VariableUsage a owl:Class;
+  rdfs:label "Variable Usage"@en;
+  rdfs:comment """The use of a variable by a step in a specific role. Reified so that
+        input variables may be qualified/contextualized."""@en.
+
+plan:qualifiedInput a owl:ObjectProperty;
+  rdfs:label "qualified input"@en;
+  rdfs:comment "Relates a step to a role-bearing use of one of its input variables."@en;
+  rdfs:domain plan:Step;
+  rdfs:range plan:VariableUsage.
+
+plan:variable a owl:ObjectProperty, owl:FunctionalProperty;
+  rdfs:label "variable"@en;
+  rdfs:comment "The variable consumed by a usage."@en;
+  rdfs:domain plan:VariableUsage;
+  rdfs:range plan:Variable.
+
+plan:OperationParameters a owl:Class;
+  rdfs:label "Operation Parameters"@en;
+  rdfs:comment """A bundle naming an operation (plan:operationType) and carrying its
+        parameter values. Decoupling these from plan:Step keeps the step purely
+        structural and confines any parameter-property domain entailment to a single
+        neutral class instead of leaking an operation type onto the step."""@en.
+
+plan:operationParameters a owl:ObjectProperty, owl:FunctionalProperty;
+  rdfs:label "operation parameters"@en;
+  rdfs:comment "Binds a step to the operation (and parameters) it executes."@en;
+  rdfs:domain plan:Step;
+  rdfs:range plan:OperationParameters.
+
+plan:operationType a owl:ObjectProperty, owl:FunctionalProperty;
+  rdfs:label "operation type"@en;
+  rdfs:comment """The operation to run, as a value pointing at a tamper:Operation
+        subclass (OWL punning: the class is used as an individual here). Modelled as an
+        object property, NOT rdf:type, so naming the operation does not retype the
+        parameter bundle and trip the disjointness between operations."""@en;
+  rdfs:domain plan:OperationParameters.
+

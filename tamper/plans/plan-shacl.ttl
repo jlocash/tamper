@@ -1,114 +1,122 @@
 @prefix sh:     <http://www.w3.org/ns/shacl#> .
-@prefix p-plan: <http://purl.org/net/p-plan#> .
+@prefix plan:   <https://example.org/tamper/plan#> .
 @prefix tamper: <https://example.org/tamper/core#> .
 @prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
-tamper:PlanExistsShape a sh:NodeShape ;
-    sh:targetNode p-plan:Plan ;
+plan:OperationPlanExistsShape a sh:NodeShape ;
+    sh:targetNode plan:OperationPlan ;
 
-    # every plan graph must have exactly one p-plan:Plan declared
+    # every plan graph must have exactly one plan:OperationPlan declared
     sh:property [
         sh:path [ sh:inversePath rdf:type ] ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:message "A plan graph must contain exactly one p-plan:Plan instance" ;
+        sh:message "A plan graph must contain exactly one plan:OperationPlan instance" ;
     ] .
 
 
-tamper:StepExistsShape a sh:NodeShape ;
-    sh:targetNode p-plan:Step ;
+plan:StepExistsShape a sh:NodeShape ;
+    sh:targetNode plan:Step ;
 
-    # every plan graph must have at least one p-plan:Step declared
+    # every plan graph must have at least one plan:Step declared
     sh:property [
         sh:path [ sh:inversePath rdf:type ] ;
         sh:minCount 1 ;
-        sh:message "A plan graph must contain at least one p-plan:Step instance" ;
+        sh:message "A plan graph must contain at least one plan:Step instance" ;
     ] .
 
 
-tamper:StepShape a sh:NodeShape ;
-    sh:targetClass p-plan:Step ;
+plan:StepShape a sh:NodeShape ;
+    sh:targetClass plan:Step ;
 
     # Every step must be part of a plan
     sh:property [
-        sh:path     p-plan:isStepOfPlan ;
+        sh:path plan:isStepOfPlan ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:class    p-plan:Plan ;
-        sh:message  "A step must be part of a plan" ;
+        sh:class plan:OperationPlan ;
+        sh:message "Each step must be part of a plan" ;
     ] ;
 
     # Every step must have exactly one input variable (for now)
     sh:property [
-        sh:path     p-plan:hasInputVariable ;
+        sh:path plan:hasInputVariable ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:class    p-plan:Variable ;
-        sh:message  "Each step must have exactly one p-plan:hasInputVariable referencing a p-plan:Variable." ;
+        sh:class plan:Variable ;
+        sh:message "A step must have exactly one input variable." ;
     ] ;
 
     # Every step must have one output variable
     sh:property [
-        sh:path     p-plan:hasOutputVariable ;
+        sh:path plan:hasOutputVariable ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:class    p-plan:Variable ;
-        sh:message  "Each step must have exactly one p-plan:hasOutputVariable referencing a p-plan:Variable." ;
+        sh:class plan:Variable ;
+        sh:message "A step must have exactly one output variable." ;
     ] ;
 
-    # Every step must declare an operation type
+    # Every stem must have operation parameters
     sh:property [
-        sh:path     tamper:operationType ;
+        sh:path plan:operationParameters ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:message  "Each step must have exactly one tamper:operationType." ;
+        sh:node plan:OperationParametersShape ;
+        sh:message "A step must have exactly one plan:operationParameters." ;
     ] ;
 
     # A step cannot consume and produce the same variable (self-loop).
     sh:sparql [
         sh:message "A step's input and output variable must be different." ;
-        sh:select  """
-            PREFIX p-plan: <http://purl.org/net/p-plan#>
+        sh:select """
+            PREFIX plan: <http://purl.org/net/p-plan#>
             SELECT $this WHERE {
-                $this p-plan:hasInputVariable  ?in .
-                $this p-plan:hasOutputVariable ?out .
+                $this plan:hasInputVariable  ?in .
+                $this plan:hasOutputVariable ?out .
                 FILTER(?in = ?out)
             }
         """ ;
     ] .
 
+plan:OperationParametersShape a sh:NodeShape ;
+    # Must have operation type
+    sh:property [
+        sh:path plan:operationType ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "Operation parameters must include operation type" ;
+    ] .
 
-tamper:VariableShape a sh:NodeShape ;
-    sh:targetClass p-plan:Variable ;
+plan:VariableShape a sh:NodeShape ;
+    sh:targetClass plan:Variable ;
 
     # Every variable must be part of a plan
     sh:property [
-        sh:path     p-plan:isVariableOfPlan ;
+        sh:path plan:isVariableOfPlan ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:class    p-plan:Plan ;
-        sh:message  "A step must be part of a plan" ;
+        sh:class plan:OperationPlan ;
+        sh:message "A step must be part of a plan" ;
     ] ;
 
     # A variable must be connected to a step
     sh:or (
         [
-            sh:path     [ sh:inversePath p-plan:hasOutputVariable ] ;
+            sh:path [ sh:inversePath plan:hasOutputVariable ] ;
             sh:minCount 1 ;
-            sh:message  "A variable may be the output of at most one step." ;
+            sh:message "A variable may be the output of at most one step." ;
         ]
-
         [
-            sh:path     [ sh:inversePath p-plan:hasInputVariable ] ;
+            sh:path [ sh:inversePath plan:hasInputVariable ] ;
             sh:minCount 1 ;
-            sh:message  "A variable must be used by at least one step." ;
+            sh:message "A variable must be used by at least one step." ;
         ]
     ) ;
 
     # A variable cannot be created by more than one step
     sh:property [
-        sh:path     [ sh:inversePath p-plan:hasOutputVariable ] ;
+        sh:path [ sh:inversePath plan:hasOutputVariable ] ;
         sh:maxCount 1 ;
-        sh:message  "A variable may be the output of at most one step." ;
+        sh:message "A variable may be the output of at most one step." ;
     ] .

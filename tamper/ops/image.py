@@ -7,7 +7,7 @@ from rdflib import Node, RDF, Literal, XSD
 from rdflib.graph import Graph
 from rdflib.term import URIRef
 
-from tamper.namespaces import TAMPER
+from tamper.vocabularies import TAMPER
 
 from .operation import Operation
 

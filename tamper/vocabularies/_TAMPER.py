@@ -7,7 +7,7 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-05-30 01:26:31.948235
+    Date: 2026-05-30 15:25:12.739518
     """
 
     _NS = Namespace("https://example.org/tamper/core#")

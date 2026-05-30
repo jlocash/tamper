@@ -5,7 +5,7 @@ import pytest
 from rdflib import Graph, RDF
 
 from tamper.assets import build_asset_from_file, get_file_sha256, _get_frame_rate
-from tamper.namespaces import TAMPER
+from tamper.vocabularies import TAMPER
 
 TEST_MEDIA = Path(__file__).parent / "test-media"
 IMAGES = TEST_MEDIA / "images"

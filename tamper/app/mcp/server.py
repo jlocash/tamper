@@ -11,14 +11,11 @@ from fastmcp.exceptions import ToolError
 from rdflib import Graph, URIRef, RDF, RDFS
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
-from tamper.namespaces import P_PLAN
-from tamper.core.ontology import PPlanOntology
 from tamper.plans import OperationPlanExecutor, validate_plan_graph, GraphValidationError
 from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
 from tamper.assets import build_asset_from_file
-from tamper.core.ontology import ProvOntology
-from tamper.namespaces import TAMPER
-from tamper.core import Ontology
+from tamper.vocabularies import TAMPER, PLAN, load_prov_ontology, load_core_ontology, \
+    load_plan_ontology
 from tamper.utils.make_tarball import make_tarball
 
 TAMPER_HOME_DIR = Path(os.environ['TAMPER_HOME'])
@@ -73,14 +70,14 @@ async def list_plans():
         plan_graph = Graph()
         plan_graph.parse(plan_file, format="turtle")
 
-        plan_uri = plan_graph.value(predicate=RDF.type, object=P_PLAN.Plan)
+        plan_uri = plan_graph.value(predicate=RDF.type, object=PLAN.OperationPlan)
         label = plan_graph.value(plan_uri, RDFS.label)
         comment = plan_graph.value(plan_uri, RDFS.comment)
 
         plans.append({
             "name": plan_file.stem,
             "uri": plan_uri,
-            "num_steps": len(set(plan_graph.subjects(RDF.type, P_PLAN.Step))),
+            "num_steps": len(set(plan_graph.subjects(RDF.type, PLAN.Step))),
             "label": label,
             "description": comment,
         })
@@ -308,33 +305,33 @@ async def export_dataset(output_filename: PathLike[str], ctx: Context) -> None:
         raise ToolError(str(e)) from e
 
 
-@mcp.resource("ontology://tamper")
+@mcp.resource("vocabulary://tamper/core")
 def get_ontology() -> str:
     """
-    Retrieves the Tamper ontology.
-    :return: The Tamper ontology serialized in Turtle format.
+    Retrieves the Tamper Core ontology, which is the set of terms used to describe media assets and operations.
+    :return: The Tamper Core ontology serialized in Turtle format.
     """
-    return Ontology.serialize(format="turtle")
+    return load_core_ontology().serialize(format="turtle")
 
 
-@mcp.resource("ontology://prov-o")
+@mcp.resource("vocabulary://prov-o")
 def get_prov_ontology() -> str:
     """
-    Retrieves the PROV-O ontology.
+    Retrieves the PROV-O ontology, which provides the set of terms used to relate media assets and operations.
 
     :return: The PROV-O ontology serialized in Turtle format.
     """
-    return ProvOntology.serialize(format="turtle")
+    return load_prov_ontology().serialize(format="turtle")
 
 
-@mcp.resource("ontology://p-plan")
+@mcp.resource("vocabulary://tamper/plan")
 def get_p_plan_ontology() -> str:
     """
-    Retrieves the P-Plan ontology.
+    Retrieves the Tamper Plan vocabulary, which provides a set of terms for creating blueprints of media operations.
 
-    :return: The P-Plan ontology serialized in Turtle format.
+    :return: The Tamper Plan ontology serialized in Turtle format.
     """
-    return PPlanOntology.serialize(format="turtle")
+    return load_plan_ontology().serialize(format="turtle")
 
 
 if __name__ == "__main__":

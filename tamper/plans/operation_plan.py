@@ -15,9 +15,9 @@ from ray.types import ObjectRef
 from rdflib import Graph, Node, RDF, PROV, Literal
 
 from tamper.assets import build_asset_from_file, get_file_sha256
-from tamper.core.ops.video import TranscodeVideo
-from tamper.core.ops.image import CompressJPEG, AddGaussianNoise, Resize, MedianFilter, GaussianBlur
-from tamper.namespaces import P_PLAN, TAMPER
+from tamper.ops.video import TranscodeVideo
+from tamper.ops.image import CompressJPEG, AddGaussianNoise, Resize, MedianFilter, GaussianBlur
+from tamper.vocabularies import PLAN, TAMPER
 
 operation_map = {
     TAMPER.CompressJPEG: CompressJPEG,
@@ -50,14 +50,17 @@ class RemoteGraph:
 @ray.remote
 def execute_step(plan_graph: Graph, step_uri: Node, result_graph: ActorHandle[RemoteGraph],
                  out_dir: Path, mapped_uri: Node) -> Node:
-    op_type = plan_graph.value(subject=step_uri, predicate=TAMPER.operationType)
+    params_uri = plan_graph.value(step_uri, PLAN.operationParameters)
+    if params_uri is None:
+        raise ValueError("No operation parameters found")
+    op_type = plan_graph.value(params_uri, predicate=PLAN.operationType)
     if op_type is None:
         raise ValueError("No operation type found")
     if op_type not in operation_map:
         raise ValueError(f"Unsupported operation type: {op_type}")
 
     # prep operation
-    op = operation_map[op_type].copy_from_graph(plan_graph, step_uri)
+    op = operation_map[op_type].copy_from_graph(plan_graph, params_uri)
 
     asset_file = ray.get(result_graph.get_asset_file_path.remote(mapped_uri))
     if asset_file is None:
@@ -97,9 +100,9 @@ class OperationPlanExecutor:
 
     def _get_step_dependencies(self, step_uri: Node) -> set[Node]:
         deps = set()
-        input_vars = list(self.plan_graph.objects(step_uri, P_PLAN.hasInputVariable))
+        input_vars = list(self.plan_graph.objects(step_uri, PLAN.hasInputVariable))
         for input_var in input_vars:
-            input_producer = self.plan_graph.value(predicate=P_PLAN.hasOutputVariable, object=input_var)
+            input_producer = self.plan_graph.value(predicate=PLAN.hasOutputVariable, object=input_var)
             if input_producer:
                 deps.add(input_producer)
         return deps
@@ -113,7 +116,7 @@ class OperationPlanExecutor:
         # map steps to their immediate precursors
         step_topology = {
             step_uri: self._get_step_dependencies(step_uri)
-            for step_uri in self.plan_graph.subjects(RDF.type, P_PLAN.Step)
+            for step_uri in self.plan_graph.subjects(RDF.type, PLAN.Step)
         }
 
         # maps variable URIs to asset URIs
@@ -137,8 +140,8 @@ class OperationPlanExecutor:
 
             while pending and len(ref_to_step) < max_in_flight:
                 step_uri = pending.pop(0)
-                input_var_uri = next(self.plan_graph.objects(step_uri, P_PLAN.hasInputVariable))
-                output_var_uri = next(self.plan_graph.objects(step_uri, P_PLAN.hasOutputVariable))
+                input_var_uri = next(self.plan_graph.objects(step_uri, PLAN.hasInputVariable))
+                output_var_uri = next(self.plan_graph.objects(step_uri, PLAN.hasOutputVariable))
 
                 if input_var_uri not in var_futures:
                     raise RuntimeError(f"Missing input variables for step {step_uri}")

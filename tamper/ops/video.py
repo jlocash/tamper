@@ -5,7 +5,7 @@ from rdflib import RDF, Literal, XSD, Node
 from rdflib.graph import Graph
 
 from .operation import Operation
-from tamper.namespaces import TAMPER
+from tamper.vocabularies import TAMPER
 
 
 class TranscodeVideo(Operation):

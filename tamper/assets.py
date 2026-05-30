@@ -6,7 +6,7 @@ import ffmpeg
 from magic import Magic
 from rdflib import Graph, URIRef, XSD
 from rdflib.extras.describer import Describer
-from tamper.namespaces import TAMPER
+from tamper.vocabularies import TAMPER
 from PIL import Image as PILImage
 
 

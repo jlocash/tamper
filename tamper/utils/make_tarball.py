@@ -5,7 +5,7 @@ from pathlib import Path
 
 from rdflib import Dataset, URIRef, Literal
 
-from tamper.namespaces import TAMPER
+from tamper.vocabularies import TAMPER
 
 
 def get_asset_files(dataset: Dataset):

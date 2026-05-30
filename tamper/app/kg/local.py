@@ -4,8 +4,7 @@ from rdflib import URIRef, Graph, Dataset
 
 from owlrl import OWLRL_Semantics
 
-from tamper.namespaces import TAMPER
-from tamper.core import Ontology
+from tamper.vocabularies import TAMPER, load_core_ontology
 from .knowledge_graph import KnowledgeGraph
 from pathlib import Path
 
@@ -22,7 +21,7 @@ def check_consistency(ctx: Graph | Dataset) -> None:
     else:
         tmp_graph = ctx
 
-    tmp_graph += Ontology
+    tmp_graph += load_core_ontology()
     reasoner = OWLRL_Semantics(tmp_graph, False, False, False)
     reasoner.closure()
     if reasoner.error_messages:
