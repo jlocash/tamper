@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from rdflib import Graph, RDF
 
+from tamper.app.kg.local import check_consistency
 from tamper.ops.video import TranscodeVideo
 from tamper.vocabularies import TAMPER
 
@@ -88,3 +89,16 @@ class TestTranscodeVideo:
         op.transform(_MP4, out)
         assert out.exists()
         assert out.stat().st_size > 0
+
+
+@pytest.mark.parametrize(
+    "op",
+    [
+        TranscodeVideo(video_encoder="libx264", crf=0),
+        TranscodeVideo(video_encoder="libx265", crf=23),
+    ],
+    ids=lambda op: type(op).__name__,
+)
+def test_operation_graph_is_ontology_consistent(op):
+    """Serialized video operations must pass the same consistency check the kg runs on insert."""
+    check_consistency(op.graph())

@@ -6,6 +6,7 @@ import cv2
 import pytest
 from rdflib import Graph, RDF, Literal, XSD
 
+from tamper.app.kg.local import check_consistency
 from tamper.ops.image import (
     AddGaussianNoise,
     CompressJPEG,
@@ -354,7 +355,7 @@ class TestAddGaussianNoise:
         from rdflib import URIRef
         subject = URIRef("operation://test")
         g = Graph()
-        g.add((subject, TAMPER.gaussianMean, Literal(0.0, datatype=XSD.float)))
+        g.add((subject, TAMPER.gaussianMean, Literal(0.0, datatype=XSD.decimal)))
         with pytest.raises(ValueError, match="gaussianStd"):
             AddGaussianNoise.copy_from_graph(g, subject)
 
@@ -366,3 +367,22 @@ class TestAddGaussianNoise:
         result_img = cv2.imread(str(out))
         assert result_img is not None
         assert result_img.shape == original_img.shape
+
+
+@pytest.mark.parametrize(
+    "op",
+    [
+        CompressJPEG(0),
+        CompressJPEG(100),
+        Resize(320, 240, interpolation="cubic"),
+        MedianFilter(3),
+        GaussianBlur(kernel_size=3, sigma=0.0),
+        GaussianBlur(kernel_size=5, sigma=1.5),
+        AddGaussianNoise(mean=0.0, std=0.0),
+        AddGaussianNoise(mean=-2.5, std=3.0),
+    ],
+    ids=lambda op: type(op).__name__,
+)
+def test_operation_graph_is_ontology_consistent(op):
+    """Serialized image operations must pass the same consistency check the kg runs on insert."""
+    check_consistency(op.graph())

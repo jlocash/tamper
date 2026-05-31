@@ -140,7 +140,7 @@ class GaussianBlur(Operation):
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.GaussianBlur))
         g.add((self.subject, TAMPER.kernelSize, Literal(self.kernel_size, datatype=XSD.positiveInteger)))
-        g.add((self.subject, TAMPER.blurSigma, Literal(self.sigma, datatype=XSD.float)))
+        g.add((self.subject, TAMPER.blurSigma, Literal(self.sigma, datatype=XSD.decimal)))
         return g
 
     def transform(self, input_image_file: PathLike[str], output_image_file: PathLike[str]):
@@ -176,8 +176,8 @@ class AddGaussianNoise(Operation):
     def graph(self) -> Graph:
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.AddGaussianNoise))
-        g.add((self.subject, TAMPER.gaussianMean, Literal(self.mean, datatype=XSD.float)))
-        g.add((self.subject, TAMPER.gaussianStd, Literal(self.std, datatype=XSD.float)))
+        g.add((self.subject, TAMPER.gaussianMean, Literal(self.mean, datatype=XSD.decimal)))
+        g.add((self.subject, TAMPER.gaussianStd, Literal(self.std, datatype=XSD.decimal)))
         return g
 
     def transform(self, input_image_file: PathLike[str], output_image_file: PathLike[str]):

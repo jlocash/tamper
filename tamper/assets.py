@@ -57,7 +57,7 @@ def _extract_container_metadata(asset: Describer, asset_file: PathLike[str]):
 
                 frame_rate = _get_frame_rate(stream)
                 if frame_rate is not None:
-                    asset.value(TAMPER.frameRate, frame_rate, datatype=XSD.decimal)
+                    asset.value(TAMPER.frameRate, frame_rate, datatype=XSD.float)
                 # TODO: color space
                 # TODO: bit depth
 
