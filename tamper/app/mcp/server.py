@@ -14,12 +14,14 @@ from rdflib.plugins.parsers.notation3 import BadSyntax
 from tamper.plans import OperationPlanExecutor, validate_plan_graph, GraphValidationError
 from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
 from tamper.assets import build_asset_from_file
+from tamper.plans.async_plan_queue import AsyncPlanQueue
 from tamper.vocabularies import TAMPER, PLAN, load_prov_ontology, load_core_ontology, \
     load_plan_ontology
 from tamper.utils.make_tarball import make_tarball
 
 TAMPER_HOME_DIR = Path(os.environ['TAMPER_HOME'])
 TAMPER_PLANS_DIR = TAMPER_HOME_DIR / "plans"
+TAMPER_MEDIA_DIR = TAMPER_HOME_DIR / "media"
 
 
 @asynccontextmanager
@@ -30,13 +32,21 @@ async def lifespan(server: FastMCP):
     if not TAMPER_PLANS_DIR.exists():
         print(f"Initializing Tamper plans directory at {TAMPER_PLANS_DIR}")
         TAMPER_PLANS_DIR.mkdir(parents=True, exist_ok=True)
-
+    if not TAMPER_MEDIA_DIR.exists():
+        print(f"Initializing Tamper media directory at {TAMPER_MEDIA_DIR}")
+        TAMPER_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     tamper_dataset_file = TAMPER_HOME_DIR / "dataset.trig"
     print(f"Using dataset file at {tamper_dataset_file}")
 
     kg = LocalKnowledgeGraph(tamper_dataset_file)
 
-    yield {"kg": kg}
+    plan_queue = AsyncPlanQueue(TAMPER_HOME_DIR / "media")
+    await plan_queue.start()
+
+    yield {
+        "kg": kg,
+        "plan_queue": plan_queue,
+    }
 
 
 mcp = FastMCP("Tamper MCP Server", lifespan=lifespan)
@@ -82,73 +92,13 @@ async def list_plans():
             "description": comment,
         })
 
-    return plans
+    return {"plans": plans}
 
 
 @mcp.tool
 async def create_plan(plan_graph_ttl: str, plan_name: str):
     """
-    Creates an operation plan.
-
-    :param plan_graph_ttl: The operation plan graph, in RDF Turtle format.
-    :param plan_name: The name to be associated with the operation plan. This name may be used
-        to retrieve the plan later
-    """
-    # Matches alphanumeric strings joined by single hyphens
-    pattern = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    if not bool(re.match(pattern, plan_name)):
-        raise ToolError(f"plan name is not valid (must satisfy {pattern})")
-
-    try:
-        plan_graph = Graph()
-        plan_graph.parse(data=plan_graph_ttl, format="turtle")
-
-        # Run graph validation
-        validate_plan_graph(plan_graph)
-
-        # Create plan file
-        plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
-        plan_graph.serialize(plan_file, format="turtle")
-    except BadSyntax as e:
-        raise ToolError(f"Graph contains syntax errors: {str(e)}") from e
-    except GraphValidationError as e:
-        raise ToolError(f"Graph failed shape validation: {str(e)}") from e
-
-
-@mcp.tool
-async def get_plan(plan_name: str):
-    """
-    Retrieves the graph associated with the given plan name.
-
-    :param plan_name: The name of the plan.
-    :return: The graph associated with the given plan name, in RDF Turtle format.
-    """
-    plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
-    if not plan_file.exists():
-        raise ToolError(f"Plan with name {plan_file} does not exist")
-
-    plan_graph_ttl = plan_file.read_text()
-    return plan_graph_ttl
-
-
-@mcp.tool
-async def delete_plan(plan_name: str):
-    """
-    Deletes the graph associated with the given plan name.
-
-    :param plan_name: The name of the plan.
-    """
-    plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
-    if not plan_file.exists():
-        raise ToolError(f"Plan with name {plan_file} does not exist")
-    plan_file.unlink()
-
-
-@mcp.tool(task=True)
-async def execute_operation_plan(plan_graph_ttl: str, output_dir: PathLike[str], initial_variables: dict[str, str],
-                                 ctx: Context):
-    """
-    Executes an operation plan on the knowledge graph. An operation plan can be thought of as a blueprint for
+    Creates an operation plan. An operation plan can be thought of as a blueprint for
         materializing branches of the knowledge graph. It takes the shape of a DAG and contains steps and variables,
         which correspond to media operations and assets. The plan is executed in topological order according to the
         shape of the graph and order of steps that can be executed. As soon as a step's input variables are ready, it
@@ -159,7 +109,7 @@ async def execute_operation_plan(plan_graph_ttl: str, output_dir: PathLike[str],
 
     Example plan graph:
 
-    ```turtle
+        ```turtle
     @prefix plan:   <https://example.org/tamper/plan#> .
     @prefix tamper: <https://example.org/tamper/core#> .
     @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
@@ -221,14 +171,71 @@ async def execute_operation_plan(plan_graph_ttl: str, output_dir: PathLike[str],
         ] .
     ```
 
-    Example initial_variables (assumes "asset://myimage" resolves to a valid asset in the knowledge graph):
-
-    `{ "plan://v0": "asset://myimage" }`
-
     :param plan_graph_ttl: The operation plan graph in RDF Turtle format. The graph should follow the plan vocabulary
         (`vocabulary://tamper/plan`). In essence, every plan:Variable should correspond to a media asset, and each
         plan:Step should correspond to a media operation defined by its plan:operationParameters.
-    :param output_dir: The directory where generated media files will be stored.
+    :param plan_name: The name to be associated with the operation plan. This name may be used
+        to retrieve the plan later
+    """
+    # Matches alphanumeric strings joined by single hyphens
+    pattern = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    if not bool(re.match(pattern, plan_name)):
+        raise ToolError(f"plan name is not valid (must satisfy {pattern})")
+
+    try:
+        plan_graph = Graph()
+        plan_graph.parse(data=plan_graph_ttl, format="turtle")
+
+        # Run graph validation
+        validate_plan_graph(plan_graph)
+
+        # Create plan file
+        plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
+        plan_graph.serialize(plan_file, format="turtle")
+    except BadSyntax as e:
+        raise ToolError(f"Graph contains syntax errors: {str(e)}") from e
+    except GraphValidationError as e:
+        raise ToolError(f"Graph failed shape validation: {str(e)}") from e
+
+
+@mcp.tool
+async def get_plan(plan_name: str):
+    """
+    Retrieves the graph associated with the given plan name.
+
+    :param plan_name: The name of the plan.
+    :return: The graph associated with the given plan name, in RDF Turtle format.
+    """
+    plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    if not plan_file.exists():
+        raise ToolError(f"Plan with name {plan_file} does not exist")
+
+    plan_graph_ttl = plan_file.read_text()
+    return plan_graph_ttl
+
+
+@mcp.tool
+async def delete_plan(plan_name: str):
+    """
+    Deletes the graph associated with the given plan name.
+
+    :param plan_name: The name of the plan.
+    """
+    plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    if not plan_file.exists():
+        raise ToolError(f"Plan with name {plan_file} does not exist")
+    plan_file.unlink()
+
+
+@mcp.tool
+async def execute_operation_plan(plan_name: str, initial_variables: dict[str, str], ctx: Context):
+    """
+    Executes an operation plan on the knowledge graph using the provided initial variables.
+
+    Example initial_variables (assumes "asset://myimage" resolves to a
+    valid asset in the knowledge graph): `{ "plan://v0": "asset://myimage" }`
+
+    :param plan_name: The name of the operation plan to execute.
     :param initial_variables: A dictionary mapping plan:Variable URIs in the operation plan to asset URIs in the
         knowledge graph. These bindings should provide only the variables not produced by some step in the plan. For
         example, if a plan compresses an image and then adds noise to the compressed image, then the bindings should
@@ -236,29 +243,28 @@ async def execute_operation_plan(plan_graph_ttl: str, output_dir: PathLike[str],
     """
 
     kg = ctx.request_context.lifespan_context["kg"]
+    plan_queue = ctx.request_context.lifespan_context["plan_queue"]
+
+    plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    if not plan_file.exists():
+        raise ToolError(f"Plan with name {plan_file} does not exist")
 
     # parse plan graph
     plan_graph = Graph()
-    plan_graph.parse(data=plan_graph_ttl, format="turtle")
-
-    try:
-        validate_plan_graph(plan_graph)
-    except GraphValidationError as e:
-        raise ToolError(f"Plan graph failed shape validation: {str(e)}") from e
+    plan_graph.parse(plan_file, format="turtle")
 
     # Create URIRefs of initial vars
     initial_variables = {URIRef(k): URIRef(v) for k, v in initial_variables.items()}
 
-    # create a starting result graph
+    # create a starting seed graph
     asset_uris = " ".join(uri.n3() for uri in initial_variables.values())
     result = kg.query("DESCRIBE " + asset_uris)
-    result_graph = result.graph
+    seed_graph = result.graph
 
-    # initialize plan executor
     try:
-        executor = OperationPlanExecutor(plan_graph, result_graph)
-        result_graph = executor.execute(output_dir, initial_variables)
+        result_graph = await plan_queue.put_plan(plan_graph, seed_graph, initial_variables)
         kg.insert_statements_default(result_graph)
+        kg.commit()
         return result_graph.serialize(format="turtle")
     except CycleError as e:
         raise ToolError("Plan graph cannot contain cycles") from e

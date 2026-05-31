@@ -94,29 +94,31 @@ def execute_step(plan_graph: Graph, step_uri: Node, result_graph: ActorHandle[Re
 
 
 class OperationPlanExecutor:
-    def __init__(self, plan_graph: Graph, result_graph: Graph):
-        self.plan_graph = plan_graph
-        self.result_graph = RemoteGraph.remote(result_graph)
+    def __init__(self, out_dir: PathLike[str], max_in_flight: int = 32):
+        self.out_dir = Path(out_dir)
+        self.max_in_flight = max_in_flight
 
-    def _get_step_dependencies(self, step_uri: Node) -> set[Node]:
+    def _get_step_dependencies(self, plan_graph: Graph, step_uri: Node) -> set[Node]:
         deps = set()
-        input_vars = list(self.plan_graph.objects(step_uri, PLAN.hasInputVariable))
+        input_vars = list(plan_graph.objects(step_uri, PLAN.hasInputVariable))
         for input_var in input_vars:
-            input_producer = self.plan_graph.value(predicate=PLAN.hasOutputVariable, object=input_var)
+            input_producer = plan_graph.value(predicate=PLAN.hasOutputVariable, object=input_var)
             if input_producer:
                 deps.add(input_producer)
         return deps
 
-    def execute(self, out_dir: PathLike[str], initial_variables: dict[Node, Node], max_in_flight: int = 32) -> Graph:
-        out_dir = Path(out_dir)
-
+    def execute(self, plan_graph: Graph, seed_graph: Graph, initial_variables: dict[Node, Node],
+                max_in_flight: int = 32) -> Graph:
         # make immutable copy of plan_graph shared by all workers
-        plan_graph_ref = ray.put(self.plan_graph)
+        plan_graph_ref = ray.put(plan_graph)
+
+        # actor to hold the final result graph, updated by each worker task
+        result_graph = RemoteGraph.remote(seed_graph)
 
         # map steps to their immediate precursors
         step_topology = {
-            step_uri: self._get_step_dependencies(step_uri)
-            for step_uri in self.plan_graph.subjects(RDF.type, PLAN.Step)
+            step_uri: self._get_step_dependencies(plan_graph, step_uri)
+            for step_uri in plan_graph.subjects(RDF.type, PLAN.Step)
         }
 
         # maps variable URIs to asset URIs
@@ -140,14 +142,14 @@ class OperationPlanExecutor:
 
             while pending and len(ref_to_step) < max_in_flight:
                 step_uri = pending.pop(0)
-                input_var_uri = next(self.plan_graph.objects(step_uri, PLAN.hasInputVariable))
-                output_var_uri = next(self.plan_graph.objects(step_uri, PLAN.hasOutputVariable))
+                input_var_uri = next(plan_graph.objects(step_uri, PLAN.hasInputVariable))
+                output_var_uri = next(plan_graph.objects(step_uri, PLAN.hasOutputVariable))
 
                 if input_var_uri not in var_futures:
                     raise RuntimeError(f"Missing input variables for step {step_uri}")
 
                 print(f"Executing step {step_uri.n3()}")
-                ref = execute_step.remote(plan_graph_ref, step_uri, self.result_graph, out_dir,
+                ref = execute_step.remote(plan_graph_ref, step_uri, result_graph, self.out_dir,
                                           var_futures[input_var_uri])
 
                 var_futures[output_var_uri] = ref
@@ -162,5 +164,5 @@ class OperationPlanExecutor:
 
         ray.get(list(var_futures.values()))
 
-        final_result_graph = ray.get(self.result_graph.get_graph.remote())
+        final_result_graph = ray.get(result_graph.get_graph.remote())
         return final_result_graph
