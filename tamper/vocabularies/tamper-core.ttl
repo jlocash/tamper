@@ -105,6 +105,21 @@ tamper:TranscodeVideo a owl:Class ;
     rdfs:comment "Re-encodes a video's video stream using a specified encoder and quality (CRF). The audio stream is copied without re-encoding."@en ;
     rdfs:subClassOf tamper:VideoOperation .
 
+tamper:AudioOperation a owl:Class ;
+    rdfs:label "Audio Operation"@en ;
+    rdfs:comment "An operation that results in the creation of an audio asset."@en ;
+    rdfs:subClassOf tamper:Operation .
+
+tamper:TranscodeAudio a owl:Class ;
+    rdfs:label "Transcode Audio"@en ;
+    rdfs:comment "Re-encodes an audio stream using a specified encoder and target bit rate."@en ;
+    rdfs:subClassOf tamper:AudioOperation .
+
+tamper:ResampleAudio a owl:Class ;
+    rdfs:label "Resample Audio"@en ;
+    rdfs:comment "Resamples an audio stream to a target sample rate."@en ;
+    rdfs:subClassOf tamper:AudioOperation .
+
 #################################################################
 # Object Properties
 #################################################################
@@ -357,6 +372,24 @@ tamper:crf a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:comment "Constant Rate Factor — a perceptual-quality target for the encoder. Lower values mean higher quality and larger file size; 0 is lossless on x264."@en ;
     rdfs:domain tamper:TranscodeVideo ;
     rdfs:range xsd:nonNegativeInteger .
+
+tamper:audioEncoder a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "audio encoder"@en ;
+    rdfs:comment "The name of the audio encoder used for transcoding (e.g., 'libmp3lame', 'aac', 'libopus')."@en ;
+    rdfs:domain tamper:TranscodeAudio ;
+    rdfs:range xsd:string .
+
+tamper:targetBitRate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "target bit rate"@en ;
+    rdfs:comment "The target bit rate in bits per second for an audio transcode operation."@en ;
+    rdfs:domain tamper:TranscodeAudio ;
+    rdfs:range xsd:positiveInteger .
+
+tamper:targetSampleRate a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "target sample rate"@en ;
+    rdfs:comment "The target sample rate in Hertz for an audio resample operation."@en ;
+    rdfs:domain tamper:ResampleAudio ;
+    rdfs:range xsd:positiveInteger .
 
 
 [] a owl:AllDisjointClasses ;

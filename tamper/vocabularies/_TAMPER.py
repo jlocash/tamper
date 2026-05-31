@@ -7,13 +7,14 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-05-30 20:57:58.419752
+    Date: 2026-05-31 21:28:55.399856
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
 
     AddGaussianNoise: URIRef  # Adds gaussian noise to an image.
     AudioAsset: URIRef  # A digital audio file containing one or more audio streams.
+    AudioOperation: URIRef  # An operation that results in the creation of an audio asset.
     AudioStream: URIRef  # A stream containing audio sample data.
     CompressJPEG: URIRef  # Applies JPEG compression to an image.
     GaussianBlur: URIRef  # Convolves an image with a Gaussian kernel of a given size and standard deviation.
@@ -22,14 +23,17 @@ class TAMPER(DefinedNamespace):
     MediaAsset: URIRef  # A digital media file such as an image, audio, or video.
     MedianFilter: URIRef  # Applies a median filter over a square neighbourhood, commonly used to suppress noise residuals.
     Operation: URIRef  # An operation is a process that results in the creation of a new media asset.
+    ResampleAudio: URIRef  # Resamples an audio stream to a target sample rate.
     Resize: URIRef  # Resamples an image to a target width and height using a specified interpolation method.
     Stream: URIRef  # A component stream within a media container.
     StreamContainer: URIRef  # A media asset that contains one or more streams (e.g., video or audio files).
     SubtitleStream: URIRef  # A stream containing subtitle or caption data.
+    TranscodeAudio: URIRef  # Re-encodes an audio stream using a specified encoder and target bit rate.
     TranscodeVideo: URIRef  # Re-encodes a video's video stream using a specified encoder and quality (CRF). The audio stream is copied without re-encoding.
     VideoAsset: URIRef  # A digital video file containing video and potentially audio streams.
     VideoOperation: URIRef  # An operation that results in the creation of a video.
     VideoStream: URIRef  # A stream containing video frame data.
+    audioEncoder: URIRef  # The name of the audio encoder used for transcoding (e.g., 'libmp3lame', 'aac', 'libopus').
     bitDepth: URIRef  # The number of bits per pixel channel.
     bitRate: URIRef  # The bit rate of the stream in bits per second.
     bitsPerSample: URIRef  # The number of bits per audio sample.
@@ -56,7 +60,9 @@ class TAMPER(DefinedNamespace):
     qualityFactor: URIRef  # JPEG compression quality factor (0 - 100)
     sampleRate: URIRef  # The audio sample rate in Hertz.
     streamIndex: URIRef  # The zero-based index of the stream within its container.
+    targetBitRate: URIRef  # The target bit rate in bits per second for an audio transcode operation.
     targetHeight: URIRef  # The target height in pixels for a resize operation.
+    targetSampleRate: URIRef  # The target sample rate in Hertz for an audio resample operation.
     targetWidth: URIRef  # The target width in pixels for a resize operation.
     videoEncoder: URIRef  # The name of the video encoder used for transcoding (e.g., 'libx264', 'libx265', 'libvpx-vp9').
     width: URIRef  # The width in pixels.
