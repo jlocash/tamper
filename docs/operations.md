@@ -144,3 +144,40 @@ through unchanged; the container format is preserved.
     tamper:videoEncoder "libx264" ;
     tamper:crf 23 .
 ```
+
+## Audio operations
+
+### TranscodeAudio — `tamper:TranscodeAudio`
+
+Re-encodes the audio stream with ffmpeg using a given encoder and target bit
+rate. Any video stream (e.g. cover art) is copied through unchanged; the
+container format is preserved.
+
+| Parameter       | Property              | Type             | Constraint                                       | Required |
+| --------------- | --------------------- | ---------------- | ------------------------------------------------ | -------- |
+| audio encoder   | `tamper:audioEncoder` | string           | non-empty (an ffmpeg encoder, e.g. `libmp3lame`) | yes      |
+| target bit rate | `tamper:targetBitRate`| positive integer | bits per second, `> 0`                           | yes      |
+
+```turtle
+@prefix tamper: <https://example.org/tamper/core#> .
+
+[] a tamper:TranscodeAudio ;
+    tamper:audioEncoder "libmp3lame" ;
+    tamper:targetBitRate 64000 .
+```
+
+### ResampleAudio — `tamper:ResampleAudio`
+
+Resamples the audio stream to a target sample rate with ffmpeg. The audio
+codec and container format are preserved.
+
+| Parameter          | Property                 | Type             | Constraint            | Required |
+| ------------------ | ------------------------ | ---------------- | --------------------- | -------- |
+| target sample rate | `tamper:targetSampleRate`| positive integer | in Hertz, `> 0`       | yes      |
+
+```turtle
+@prefix tamper: <https://example.org/tamper/core#> .
+
+[] a tamper:ResampleAudio ;
+    tamper:targetSampleRate 8000 .
+```
