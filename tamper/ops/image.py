@@ -42,6 +42,36 @@ class CompressJPEG(Operation):
         return cls(quality_factor=int(quality_factor))
 
 
+class CompressWebP(Operation):
+    quality_factor: int
+
+    def __init__(self, quality_factor: int):
+        super().__init__()
+        if not 0 <= quality_factor <= 100:
+            raise ValueError(f"quality_factor must be between 0 and 100, got {quality_factor}")
+        self.quality_factor = quality_factor
+
+    def transform(self, input_asset_file: PathLike[str], output_asset_file: PathLike[str]):
+        img = cv2.imread(str(input_asset_file))
+        ok, buf = cv2.imencode(".webp", img, [cv2.IMWRITE_WEBP_QUALITY, self.quality_factor])
+        if not ok:
+            raise RuntimeError("WebP encoding failed")
+        Path(output_asset_file).write_bytes(buf.tobytes())
+
+    def graph(self) -> Graph:
+        g = Graph()
+        g.add((self.subject, RDF.type, TAMPER.CompressWebP))
+        g.add((self.subject, TAMPER.qualityFactor, Literal(self.quality_factor)))
+        return g
+
+    @classmethod
+    def copy_from_graph(cls, graph: Graph, subject: Node):
+        quality_factor = graph.value(subject, TAMPER.qualityFactor)
+        if quality_factor is None:
+            raise PropertyMissingError(subject, TAMPER.qualityFactor)
+        return cls(quality_factor=int(quality_factor))
+
+
 class CropImage(Operation):
     def __init__(self, x: int, y: int, width: int, height: int):
         super().__init__()

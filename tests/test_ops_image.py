@@ -10,6 +10,7 @@ from tamper.app.kg.local import check_consistency
 from tamper.ops.image import (
     AddGaussianNoise,
     CompressJPEG,
+    CompressWebP,
     CropImage,
     GaussianBlur,
     MedianFilter,
@@ -98,6 +99,74 @@ class TestCompressJPEG:
         assert img is not None
         assert img.ndim == 3
 
+class TestCompressWebP:
+    def test_valid_construction(self):
+        op = CompressWebP(quality_factor=80)
+        assert op.quality_factor == 80
+
+    def test_boundary_zero(self):
+        op = CompressWebP(quality_factor=0)
+        assert op.quality_factor == 0
+
+    def test_boundary_hundred(self):
+        op = CompressWebP(quality_factor=100)
+        assert op.quality_factor == 100
+
+    def test_quality_below_range_raises(self):
+        with pytest.raises(ValueError, match="quality_factor"):
+            CompressWebP(quality_factor=-1)
+
+    def test_quality_above_range_raises(self):
+        with pytest.raises(ValueError, match="quality_factor"):
+            CompressWebP(quality_factor=101)
+
+    def test_subject_uri_is_unique(self):
+        a = CompressWebP(50)
+        b = CompressWebP(50)
+        assert a.subject != b.subject
+
+    def test_graph_rdftype(self):
+        op = CompressWebP(75)
+        g = op.graph()
+        assert (op.subject, RDF.type, TAMPER.CompressWebP) in g
+
+    def test_graph_quality_factor_literal(self):
+        op = CompressWebP(75)
+        g = op.graph()
+        val = g.value(op.subject, TAMPER.qualityFactor)
+        assert val is not None
+        assert int(val) == 75
+
+    def test_copy_from_graph_roundtrip(self):
+        original = CompressWebP(60)
+        g = original.graph()
+        restored = CompressWebP.copy_from_graph(g, original.subject)
+        assert restored.quality_factor == 60
+
+    def test_copy_from_graph_missing_quality_raises(self):
+        g = Graph()
+        from rdflib import URIRef
+        subject = URIRef("operation://test-subject")
+        with pytest.raises(ValueError, match="qualityFactor"):
+            CompressWebP.copy_from_graph(g, subject)
+
+    def test_transform_produces_webp_file(self, tmp_path):
+        op = CompressWebP(85)
+        out = tmp_path / "out.webp"
+        op.transform(_JPG, out)
+        assert out.exists()
+        assert out.stat().st_size > 0
+        # verify it is a valid image
+        img = cv2.imread(str(out))
+        assert img is not None
+
+    def test_transform_output_is_valid_webp(self, tmp_path):
+        op = CompressWebP(50)
+        out = tmp_path / "out.webp"
+        op.transform(_JPG, out)
+        img = cv2.imread(str(out))
+        assert img is not None
+        assert img.ndim == 3
 
 # ---------------------------------------------------------------------------
 # Resize
@@ -453,6 +522,9 @@ class TestCropImage:
     [
         CompressJPEG(0),
         CompressJPEG(100),
+        CompressWebP(0),
+        CompressWebP(80),
+        CompressWebP(100),
         Resize(320, 240, interpolation="cubic"),
         MedianFilter(3),
         GaussianBlur(kernel_size=3, sigma=0.0),

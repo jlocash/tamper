@@ -57,6 +57,21 @@ Re-encodes the image as JPEG at a given quality.
     tamper:qualityFactor 90 .
 ```
 
+### CompressWebP — `tamper:CompressWebP`
+
+Re-encodes the image as WebP at a given quality.
+
+| Parameter      | Property               | Type    | Constraint | Required |
+| -------------- | ---------------------- | ------- | ---------- | -------- |
+| quality factor | `tamper:qualityFactor` | integer | `0`–`100`  | yes      |
+
+```turtle
+@prefix tamper: <https://example.org/tamper/core#> .
+
+[] a tamper:CompressWebP ;
+    tamper:qualityFactor 90 .
+```
+
 ### Resize — `tamper:Resize`
 
 Resizes the image to exact pixel dimensions.

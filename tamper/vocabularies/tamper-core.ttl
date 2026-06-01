@@ -71,8 +71,13 @@ tamper:ImageOperation a owl:Class ;
     rdfs:subClassOf tamper:Operation .
 
 tamper:CompressJPEG a owl:Class ;
-    rdfs:label "Compress Image"@en ;
+    rdfs:label "Compress JPEG"@en ;
     rdfs:comment "Applies JPEG compression to an image."@en ;
+    rdfs:subClassOf tamper:ImageOperation .
+
+tamper:CompressWebP a owl:Class ;
+    rdfs:label "Compress WebP"@en ;
+    rdfs:comment "Applies WebP compression to an image."@en ;
     rdfs:subClassOf tamper:ImageOperation .
 
 tamper:AddGaussianNoise a owl:Class ;
@@ -317,7 +322,13 @@ tamper:bitsPerSample a owl:DatatypeProperty, owl:FunctionalProperty ;
 tamper:qualityFactor a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "quality factor"@en ;
     rdfs:comment "JPEG compression quality factor (0 - 100)" ;
-    rdfs:domain tamper:CompressJPEG ;
+    rdfs:domain [
+        a owl:Class ;
+        owl:unionOf (
+            tamper:CompressJPEG
+            tamper:CompressWebP
+        )
+    ] ;
     rdfs:range xsd:nonNegativeInteger .
 
 tamper:gaussianMean a owl:DatatypeProperty, owl:FunctionalProperty ;
