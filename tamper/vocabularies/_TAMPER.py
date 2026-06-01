@@ -17,6 +17,7 @@ class TAMPER(DefinedNamespace):
     AudioOperation: URIRef  # An operation that results in the creation of an audio asset.
     AudioStream: URIRef  # A stream containing audio sample data.
     CompressJPEG: URIRef  # Applies JPEG compression to an image.
+    CropImage: URIRef  # Extracts a rectangular region from an image, given a top-left origin and a width and height.
     GaussianBlur: URIRef  # Convolves an image with a Gaussian kernel of a given size and standard deviation.
     ImageAsset: URIRef  # A digital image file.
     ImageOperation: URIRef  # An operation that results in the creation of an image.
@@ -44,6 +45,10 @@ class TAMPER(DefinedNamespace):
     colorSpace: URIRef  # The color space of the visual data (e.g., 'sRGB', 'bt709', 'bt2020').
     containerFormat: URIRef  # The container format name (e.g., 'MPEG-4', 'Matroska', 'FLAC').
     crf: URIRef  # Constant Rate Factor — a perceptual-quality target for the encoder. Lower values mean higher quality and larger file size; 0 is lossless on x264.
+    cropHeight: URIRef  # The height in pixels of the crop region.
+    cropWidth: URIRef  # The width in pixels of the crop region.
+    cropX: URIRef  # The x coordinate, in pixels, of the top-left corner of the crop region.
+    cropY: URIRef  # The y coordinate, in pixels, of the top-left corner of the crop region.
     duration: URIRef  # The temporal duration of the media.
     filePath: URIRef  # The relative path to the media file.
     fileSize: URIRef  # The size of the media file in bytes.

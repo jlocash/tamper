@@ -10,6 +10,7 @@ from tamper.app.kg.local import check_consistency
 from tamper.ops.image import (
     AddGaussianNoise,
     CompressJPEG,
+    CropImage,
     GaussianBlur,
     MedianFilter,
     Resize,
@@ -369,6 +370,84 @@ class TestAddGaussianNoise:
         assert result_img.shape == original_img.shape
 
 
+# ---------------------------------------------------------------------------
+# CropImage
+# ---------------------------------------------------------------------------
+
+
+class TestCropImage:
+    def test_valid_construction(self):
+        op = CropImage(x=10, y=20, width=100, height=50)
+        assert op.x == 10
+        assert op.y == 20
+        assert op.width == 100
+        assert op.height == 50
+
+    def test_zero_origin_allowed(self):
+        op = CropImage(x=0, y=0, width=10, height=10)
+        assert op.x == 0
+        assert op.y == 0
+
+    def test_negative_origin_raises(self):
+        with pytest.raises(ValueError, match="non-negative"):
+            CropImage(x=-1, y=0, width=10, height=10)
+
+    def test_zero_width_raises(self):
+        with pytest.raises(ValueError, match="positive"):
+            CropImage(x=0, y=0, width=0, height=10)
+
+    def test_negative_height_raises(self):
+        with pytest.raises(ValueError, match="positive"):
+            CropImage(x=0, y=0, width=10, height=-5)
+
+    def test_graph_rdftype(self):
+        op = CropImage(0, 0, 10, 10)
+        g = op.graph()
+        assert (op.subject, RDF.type, TAMPER.CropImage) in g
+
+    def test_graph_records_region(self):
+        op = CropImage(x=100, y=50, width=640, height=480)
+        g = op.graph()
+        assert int(g.value(op.subject, TAMPER.cropX)) == 100
+        assert int(g.value(op.subject, TAMPER.cropY)) == 50
+        assert int(g.value(op.subject, TAMPER.cropWidth)) == 640
+        assert int(g.value(op.subject, TAMPER.cropHeight)) == 480
+
+    def test_copy_from_graph_roundtrip(self):
+        original = CropImage(x=5, y=15, width=200, height=100)
+        g = original.graph()
+        restored = CropImage.copy_from_graph(g, original.subject)
+        assert restored.x == 5
+        assert restored.y == 15
+        assert restored.width == 200
+        assert restored.height == 100
+
+    def test_copy_from_graph_missing_x_raises(self):
+        from rdflib import URIRef
+        g = Graph()
+        subject = URIRef("operation://test")
+        with pytest.raises(ValueError, match="cropX"):
+            CropImage.copy_from_graph(g, subject)
+
+    def test_transform_produces_correct_dimensions(self, tmp_path):
+        # _JPG is 1050x700 (w x h)
+        op = CropImage(x=50, y=100, width=200, height=150)
+        out = tmp_path / "out.jpg"
+        op.transform(_JPG, out)
+        img = cv2.imread(str(out))
+        assert img is not None
+        h, w = img.shape[:2]
+        assert w == 200
+        assert h == 150
+
+    def test_transform_out_of_bounds_raises(self, tmp_path):
+        # _JPG is 1050 wide; this region overruns the right edge
+        op = CropImage(x=1000, y=0, width=200, height=100)
+        out = tmp_path / "out.jpg"
+        with pytest.raises(ValueError, match="exceeds image bounds"):
+            op.transform(_JPG, out)
+
+
 @pytest.mark.parametrize(
     "op",
     [
@@ -380,6 +459,8 @@ class TestAddGaussianNoise:
         GaussianBlur(kernel_size=5, sigma=1.5),
         AddGaussianNoise(mean=0.0, std=0.0),
         AddGaussianNoise(mean=-2.5, std=3.0),
+        CropImage(x=0, y=0, width=100, height=100),
+        CropImage(x=10, y=20, width=50, height=40),
     ],
     ids=lambda op: type(op).__name__,
 )

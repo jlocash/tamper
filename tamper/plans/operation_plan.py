@@ -17,7 +17,7 @@ from rdflib import Graph, Node, RDF, PROV, Literal
 from tamper.assets import build_asset_from_file, get_file_sha256
 from tamper.ops.audio import ResampleAudio, TranscodeAudio
 from tamper.ops.video import TranscodeVideo
-from tamper.ops.image import CompressJPEG, AddGaussianNoise, Resize, MedianFilter, GaussianBlur
+from tamper.ops.image import CompressJPEG, AddGaussianNoise, Resize, MedianFilter, GaussianBlur, CropImage
 from tamper.vocabularies import PLAN, TAMPER
 
 operation_map = {
@@ -29,6 +29,7 @@ operation_map = {
     TAMPER.GaussianBlur: GaussianBlur,
     TAMPER.ResampleAudio: ResampleAudio,
     TAMPER.TranscodeAudio: TranscodeAudio,
+    TAMPER.CropImage: CropImage,
 }
 
 

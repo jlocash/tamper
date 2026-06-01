@@ -95,6 +95,11 @@ tamper:GaussianBlur a owl:Class ;
     rdfs:comment "Convolves an image with a Gaussian kernel of a given size and standard deviation."@en ;
     rdfs:subClassOf tamper:ImageOperation .
 
+tamper:CropImage a owl:Class ;
+    rdfs:label "Crop Image"@en ;
+    rdfs:comment "Extracts a rectangular region from an image, given a top-left origin and a width and height."@en ;
+    rdfs:subClassOf tamper:ImageOperation .
+
 tamper:VideoOperation a owl:Class ;
     rdfs:label "Video Operation"@en ;
     rdfs:comment "An operation that results in the creation of a video."@en ;
@@ -360,6 +365,30 @@ tamper:blurSigma a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:comment "The Gaussian kernel standard deviation. A value of 0 lets the implementation derive it from the kernel size."@en ;
     rdfs:domain tamper:GaussianBlur ;
     rdfs:range xsd:decimal .
+
+tamper:cropX a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "crop x"@en ;
+    rdfs:comment "The x coordinate, in pixels, of the top-left corner of the crop region."@en ;
+    rdfs:domain tamper:CropImage ;
+    rdfs:range xsd:nonNegativeInteger .
+
+tamper:cropY a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "crop y"@en ;
+    rdfs:comment "The y coordinate, in pixels, of the top-left corner of the crop region."@en ;
+    rdfs:domain tamper:CropImage ;
+    rdfs:range xsd:nonNegativeInteger .
+
+tamper:cropWidth a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "crop width"@en ;
+    rdfs:comment "The width in pixels of the crop region."@en ;
+    rdfs:domain tamper:CropImage ;
+    rdfs:range xsd:positiveInteger .
+
+tamper:cropHeight a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "crop height"@en ;
+    rdfs:comment "The height in pixels of the crop region."@en ;
+    rdfs:domain tamper:CropImage ;
+    rdfs:range xsd:positiveInteger .
 
 tamper:videoEncoder a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "video encoder"@en ;

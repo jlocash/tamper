@@ -125,6 +125,29 @@ Adds per-pixel Gaussian noise (values are clipped to `0`–`255`).
     tamper:gaussianStd 12.0 .
 ```
 
+### CropImage — `tamper:CropImage`
+
+Extracts a rectangular region from the image, given a top-left origin
+(`cropX`, `cropY`) and a size (`cropWidth`, `cropHeight`). The crop region must
+lie within the image bounds, or the step fails when it runs.
+
+| Parameter | Property            | Type                 | Constraint | Required |
+| --------- | ------------------- | -------------------- | ---------- | -------- |
+| x         | `tamper:cropX`      | non-negative integer | `>= 0`     | yes      |
+| y         | `tamper:cropY`      | non-negative integer | `>= 0`     | yes      |
+| width     | `tamper:cropWidth`  | positive integer     | `> 0`      | yes      |
+| height    | `tamper:cropHeight` | positive integer     | `> 0`      | yes      |
+
+```turtle
+@prefix tamper: <https://example.org/tamper/core#> .
+
+[] a tamper:CropImage ;
+    tamper:cropX 100 ;
+    tamper:cropY 50 ;
+    tamper:cropWidth 640 ;
+    tamper:cropHeight 480 .
+```
+
 ## Video operations
 
 ### TranscodeVideo — `tamper:TranscodeVideo`

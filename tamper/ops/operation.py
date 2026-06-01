@@ -8,6 +8,11 @@ from rdflib import Graph, Node
 from rdflib.term import URIRef
 
 
+class PropertyMissingError(ValueError):
+    def __init__(self, subject: Node, prop: Node):
+        super().__init__(f"Graph missing property {prop.n3()} for subject {subject.n3()}")
+
+
 class Operation(ABC):
     def __init__(self):
         self.subject = URIRef(f"operation://{uuid4()}")

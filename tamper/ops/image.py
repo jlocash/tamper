@@ -9,7 +9,7 @@ from rdflib.term import URIRef
 
 from tamper.vocabularies import TAMPER
 
-from .operation import Operation
+from .operation import Operation, PropertyMissingError
 
 
 class CompressJPEG(Operation):
@@ -38,8 +38,63 @@ class CompressJPEG(Operation):
     def copy_from_graph(cls, graph: Graph, subject: Node):
         quality_factor = graph.value(subject, TAMPER.qualityFactor)
         if quality_factor is None:
-            raise ValueError(f"Graph is missing property {TAMPER.qualityFactor} for subject {subject}")
+            raise PropertyMissingError(subject, TAMPER.qualityFactor)
         return cls(quality_factor=int(quality_factor))
+
+
+class CropImage(Operation):
+    def __init__(self, x: int, y: int, width: int, height: int):
+        super().__init__()
+        if x < 0 or y < 0:
+            raise ValueError(f"x and y must be non-negative image coordinates, got x={x}, y={y}")
+        if width <= 0 or height <= 0:
+            raise ValueError(f"width and height must be positive, got width={width}, height={height}")
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+    def transform(self, input_asset_file: PathLike[str], output_asset_file: PathLike[str]):
+        img = cv2.imread(str(input_asset_file))
+        if img is None:
+            raise RuntimeError(f"Could not read image: {input_asset_file}")
+        h, w = img.shape[:2]
+        if self.x + self.width > w or self.y + self.height > h:
+            raise ValueError(
+                f"Crop region (x={self.x}, y={self.y}, width={self.width}, height={self.height}) "
+                f"exceeds image bounds ({w}x{h})"
+            )
+        cropped = img[self.y:self.y + self.height, self.x:self.x + self.width]
+        ext = Path(input_asset_file).suffix or ".png"
+        ok, buf = cv2.imencode(ext, cropped)
+        if not ok:
+            raise RuntimeError(f"Encoding to {ext} failed")
+        Path(output_asset_file).write_bytes(buf.tobytes())
+
+    def graph(self) -> Graph:
+        g = Graph()
+        g.add((self.subject, RDF.type, TAMPER.CropImage))
+        g.add((self.subject, TAMPER.cropX, Literal(self.x, datatype=XSD.nonNegativeInteger)))
+        g.add((self.subject, TAMPER.cropY, Literal(self.y, datatype=XSD.nonNegativeInteger)))
+        g.add((self.subject, TAMPER.cropWidth, Literal(self.width, datatype=XSD.positiveInteger)))
+        g.add((self.subject, TAMPER.cropHeight, Literal(self.height, datatype=XSD.positiveInteger)))
+        return g
+
+    @classmethod
+    def copy_from_graph(cls, graph: Graph, subject: Node):
+        x = graph.value(subject, TAMPER.cropX)
+        if x is None:
+            raise PropertyMissingError(subject, TAMPER.cropX)
+        y = graph.value(subject, TAMPER.cropY)
+        if y is None:
+            raise PropertyMissingError(subject, TAMPER.cropY)
+        width = graph.value(subject, TAMPER.cropWidth)
+        if width is None:
+            raise PropertyMissingError(subject, TAMPER.cropWidth)
+        height = graph.value(subject, TAMPER.cropHeight)
+        if height is None:
+            raise PropertyMissingError(subject, TAMPER.cropHeight)
+        return cls(int(x), int(y), int(width), int(height))
 
 
 _INTERPOLATIONS = {
@@ -85,15 +140,15 @@ class Resize(Operation):
     def copy_from_graph(cls, graph: Graph, subject: Node):
         width = graph.value(subject=subject, predicate=TAMPER.targetWidth)
         if width is None:
-            raise ValueError(f"Graph is missing property {TAMPER.targetWidth} for subject {subject}")
+            raise PropertyMissingError(subject, TAMPER.targetWidth)
 
         height = graph.value(subject=subject, predicate=TAMPER.targetHeight)
         if height is None:
-            raise ValueError(f"Graph is missing property {TAMPER.targetHeight} for subject {subject}")
+            raise PropertyMissingError(subject, TAMPER.targetHeight)
 
         interpolation = graph.value(subject=subject, predicate=TAMPER.interpolation)
         if interpolation is None:
-            raise ValueError(f"Graph is missing property {TAMPER.interpolation} for subject {subject}")
+            raise PropertyMissingError(subject, TAMPER.interpolation)
 
         return cls(width=int(width), height=int(height), interpolation=str(interpolation))
 
@@ -124,7 +179,7 @@ class MedianFilter(Operation):
     def copy_from_graph(cls, graph: Graph, subject: Node):
         kernel_size = graph.value(subject=subject, predicate=TAMPER.kernelSize)
         if kernel_size is None:
-            raise ValueError(f"Graph is missing property {TAMPER.kernelSize} for subject {subject}")
+            raise PropertyMissingError(subject, TAMPER.kernelSize)
         return cls(kernel_size=int(kernel_size))
 
 
@@ -156,11 +211,11 @@ class GaussianBlur(Operation):
     def copy_from_graph(cls, graph: Graph, subject: Node):
         kernel_size = graph.value(subject=subject, predicate=TAMPER.kernelSize)
         if kernel_size is None:
-            raise ValueError(f"Graph is missing property {TAMPER.kernelSize} for subject {subject}")
+            raise PropertyMissingError(subject, TAMPER.kernelSize)
 
         sigma = graph.value(subject=subject, predicate=TAMPER.blurSigma)
         if sigma is None:
-            raise ValueError(f"Graph is missing property {TAMPER.blurSigma} for subject {subject}")
+            raise PropertyMissingError(subject, TAMPER.blurSigma)
 
         return cls(kernel_size=int(kernel_size), sigma=float(sigma))
 
@@ -194,10 +249,10 @@ class AddGaussianNoise(Operation):
     def copy_from_graph(cls, graph: Graph, subject: URIRef):
         mean = graph.value(subject=subject, predicate=TAMPER.gaussianMean)
         if mean is None:
-            raise ValueError(f"Graph is missing property {TAMPER.gaussianMean} for subject {subject}")
+            raise PropertyMissingError(subject, TAMPER.gaussianMean)
 
         std = graph.value(subject=subject, predicate=TAMPER.gaussianStd)
         if std is None:
-            raise ValueError(f"Graph is missing property {TAMPER.gaussianStd} for subject {subject}")
+            raise PropertyMissingError(subject, TAMPER.gaussianStd)
 
         return cls(mean=float(mean), std=float(std))
