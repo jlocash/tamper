@@ -2,14 +2,17 @@
 
 See also: [RDF 1.1 Primer](https://www.w3.org/TR/rdf11-primer/)
 
-Operations are the media transformations a [plan](../README.md#operation-plans)
-runs at each step — compress, resize, blur, add noise, transcode. Each entry in
-this reference shows the operation's parameters, their value ranges, and a Turtle
-example.
+Operations are processes that result in the creation of new media assets. They are 
+executed as steps in an [operation plan](../README.md#operation-plans). This 
+document provides a reference of each operation Tamper supports, its parameters, 
+their value ranges, and a Turtle example.
 
-An operation is written as a _typed node_: the `tamper:` class (after `a`) names
-the transformation, and the `tamper:` properties carry its parameters. Here, a
-JPEG compression at quality 90:
+Operation types are prefixed by the `tamper:` namespace. If a statement in the graph 
+asserts that a subject is of type `tamper:<operation type>` (e.g `tamper:CompressJPEG`), 
+then that is a statement of fact. The graph is saying that the operation _actually happened_.
+Operations represent provenance activities, not specifications for future execution.
+
+Here, a JPEG compression at quality 90:
 
 ```turtle
 @prefix tamper: <https://example.org/tamper/core#> .
@@ -17,28 +20,24 @@ JPEG compression at quality 90:
 [] a tamper:CompressJPEG ;
     tamper:qualityFactor 90 .
 ```
+This reads: _"A JPEG compression operation occurred, with a quality factor of 90"_
 
-That's the form used in this reference. **Inside a plan**, though, the operation
-is wrapped slightly differently: a step references it through a
-`plan:OperationParameters` bundle, which names the operation with
-`plan:operationType` (an object property — _not_ `rdf:type`, so no `a`) and then
-lists the same parameters:
+To instruct Tamper to actually run a new operation, an `plan:OperationParameters` may
+be defined as part of a `plan:Step` in an operation plan:
 
 ```turtle
 @prefix plan:   <https://example.org/tamper/plan#> .
 @prefix tamper: <https://example.org/tamper/core#> .
 
-[] a plan:OperationParameters ;
-    plan:operationType tamper:CompressJPEG ;
-    tamper:qualityFactor 90 .
+[] a plan:Step ;
+    plan:operationParameters [
+        plan:operationType tamper:CompressJPEG ;
+        tamper:qualityFactor 90
+    ] .
 ```
 
-In short: the parameters are identical either way — only the wrapper changes.
-The examples in each section below use the standalone form for brevity.
-
 Every parameter marked **required** must be present, or the step fails when it
-runs. Image operations accept any raster format OpenCV can decode; the output
-keeps the input file's extension (defaulting to `.png`).
+runs.
 
 ## Image operations
 
