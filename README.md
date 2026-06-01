@@ -1,7 +1,7 @@
 # Tamper
 
 [![CI](https://github.com/jlocash/tamper/actions/workflows/ci.yml/badge.svg)](https://github.com/jlocash/tamper/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.14+](https://img.shields.io/badge/python-3.14%2B-blue.svg)](https://www.python.org/)
 
 > Take your media files, run degradation/tampering operations on them (JPEG
@@ -264,4 +264,4 @@ Contributions of code, documentation, and new operation types are also welcome.
 
 ## License
 
-Released under the [MIT License](LICENSE). Copyright (c) 2026 Joshua Locash.
+Released under the [Apache License 2.0](LICENSE). Copyright (c) 2026 Joshua Locash.

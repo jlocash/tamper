@@ -3,6 +3,7 @@ name = "tamper"
 version = "0.1.0"
 description = "A framework for expressing the relationships between multimedia files as an RDF knowledge graph."
 readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.14"
 dependencies = [
     "fastmcp[tasks]>=3.3.1",
