@@ -126,10 +126,16 @@ Applies a Gaussian blur over a square kernel.
 
 Adds per-pixel Gaussian noise (values are clipped to `0`–`255`).
 
-| Parameter          | Property              | Type  | Constraint | Required |
-| ------------------ | --------------------- | ----- | ---------- | -------- |
-| mean               | `tamper:gaussianMean` | float | —          | yes      |
-| standard deviation | `tamper:gaussianStd`  | float | `>= 0`     | yes      |
+| Parameter          | Property              | Type | Constraint | Required |
+| ------------------ | --------------------- | ---- | ---------- | -------- |
+| mean               | `tamper:gaussianMean` | float | —         | yes      |
+| standard deviation | `tamper:gaussianStd`  | float | `>= 0`    | yes      |
+| seed               | `tamper:gaussianSeed` | int   | `>= 0`    | no       |
+
+The noise is drawn from a seeded random number generator, so a given seed
+always produces identical output. If `tamper:gaussianSeed` is omitted, a seed
+is generated automatically and recorded into the result graph, keeping the run
+reproducible and self-documenting.
 
 ```turtle
 @prefix tamper: <https://example.org/tamper/core#> .

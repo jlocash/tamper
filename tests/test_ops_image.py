@@ -407,12 +407,42 @@ class TestAddGaussianNoise:
         assert abs(float(g.value(op.subject, TAMPER.gaussianMean)) - 1.5) < 1e-6
         assert abs(float(g.value(op.subject, TAMPER.gaussianStd)) - 3.0) < 1e-6
 
+    def test_seed_auto_generated_when_omitted(self):
+        op = AddGaussianNoise(mean=0.0, std=1.0)
+        assert isinstance(op.seed, int)
+        assert op.seed >= 0
+
+    def test_explicit_seed_preserved(self):
+        op = AddGaussianNoise(mean=0.0, std=1.0, seed=42)
+        assert op.seed == 42
+
+    def test_graph_records_seed(self):
+        op = AddGaussianNoise(mean=0.0, std=1.0, seed=123)
+        g = op.graph()
+        assert int(g.value(op.subject, TAMPER.gaussianSeed)) == 123
+
     def test_copy_from_graph_roundtrip(self):
-        original = AddGaussianNoise(mean=2.0, std=0.5)
+        original = AddGaussianNoise(mean=2.0, std=0.5, seed=7)
         g = original.graph()
         restored = AddGaussianNoise.copy_from_graph(g, original.subject)
         assert abs(restored.mean - 2.0) < 1e-6
         assert abs(restored.std - 0.5) < 1e-6
+        assert restored.seed == 7
+
+    def test_transform_deterministic_for_same_seed(self, tmp_path):
+        op = AddGaussianNoise(mean=0.0, std=10.0, seed=99)
+        out_a = tmp_path / "a.png"
+        out_b = tmp_path / "b.png"
+        op.transform(_JPG, out_a)
+        op.transform(_JPG, out_b)
+        assert out_a.read_bytes() == out_b.read_bytes()
+
+    def test_transform_differs_for_different_seed(self, tmp_path):
+        out_a = tmp_path / "a.png"
+        out_b = tmp_path / "b.png"
+        AddGaussianNoise(mean=0.0, std=10.0, seed=1).transform(_JPG, out_a)
+        AddGaussianNoise(mean=0.0, std=10.0, seed=2).transform(_JPG, out_b)
+        assert out_a.read_bytes() != out_b.read_bytes()
 
     def test_copy_from_graph_missing_mean_raises(self):
         from rdflib import URIRef
@@ -428,6 +458,18 @@ class TestAddGaussianNoise:
         g.add((subject, TAMPER.gaussianMean, Literal(0.0, datatype=XSD.decimal)))
         with pytest.raises(ValueError, match="gaussianStd"):
             AddGaussianNoise.copy_from_graph(g, subject)
+
+    def test_copy_from_graph_missing_seed_auto_generates(self):
+        # A hand-authored plan may omit the seed; reconstruction draws one so
+        # the run is still deterministic and self-documenting.
+        from rdflib import URIRef
+        subject = URIRef("operation://test")
+        g = Graph()
+        g.add((subject, TAMPER.gaussianMean, Literal(0.0, datatype=XSD.decimal)))
+        g.add((subject, TAMPER.gaussianStd, Literal(1.0, datatype=XSD.decimal)))
+        restored = AddGaussianNoise.copy_from_graph(g, subject)
+        assert isinstance(restored.seed, int)
+        assert restored.seed >= 0
 
     def test_transform_preserves_shape(self, tmp_path):
         op = AddGaussianNoise(mean=0.0, std=5.0)

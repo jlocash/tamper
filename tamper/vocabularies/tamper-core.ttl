@@ -341,6 +341,12 @@ tamper:gaussianStd a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:domain tamper:AddGaussianNoise ;
     rdfs:range xsd:decimal .
 
+tamper:gaussianSeed a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "gaussian seed"@en ;
+    rdfs:comment "The seed for the random number generator used to draw the noise, recorded so the operation is exactly reproducible."@en ;
+    rdfs:domain tamper:AddGaussianNoise ;
+    rdfs:range xsd:nonNegativeInteger .
+
 tamper:targetWidth a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "target width"@en ;
     rdfs:comment "The target width in pixels for a resize operation."@en ;

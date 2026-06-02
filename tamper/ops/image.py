@@ -1,3 +1,4 @@
+import secrets
 from os import PathLike
 from pathlib import Path
 
@@ -251,23 +252,26 @@ class GaussianBlur(Operation):
 
 
 class AddGaussianNoise(Operation):
-    def __init__(self, mean: float, std: float):
+    def __init__(self, mean: float, std: float, seed: int | None = None):
         super().__init__()
         if std < 0:
             raise ValueError(f"std must be non-negative, got {std}")
         self.mean = mean
         self.std = std
+        self.seed = secrets.randbits(64) if seed is None else seed
 
     def graph(self) -> Graph:
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.AddGaussianNoise))
         g.add((self.subject, TAMPER.gaussianMean, Literal(self.mean, datatype=XSD.decimal)))
         g.add((self.subject, TAMPER.gaussianStd, Literal(self.std, datatype=XSD.decimal)))
+        g.add((self.subject, TAMPER.gaussianSeed, Literal(self.seed, datatype=XSD.nonNegativeInteger)))
         return g
 
     def transform(self, input_image_file: PathLike[str], output_image_file: PathLike[str]):
         img = cv2.imread(str(input_image_file))
-        noise = np.random.normal(self.mean, self.std, img.shape)
+        rng = np.random.default_rng(self.seed)
+        noise = rng.normal(self.mean, self.std, img.shape)
         noisy_img = np.clip(img + noise, 0, 255).astype(np.uint8)
         ext = Path(input_image_file).suffix or ".png"
         ok, buf = cv2.imencode(ext, noisy_img)
@@ -285,4 +289,6 @@ class AddGaussianNoise(Operation):
         if std is None:
             raise PropertyMissingError(subject, TAMPER.gaussianStd)
 
-        return cls(mean=float(mean), std=float(std))
+        seed = graph.value(subject=subject, predicate=TAMPER.gaussianSeed)
+
+        return cls(mean=float(mean), std=float(std), seed=int(seed) if seed is not None else None)

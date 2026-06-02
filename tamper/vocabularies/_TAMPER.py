@@ -7,7 +7,7 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-06-01 04:19:49.828085
+    Date: 2026-06-02 02:57:26.458150
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
@@ -55,6 +55,7 @@ class TAMPER(DefinedNamespace):
     fileSize: URIRef  # The size of the media file in bytes.
     frameRate: URIRef  # The frame rate in frames per second.
     gaussianMean: URIRef  # 
+    gaussianSeed: URIRef  # The seed for the random number generator used to draw the noise, recorded so the operation is exactly reproducible.
     gaussianStd: URIRef  # 
     hasStream: URIRef  # Relates a stream container to its constituent streams.
     height: URIRef  # The height in pixels.
