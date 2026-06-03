@@ -13,7 +13,7 @@ from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from tamper.plans import OperationPlanExecutor, validate_plan_graph, GraphValidationError
 from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
-from tamper.assets import build_asset_from_file
+from tamper.assets import load_asset_from_file
 from tamper.plans.async_plan_queue import AsyncPlanQueue
 from tamper.vocabularies import TAMPER, PLAN, load_prov_ontology, load_core_ontology, \
     load_plan_ontology
@@ -61,7 +61,7 @@ async def track_media_asset(file_path: PathLike[str], ctx: Context) -> str:
     """
     kg = ctx.request_context.lifespan_context["kg"]
     g = Graph()
-    build_asset_from_file(g, file_path)
+    load_asset_from_file(g, file_path)
     kg.insert_statements_default(g)
     kg.commit()
     return g.serialize(format="turtle")

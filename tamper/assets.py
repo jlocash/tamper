@@ -1,13 +1,173 @@
 import hashlib
+import shutil
 from os import PathLike
 from pathlib import Path
+from typing import Self
 
 import ffmpeg
 from magic import Magic
-from rdflib import Graph, URIRef, XSD
+from rdflib import Graph, URIRef, XSD, Node, RDF, Literal
 from rdflib.extras.describer import Describer
 from tamper.vocabularies import TAMPER
 from PIL import Image as PILImage
+
+
+def _unwrap_literal(graph: Graph, subject: Node, predicate: Node):
+    value = graph.value(subject, predicate)
+    if isinstance(value, Literal):
+        return value.toPython()
+
+
+def _unwrap_expect_literal(graph: Graph, subject: Node, predicate: Node):
+    value = graph.value(subject, predicate)
+    if value is None:
+        raise ValueError(
+            f"Missing expected value for subject {subject.n3()} and predicate {predicate.n3()}"
+        )
+    if not isinstance(value, Literal):
+        raise ValueError(
+            f"Expected value of subject {subject.n3()} and predicate {predicate.n3()} to be Literal, got: {type(value)}"
+        )
+    return value.toPython()
+
+
+class MediaAsset:
+    subject: Node
+    graph: Graph
+
+    @property
+    def media_type(self) -> str:
+        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.mediaType)
+
+    @property
+    def checksum(self) -> str:
+        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.checksum)
+
+    @property
+    def file_path(self) -> Path | None:
+        val = self.graph.value(self.subject, TAMPER.filePath)
+        if val is not None:
+            return Path(str(val))
+        return None
+
+    def move_file(self, new_path: PathLike[str]):
+        new_path = Path(new_path)
+        current_path = self.file_path
+        if current_path is None:
+            raise ValueError("Asset does not have a local file path")
+        if not current_path.exists():
+            raise ValueError(f"Asset file {current_path} does not exist")
+        if current_path == new_path:
+            return
+        shutil.move(current_path, new_path)
+        self.graph.remove((self.subject, TAMPER.filePath, None))
+        self.graph.add(
+            (self.subject, TAMPER.filePath, Literal(str(new_path.absolute())))
+        )
+
+    @classmethod
+    def from_graph(cls, graph: Graph, subject: Node) -> Self:
+        inst = cls.__new__(cls)
+        inst.graph = graph
+        inst.subject = subject
+        return inst
+
+
+class ImageAsset(MediaAsset):
+    @property
+    def width(self) -> int:
+        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.width)
+
+    @property
+    def height(self) -> int:
+        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.height)
+
+    @property
+    def pixel_format(self) -> str:
+        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.pixelFormat)
+
+
+class Stream:
+    def __init__(self, graph: Graph, subject: Node):
+        self.graph = graph
+        self.subject = subject
+
+    @property
+    def stream_index(self) -> int:
+        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.streamIndex)
+
+    @property
+    def codec(self) -> str | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.codec)
+
+    @property
+    def bit_rate(self) -> int | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.bitRate)
+
+    @property
+    def language(self) -> str | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.language)
+
+
+class AudioStream(Stream):
+    @property
+    def sample_rate(self) -> int | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.sampleRate)
+
+    @property
+    def channels(self) -> int | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.channels)
+
+    @property
+    def bit_depth(self) -> int | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.bitDepth)
+
+
+class VideoStream(Stream):
+    @property
+    def width(self) -> int | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.width)
+
+    @property
+    def height(self) -> int | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.height)
+
+    @property
+    def pixel_format(self) -> str | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.pixelFormat)
+
+    @property
+    def bit_depth(self) -> int | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.bitDepth)
+
+    @property
+    def frame_rate(self) -> float | None:
+        return _unwrap_literal(self.graph, self.subject, TAMPER.frameRate)
+
+
+class StreamContainer(MediaAsset):
+    _streams: list[AudioStream | VideoStream] = None
+
+    @property
+    def streams(self) -> list[AudioStream | VideoStream]:
+        if self._streams is None:
+            streams = []
+            for stream_uri in self.graph.objects(self.subject, TAMPER.hasStream):
+                stream_type = self.graph.value(stream_uri, RDF.type)
+                if stream_type == TAMPER.VideoStream:
+                    streams.append(VideoStream(self.graph, stream_uri))
+                elif stream_type == TAMPER.AudioStream:
+                    streams.append(AudioStream(self.graph, stream_uri))
+            self._streams = sorted(streams, key=lambda s: s.stream_index)
+        return self._streams
+
+
+class VideoAsset(StreamContainer):
+    pass
+
+
+class AudioAsset(StreamContainer):
+    pass
 
 
 def get_file_sha256(path: PathLike[str]):
@@ -25,7 +185,7 @@ def _get_frame_rate(stream_data: dict) -> float | None:
             num, den = map(int, frame_rate_str.split("/"))
             if den != 0:
                 return num / den
-        except (ValueError, ZeroDivisionError):
+        except ValueError, ZeroDivisionError:
             pass
 
     return None
@@ -78,24 +238,40 @@ def _extract_image_metadata(asset: Describer, asset_file: PathLike[str]):
         asset.value(TAMPER.pixelFormat, img.format)
 
 
-def build_asset_from_file(g: Graph, asset_file: PathLike[str]) -> URIRef:
+def load_asset_from_file(g: Graph, asset_file: PathLike[str]) -> MediaAsset:
     mimetype = Magic(mime=True).from_file(asset_file)
     checksum = get_file_sha256(asset_file)
 
     asset_uri = URIRef(f"asset://{checksum}")
     asset = Describer(g, about=asset_uri)
     asset.value(TAMPER.mediaType, mimetype)
-    asset.value(TAMPER.checksum, "sha256:"+checksum)
+    asset.value(TAMPER.checksum, "sha256:" + checksum)
     asset.value(TAMPER.filePath, str(Path(asset_file).absolute()))
 
     if mimetype.startswith("image/"):
         asset.rdftype(TAMPER.ImageAsset)
         _extract_image_metadata(asset, asset_file)
+        return ImageAsset.from_graph(g, asset_uri)
     elif mimetype.startswith("audio/"):
         asset.rdftype(TAMPER.AudioAsset)
         _extract_container_metadata(asset, asset_file)
+        return AudioAsset.from_graph(g, asset_uri)
     elif mimetype.startswith("video/"):
         asset.rdftype(TAMPER.VideoAsset)
         _extract_container_metadata(asset, asset_file)
+        return VideoAsset.from_graph(g, asset_uri)
 
     return asset_uri
+
+
+__all__ = [
+    "MediaAsset",
+    "ImageAsset",
+    "StreamContainer",
+    "Stream",
+    "AudioStream",
+    "VideoStream",
+    "AudioAsset",
+    "VideoAsset",
+    "load_asset_from_file",
+]

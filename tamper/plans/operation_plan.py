@@ -14,7 +14,7 @@ from ray.actor import ActorHandle
 from ray.types import ObjectRef
 from rdflib import Graph, Node, RDF, PROV, Literal
 
-from tamper.assets import build_asset_from_file, get_file_sha256
+from tamper.assets import load_asset_from_file, get_file_sha256
 from tamper.ops.audio import ResampleAudio, TranscodeAudio
 from tamper.ops.video import TranscodeVideo
 from tamper.ops.image import CompressJPEG, AddGaussianNoise, Resize, MedianFilter, GaussianBlur, CropImage, CompressWebP
@@ -87,15 +87,15 @@ def execute_step(plan_graph: Graph, step_uri: Node, result_graph: ActorHandle[Re
 
     # construct the subgraph
     subgraph = op.graph()
-    new_asset_uri = build_asset_from_file(subgraph, new_asset_file)
+    new_asset = load_asset_from_file(subgraph, new_asset_file)
     subgraph.add((op.subject, PROV.startedAtTime, Literal(start)))
     subgraph.add((op.subject, PROV.endedAtTime, Literal(end)))
     subgraph.add((op.subject, PROV.used, mapped_uri))
-    subgraph.add((new_asset_uri, PROV.wasGeneratedBy, op.subject))
+    subgraph.add((new_asset.subject, PROV.wasGeneratedBy, op.subject))
 
     # update remote graph
     ray.get(result_graph.add_statements.remote(subgraph))
-    return new_asset_uri
+    return new_asset.subject
 
 
 class OperationPlanExecutor:
