@@ -1,12 +1,14 @@
 """Tests for tamper.app.kg.local — LocalKnowledgeGraph and helpers."""
 
 import tarfile
-from pathlib import Path
 
 import pytest
 from rdflib import Graph, URIRef, Literal, Dataset
 
-from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError, check_consistency
+from tamper.app.kg.local import (
+    LocalKnowledgeGraph,
+    check_consistency,
+)
 from tamper.utils.make_tarball import get_asset_files, make_tarball
 from tamper.vocabularies import TAMPER
 
@@ -76,9 +78,11 @@ class TestInsertAndQuery:
     def test_insert_named_graph_and_select(self, kg, simple_graph):
         graph_name = URIRef("https://example.org/g1")
         kg.insert_statements(graph_name, simple_graph)
-        result = list(kg.query(
-            f"SELECT ?o WHERE {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> ?o }} }}"
-        ))
+        result = list(
+            kg.query(
+                f"SELECT ?o WHERE {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> ?o }} }}"
+            )
+        )
         assert len(result) == 1
         assert str(result[0].o) == "hello"
 
@@ -109,9 +113,11 @@ class TestDelete:
         graph_name = URIRef("https://example.org/g1")
         kg.insert_statements(graph_name, simple_graph)
         kg.delete_statements(graph_name, simple_graph)
-        result = list(kg.query(
-            f"ASK {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> ?o }} }}"
-        ))
+        result = list(
+            kg.query(
+                f"ASK {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> ?o }} }}"
+            )
+        )
         assert not result[0]
 
 
@@ -159,9 +165,11 @@ class TestSparqlUpdate:
         kg.update(
             f"INSERT DATA {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> 42 }} }}"
         )
-        result = list(kg.query(
-            f"ASK {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> ?o }} }}"
-        ))
+        result = list(
+            kg.query(
+                f"ASK {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> ?o }} }}"
+            )
+        )
         assert result[0]
 
     def test_update_invalid_sparql_raises(self, kg):

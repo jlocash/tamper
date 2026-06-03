@@ -77,6 +77,7 @@ class TestCompressJPEG:
     def test_copy_from_graph_missing_quality_raises(self):
         g = Graph()
         from rdflib import URIRef
+
         subject = URIRef("operation://test-subject")
         with pytest.raises(ValueError, match="qualityFactor"):
             CompressJPEG.copy_from_graph(g, subject)
@@ -98,6 +99,7 @@ class TestCompressJPEG:
         img = cv2.imread(str(out))
         assert img is not None
         assert img.ndim == 3
+
 
 class TestCompressWebP:
     def test_valid_construction(self):
@@ -146,6 +148,7 @@ class TestCompressWebP:
     def test_copy_from_graph_missing_quality_raises(self):
         g = Graph()
         from rdflib import URIRef
+
         subject = URIRef("operation://test-subject")
         with pytest.raises(ValueError, match="qualityFactor"):
             CompressWebP.copy_from_graph(g, subject)
@@ -167,6 +170,7 @@ class TestCompressWebP:
         img = cv2.imread(str(out))
         assert img is not None
         assert img.ndim == 3
+
 
 # ---------------------------------------------------------------------------
 # Resize
@@ -220,12 +224,14 @@ class TestResize:
     def test_copy_from_graph_missing_width_raises(self):
         g = Graph()
         from rdflib import URIRef
+
         subject = URIRef("operation://test")
         with pytest.raises(ValueError, match="targetWidth"):
             Resize.copy_from_graph(g, subject)
 
     def test_copy_from_graph_missing_height_raises(self):
         from rdflib import URIRef
+
         subject = URIRef("operation://test")
         g = Graph()
         g.add((subject, TAMPER.targetWidth, Literal(100, datatype=XSD.positiveInteger)))
@@ -234,10 +240,13 @@ class TestResize:
 
     def test_copy_from_graph_missing_interpolation_raises(self):
         from rdflib import URIRef
+
         subject = URIRef("operation://test")
         g = Graph()
         g.add((subject, TAMPER.targetWidth, Literal(100, datatype=XSD.positiveInteger)))
-        g.add((subject, TAMPER.targetHeight, Literal(100, datatype=XSD.positiveInteger)))
+        g.add(
+            (subject, TAMPER.targetHeight, Literal(100, datatype=XSD.positiveInteger))
+        )
         with pytest.raises(ValueError, match="interpolation"):
             Resize.copy_from_graph(g, subject)
 
@@ -292,6 +301,7 @@ class TestMedianFilter:
 
     def test_copy_from_graph_missing_kernel_raises(self):
         from rdflib import URIRef
+
         g = Graph()
         subject = URIRef("operation://test")
         with pytest.raises(ValueError, match="kernelSize"):
@@ -350,6 +360,7 @@ class TestGaussianBlur:
 
     def test_copy_from_graph_missing_kernel_raises(self):
         from rdflib import URIRef
+
         g = Graph()
         subject = URIRef("operation://test")
         with pytest.raises(ValueError, match="kernelSize"):
@@ -357,6 +368,7 @@ class TestGaussianBlur:
 
     def test_copy_from_graph_missing_sigma_raises(self):
         from rdflib import URIRef
+
         subject = URIRef("operation://test")
         g = Graph()
         g.add((subject, TAMPER.kernelSize, Literal(3, datatype=XSD.positiveInteger)))
@@ -446,6 +458,7 @@ class TestAddGaussianNoise:
 
     def test_copy_from_graph_missing_mean_raises(self):
         from rdflib import URIRef
+
         g = Graph()
         subject = URIRef("operation://test")
         with pytest.raises(ValueError, match="gaussianMean"):
@@ -453,6 +466,7 @@ class TestAddGaussianNoise:
 
     def test_copy_from_graph_missing_std_raises(self):
         from rdflib import URIRef
+
         subject = URIRef("operation://test")
         g = Graph()
         g.add((subject, TAMPER.gaussianMean, Literal(0.0, datatype=XSD.decimal)))
@@ -463,6 +477,7 @@ class TestAddGaussianNoise:
         # A hand-authored plan may omit the seed; reconstruction draws one so
         # the run is still deterministic and self-documenting.
         from rdflib import URIRef
+
         subject = URIRef("operation://test")
         g = Graph()
         g.add((subject, TAMPER.gaussianMean, Literal(0.0, datatype=XSD.decimal)))
@@ -535,6 +550,7 @@ class TestCropImage:
 
     def test_copy_from_graph_missing_x_raises(self):
         from rdflib import URIRef
+
         g = Graph()
         subject = URIRef("operation://test")
         with pytest.raises(ValueError, match="cropX"):

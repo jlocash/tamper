@@ -11,7 +11,9 @@ class ResampleAudio(Operation):
     def __init__(self, target_sample_rate: int):
         super().__init__()
         if target_sample_rate <= 0:
-            raise ValueError(f"Target sample rate must be positive, got {target_sample_rate}")
+            raise ValueError(
+                f"Target sample rate must be positive, got {target_sample_rate}"
+            )
         self.target_sample_rate = target_sample_rate
 
     def transform(self, input_asset_file: Path, output_asset_file: Path):
@@ -28,8 +30,7 @@ class ResampleAudio(Operation):
 
         try:
             (
-                ffmpeg
-                .input(str(input_asset_file))
+                ffmpeg.input(str(input_asset_file))
                 .output(str(output_asset_file), **output_kwargs)
                 .run(capture_stdout=False, capture_stderr=True)
             )
@@ -40,15 +41,22 @@ class ResampleAudio(Operation):
     def graph(self) -> Graph:
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.ResampleAudio))
-        g.add((self.subject, TAMPER.targetSampleRate,
-               Literal(self.target_sample_rate, datatype=XSD.positiveInteger)))
+        g.add(
+            (
+                self.subject,
+                TAMPER.targetSampleRate,
+                Literal(self.target_sample_rate, datatype=XSD.positiveInteger),
+            )
+        )
         return g
 
     @classmethod
     def copy_from_graph(cls, graph: Graph, subject: Node):
         target_sample_rate = graph.value(subject, TAMPER.targetSampleRate)
         if target_sample_rate is None:
-            raise ValueError(f"Graph is missing property {TAMPER.targetSampleRate} for subject {subject}")
+            raise ValueError(
+                f"Graph is missing property {TAMPER.targetSampleRate} for subject {subject}"
+            )
         return cls(int(target_sample_rate))
 
 
@@ -75,8 +83,7 @@ class TranscodeAudio(Operation):
 
         try:
             (
-                ffmpeg
-                .input(str(input_asset_file))
+                ffmpeg.input(str(input_asset_file))
                 .output(str(output_asset_file), **output_kwargs)
                 .run(capture_stdout=False, capture_stderr=True)
             )
@@ -87,7 +94,13 @@ class TranscodeAudio(Operation):
     def graph(self) -> Graph:
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.TranscodeAudio))
-        g.add((self.subject, TAMPER.targetBitRate, Literal(self.target_bitrate, datatype=XSD.positiveInteger)))
+        g.add(
+            (
+                self.subject,
+                TAMPER.targetBitRate,
+                Literal(self.target_bitrate, datatype=XSD.positiveInteger),
+            )
+        )
         g.add((self.subject, TAMPER.audioEncoder, Literal(self.audio_encoder)))
         return g
 
@@ -95,8 +108,12 @@ class TranscodeAudio(Operation):
     def copy_from_graph(cls, graph: Graph, subject: Node):
         target_bitrate = graph.value(subject, TAMPER.targetBitRate)
         if target_bitrate is None:
-            raise ValueError(f"Graph is missing property {TAMPER.targetBitRate} for subject {subject}")
+            raise ValueError(
+                f"Graph is missing property {TAMPER.targetBitRate} for subject {subject}"
+            )
         audio_encoder = graph.value(subject, TAMPER.audioEncoder)
         if audio_encoder is None:
-            raise ValueError(f"Graph is missing property {TAMPER.audioEncoder} for subject {subject}")
+            raise ValueError(
+                f"Graph is missing property {TAMPER.audioEncoder} for subject {subject}"
+            )
         return cls(str(audio_encoder), int(target_bitrate))

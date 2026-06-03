@@ -21,7 +21,11 @@ class PLAN(DefinedNamespace):
     hasOutputVariable: URIRef  # Relates a step to the variable it produces. A variable has exactly one         producer and an operation has one primary output.
     isStepOfPlan: URIRef  # Relates a step to its associated plan
     isVariableOfPlan: URIRef  # Relates a variable to its associated plan
-    operationParameters: URIRef  # Binds a step to the operation (and parameters) it executes.
+    operationParameters: (
+        URIRef  # Binds a step to the operation (and parameters) it executes.
+    )
     operationType: URIRef  # The operation to run, as a value pointing at a tamper:Operation         subclass (OWL punning: the class is used as an individual here). Modelled as an         object property, NOT rdf:type, so naming the operation does not retype the         parameter bundle and trip the disjointness between operations.
-    qualifiedInput: URIRef  # Relates a step to a role-bearing use of one of its input variables.
+    qualifiedInput: (
+        URIRef  # Relates a step to a role-bearing use of one of its input variables.
+    )
     variable: URIRef  # The variable consumed by a usage.

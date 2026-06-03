@@ -22,10 +22,18 @@ class TranscodeVideo(Operation):
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.TranscodeVideo))
         g.add((self.subject, TAMPER.videoEncoder, Literal(self.video_encoder)))
-        g.add((self.subject, TAMPER.crf, Literal(self.crf, datatype=XSD.nonNegativeInteger)))
+        g.add(
+            (
+                self.subject,
+                TAMPER.crf,
+                Literal(self.crf, datatype=XSD.nonNegativeInteger),
+            )
+        )
         return g
 
-    def transform(self, input_video_file: PathLike[str], output_video_file: PathLike[str]):
+    def transform(
+        self, input_video_file: PathLike[str], output_video_file: PathLike[str]
+    ):
         probe_result = ffmpeg.probe(str(input_video_file))
         streams = probe_result["streams"]
 
@@ -40,8 +48,7 @@ class TranscodeVideo(Operation):
 
         try:
             (
-                ffmpeg
-                .input(str(input_video_file))
+                ffmpeg.input(str(input_video_file))
                 .output(str(output_video_file), **output_kwargs)
                 .run(capture_stderr=True, overwrite_output=True)
             )

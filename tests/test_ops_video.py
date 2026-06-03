@@ -70,6 +70,7 @@ class TestTranscodeVideo:
 
     def test_copy_from_graph_missing_encoder_raises(self):
         from rdflib import URIRef
+
         g = Graph()
         subject = URIRef("operation://test")
         with pytest.raises(ValueError, match="video encoder"):
@@ -77,6 +78,7 @@ class TestTranscodeVideo:
 
     def test_copy_from_graph_missing_crf_raises(self):
         from rdflib import URIRef, Literal
+
         subject = URIRef("operation://test")
         g = Graph()
         g.add((subject, TAMPER.videoEncoder, Literal("libx264")))

@@ -1,5 +1,3 @@
-import os
-import tempfile
 from abc import abstractmethod, ABC
 from pathlib import Path
 from uuid import uuid4
@@ -10,7 +8,9 @@ from rdflib.term import URIRef
 
 class PropertyMissingError(ValueError):
     def __init__(self, subject: Node, prop: Node):
-        super().__init__(f"Graph missing property {prop.n3()} for subject {subject.n3()}")
+        super().__init__(
+            f"Graph missing property {prop.n3()} for subject {subject.n3()}"
+        )
 
 
 class Operation(ABC):

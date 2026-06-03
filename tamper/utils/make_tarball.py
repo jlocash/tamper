@@ -27,9 +27,13 @@ def make_tarball(dataset: Dataset, output_file: PathLike[str]):
 
     with tarfile.open(output_file, "w:gz") as tar:
         for asset, asset_file, checksum in get_asset_files(dataset):
-            new_asset_file = "assets/" + checksum.split(":")[-1] + Path(asset_file).suffix
+            new_asset_file = (
+                "assets/" + checksum.split(":")[-1] + Path(asset_file).suffix
+            )
             tar.add(str(asset_file), arcname=new_asset_file)
-            for s, p, o, g in list(cloned.quads((asset, TAMPER.filePath, asset_file, None))):
+            for s, p, o, g in list(
+                cloned.quads((asset, TAMPER.filePath, asset_file, None))
+            ):
                 cloned.remove((s, p, o, g))
                 cloned.add((s, p, Literal(new_asset_file), g))
 

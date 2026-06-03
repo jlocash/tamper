@@ -17,7 +17,9 @@ _PREFIXES = """\
 """
 
 # A plan with one step: v0 -> s1 -> v1 (CompressJPEG)
-_MINIMAL_VALID_TTL = _PREFIXES + """\
+_MINIMAL_VALID_TTL = (
+    _PREFIXES
+    + """\
 <plan://p1> a plan:OperationPlan .
 
 <plan://v0> a plan:Variable ;
@@ -36,6 +38,7 @@ _MINIMAL_VALID_TTL = _PREFIXES + """\
         tamper:qualityFactor 90
     ] .
 """
+)
 
 
 def _parse(ttl: str) -> Graph:
@@ -56,7 +59,9 @@ class TestValidPlanGraph:
         validate_plan_graph(g)
 
     def test_multi_step_valid_graph_does_not_raise(self):
-        ttl = _PREFIXES + """\
+        ttl = (
+            _PREFIXES
+            + """\
 <plan://p1> a plan:OperationPlan .
 
 <plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
@@ -81,6 +86,7 @@ class TestValidPlanGraph:
         plan:operationType tamper:AddGaussianNoise
     ] .
 """
+        )
         validate_plan_graph(_parse(ttl))
 
 
@@ -91,7 +97,9 @@ class TestValidPlanGraph:
 
 class TestMissingPlanDeclaration:
     def test_no_operation_plan_raises(self):
-        ttl = _PREFIXES + """\
+        ttl = (
+            _PREFIXES
+            + """\
 <plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
 <plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
 
@@ -104,22 +112,28 @@ class TestMissingPlanDeclaration:
         plan:operationType tamper:CompressJPEG
     ] .
 """
+        )
         with pytest.raises(GraphValidationError):
             validate_plan_graph(_parse(ttl))
 
 
 class TestMissingStep:
     def test_no_step_raises(self):
-        ttl = _PREFIXES + """\
+        ttl = (
+            _PREFIXES
+            + """\
 <plan://p1> a plan:OperationPlan .
 """
+        )
         with pytest.raises(GraphValidationError):
             validate_plan_graph(_parse(ttl))
 
 
 class TestStepMissingIsStepOfPlan:
     def test_step_without_plan_link_raises(self):
-        ttl = _PREFIXES + """\
+        ttl = (
+            _PREFIXES
+            + """\
 <plan://p1> a plan:OperationPlan .
 <plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
 <plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
@@ -132,13 +146,16 @@ class TestStepMissingIsStepOfPlan:
         plan:operationType tamper:CompressJPEG
     ] .
 """
+        )
         with pytest.raises(GraphValidationError):
             validate_plan_graph(_parse(ttl))
 
 
 class TestStepMissingInputVariable:
     def test_step_without_input_raises(self):
-        ttl = _PREFIXES + """\
+        ttl = (
+            _PREFIXES
+            + """\
 <plan://p1> a plan:OperationPlan .
 <plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
 <plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
@@ -151,13 +168,16 @@ class TestStepMissingInputVariable:
         plan:operationType tamper:CompressJPEG
     ] .
 """
+        )
         with pytest.raises(GraphValidationError):
             validate_plan_graph(_parse(ttl))
 
 
 class TestStepMissingOutputVariable:
     def test_step_without_output_raises(self):
-        ttl = _PREFIXES + """\
+        ttl = (
+            _PREFIXES
+            + """\
 <plan://p1> a plan:OperationPlan .
 <plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
 
@@ -169,13 +189,16 @@ class TestStepMissingOutputVariable:
         plan:operationType tamper:CompressJPEG
     ] .
 """
+        )
         with pytest.raises(GraphValidationError):
             validate_plan_graph(_parse(ttl))
 
 
 class TestStepMissingOperationParameters:
     def test_step_without_params_raises(self):
-        ttl = _PREFIXES + """\
+        ttl = (
+            _PREFIXES
+            + """\
 <plan://p1> a plan:OperationPlan .
 <plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
 <plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
@@ -185,13 +208,16 @@ class TestStepMissingOperationParameters:
     plan:hasInputVariable <plan://v0> ;
     plan:hasOutputVariable <plan://v1> .
 """
+        )
         with pytest.raises(GraphValidationError):
             validate_plan_graph(_parse(ttl))
 
 
 class TestOperationParametersMissingOperationType:
     def test_params_without_operation_type_raises(self):
-        ttl = _PREFIXES + """\
+        ttl = (
+            _PREFIXES
+            + """\
 <plan://p1> a plan:OperationPlan .
 <plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
 <plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
@@ -204,13 +230,16 @@ class TestOperationParametersMissingOperationType:
         a plan:OperationParameters
     ] .
 """
+        )
         with pytest.raises(GraphValidationError):
             validate_plan_graph(_parse(ttl))
 
 
 class TestVariableMissingPlanLink:
     def test_variable_not_linked_to_plan_raises(self):
-        ttl = _PREFIXES + """\
+        ttl = (
+            _PREFIXES
+            + """\
 <plan://p1> a plan:OperationPlan .
 <plan://v0> a plan:Variable .
 <plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
@@ -224,15 +253,19 @@ class TestVariableMissingPlanLink:
         plan:operationType tamper:CompressJPEG
     ] .
 """
+        )
         with pytest.raises(GraphValidationError):
             validate_plan_graph(_parse(ttl))
 
 
 class TestGraphValidationError:
     def test_error_carries_results_graph(self):
-        ttl = _PREFIXES + """\
+        ttl = (
+            _PREFIXES
+            + """\
 <plan://p1> a plan:OperationPlan .
 """
+        )
         g = _parse(ttl)
         with pytest.raises(GraphValidationError) as exc_info:
             validate_plan_graph(g)

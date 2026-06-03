@@ -1,6 +1,5 @@
 import mimetypes
 import os
-import shutil
 import tempfile
 from datetime import datetime
 from graphlib import TopologicalSorter
@@ -9,15 +8,22 @@ from pathlib import Path
 
 import ray
 
-from magic import Magic
 from ray.actor import ActorHandle
 from ray.types import ObjectRef
 from rdflib import Graph, Node, RDF, PROV, Literal
 
-from tamper.assets import load_asset_from_file, get_file_sha256
+from tamper.assets import load_asset_from_file
 from tamper.ops.audio import ResampleAudio, TranscodeAudio
 from tamper.ops.video import TranscodeVideo
-from tamper.ops.image import CompressJPEG, AddGaussianNoise, Resize, MedianFilter, GaussianBlur, CropImage, CompressWebP
+from tamper.ops.image import (
+    CompressJPEG,
+    AddGaussianNoise,
+    Resize,
+    MedianFilter,
+    GaussianBlur,
+    CropImage,
+    CompressWebP,
+)
 from tamper.vocabularies import PLAN, TAMPER
 
 operation_map = {
@@ -53,8 +59,13 @@ class RemoteGraph:
 
 
 @ray.remote
-def execute_step(plan_graph: Graph, step_uri: Node, result_graph: ActorHandle[RemoteGraph],
-                 out_dir: Path, mapped_uri: Node) -> Node:
+def execute_step(
+    plan_graph: Graph,
+    step_uri: Node,
+    result_graph: ActorHandle[RemoteGraph],
+    out_dir: Path,
+    mapped_uri: Node,
+) -> Node:
     params_uri = plan_graph.value(step_uri, PLAN.operationParameters)
     if params_uri is None:
         raise ValueError("No operation parameters found")
@@ -79,15 +90,13 @@ def execute_step(plan_graph: Graph, step_uri: Node, result_graph: ActorHandle[Re
     end = datetime.now()
 
     # move asset to final location
-    checksum = get_file_sha256(tmp_path)
-    mimetype = Magic(mime=True).from_file(tmp_path)
-    suffix = mimetypes.guess_extension(mimetype)
-    new_asset_file = out_dir / (checksum + suffix)
-    shutil.move(tmp_path, new_asset_file)
+    subgraph = Graph()
+    new_asset = load_asset_from_file(subgraph, tmp_path)
+    suffix = mimetypes.guess_extension(new_asset.media_type)
+    checksum = new_asset.checksum.split(":")[-1]
+    new_asset.move_file(out_dir / (checksum + suffix))
 
     # construct the subgraph
-    subgraph = op.graph()
-    new_asset = load_asset_from_file(subgraph, new_asset_file)
     subgraph.add((op.subject, PROV.startedAtTime, Literal(start)))
     subgraph.add((op.subject, PROV.endedAtTime, Literal(end)))
     subgraph.add((op.subject, PROV.used, mapped_uri))
@@ -107,13 +116,20 @@ class OperationPlanExecutor:
         deps = set()
         input_vars = list(plan_graph.objects(step_uri, PLAN.hasInputVariable))
         for input_var in input_vars:
-            input_producer = plan_graph.value(predicate=PLAN.hasOutputVariable, object=input_var)
+            input_producer = plan_graph.value(
+                predicate=PLAN.hasOutputVariable, object=input_var
+            )
             if input_producer:
                 deps.add(input_producer)
         return deps
 
-    def execute(self, plan_graph: Graph, seed_graph: Graph, initial_variables: dict[Node, Node],
-                max_in_flight: int = 32) -> Graph:
+    def execute(
+        self,
+        plan_graph: Graph,
+        seed_graph: Graph,
+        initial_variables: dict[Node, Node],
+        max_in_flight: int = 32,
+    ) -> Graph:
         # make immutable copy of plan_graph shared by all workers
         plan_graph_ref = ray.put(plan_graph)
 
@@ -127,7 +143,9 @@ class OperationPlanExecutor:
         }
 
         # maps variable URIs to asset URIs
-        var_futures: dict[Node, ObjectRef[Node]] = {var: ray.put(val) for var, val in initial_variables.items()}
+        var_futures: dict[Node, ObjectRef[Node]] = {
+            var: ray.put(val) for var, val in initial_variables.items()
+        }
 
         # steps that have been submitted
         ref_to_step: dict[ObjectRef[Node], Node] = {}
@@ -147,15 +165,24 @@ class OperationPlanExecutor:
 
             while pending and len(ref_to_step) < max_in_flight:
                 step_uri = pending.pop(0)
-                input_var_uri = next(plan_graph.objects(step_uri, PLAN.hasInputVariable))
-                output_var_uri = next(plan_graph.objects(step_uri, PLAN.hasOutputVariable))
+                input_var_uri = next(
+                    plan_graph.objects(step_uri, PLAN.hasInputVariable)
+                )
+                output_var_uri = next(
+                    plan_graph.objects(step_uri, PLAN.hasOutputVariable)
+                )
 
                 if input_var_uri not in var_futures:
                     raise RuntimeError(f"Missing input variables for step {step_uri}")
 
                 print(f"Executing step {step_uri.n3()}")
-                ref = execute_step.remote(plan_graph_ref, step_uri, result_graph, self.out_dir,
-                                          var_futures[input_var_uri])
+                ref = execute_step.remote(
+                    plan_graph_ref,
+                    step_uri,
+                    result_graph,
+                    self.out_dir,
+                    var_futures[input_var_uri],
+                )
 
                 var_futures[output_var_uri] = ref
                 ref_to_step[ref] = step_uri

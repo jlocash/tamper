@@ -4,7 +4,6 @@ from rdflib import Graph, URIRef
 
 
 class KnowledgeGraph(abc.ABC):
-
     @abc.abstractmethod
     def insert_statements_default(self, statements: Graph):
         pass

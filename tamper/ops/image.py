@@ -19,12 +19,18 @@ class CompressJPEG(Operation):
     def __init__(self, quality_factor: int):
         super().__init__()
         if not 0 <= quality_factor <= 100:
-            raise ValueError(f"quality_factor must be between 0 and 100, got {quality_factor}")
+            raise ValueError(
+                f"quality_factor must be between 0 and 100, got {quality_factor}"
+            )
         self.quality_factor = quality_factor
 
-    def transform(self, input_asset_file: PathLike[str], output_asset_file: PathLike[str]):
+    def transform(
+        self, input_asset_file: PathLike[str], output_asset_file: PathLike[str]
+    ):
         img = cv2.imread(str(input_asset_file))
-        ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, self.quality_factor])
+        ok, buf = cv2.imencode(
+            ".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, self.quality_factor]
+        )
         if not ok:
             raise RuntimeError("JPEG encoding failed")
         Path(output_asset_file).write_bytes(buf.tobytes())
@@ -49,12 +55,18 @@ class CompressWebP(Operation):
     def __init__(self, quality_factor: int):
         super().__init__()
         if not 0 <= quality_factor <= 100:
-            raise ValueError(f"quality_factor must be between 0 and 100, got {quality_factor}")
+            raise ValueError(
+                f"quality_factor must be between 0 and 100, got {quality_factor}"
+            )
         self.quality_factor = quality_factor
 
-    def transform(self, input_asset_file: PathLike[str], output_asset_file: PathLike[str]):
+    def transform(
+        self, input_asset_file: PathLike[str], output_asset_file: PathLike[str]
+    ):
         img = cv2.imread(str(input_asset_file))
-        ok, buf = cv2.imencode(".webp", img, [cv2.IMWRITE_WEBP_QUALITY, self.quality_factor])
+        ok, buf = cv2.imencode(
+            ".webp", img, [cv2.IMWRITE_WEBP_QUALITY, self.quality_factor]
+        )
         if not ok:
             raise RuntimeError("WebP encoding failed")
         Path(output_asset_file).write_bytes(buf.tobytes())
@@ -77,15 +89,21 @@ class CropImage(Operation):
     def __init__(self, x: int, y: int, width: int, height: int):
         super().__init__()
         if x < 0 or y < 0:
-            raise ValueError(f"x and y must be non-negative image coordinates, got x={x}, y={y}")
+            raise ValueError(
+                f"x and y must be non-negative image coordinates, got x={x}, y={y}"
+            )
         if width <= 0 or height <= 0:
-            raise ValueError(f"width and height must be positive, got width={width}, height={height}")
+            raise ValueError(
+                f"width and height must be positive, got width={width}, height={height}"
+            )
         self.x = x
         self.y = y
         self.width = width
         self.height = height
 
-    def transform(self, input_asset_file: PathLike[str], output_asset_file: PathLike[str]):
+    def transform(
+        self, input_asset_file: PathLike[str], output_asset_file: PathLike[str]
+    ):
         img = cv2.imread(str(input_asset_file))
         if img is None:
             raise RuntimeError(f"Could not read image: {input_asset_file}")
@@ -95,7 +113,7 @@ class CropImage(Operation):
                 f"Crop region (x={self.x}, y={self.y}, width={self.width}, height={self.height}) "
                 f"exceeds image bounds ({w}x{h})"
             )
-        cropped = img[self.y:self.y + self.height, self.x:self.x + self.width]
+        cropped = img[self.y : self.y + self.height, self.x : self.x + self.width]
         ext = Path(input_asset_file).suffix or ".png"
         ok, buf = cv2.imencode(ext, cropped)
         if not ok:
@@ -105,10 +123,34 @@ class CropImage(Operation):
     def graph(self) -> Graph:
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.CropImage))
-        g.add((self.subject, TAMPER.cropX, Literal(self.x, datatype=XSD.nonNegativeInteger)))
-        g.add((self.subject, TAMPER.cropY, Literal(self.y, datatype=XSD.nonNegativeInteger)))
-        g.add((self.subject, TAMPER.cropWidth, Literal(self.width, datatype=XSD.positiveInteger)))
-        g.add((self.subject, TAMPER.cropHeight, Literal(self.height, datatype=XSD.positiveInteger)))
+        g.add(
+            (
+                self.subject,
+                TAMPER.cropX,
+                Literal(self.x, datatype=XSD.nonNegativeInteger),
+            )
+        )
+        g.add(
+            (
+                self.subject,
+                TAMPER.cropY,
+                Literal(self.y, datatype=XSD.nonNegativeInteger),
+            )
+        )
+        g.add(
+            (
+                self.subject,
+                TAMPER.cropWidth,
+                Literal(self.width, datatype=XSD.positiveInteger),
+            )
+        )
+        g.add(
+            (
+                self.subject,
+                TAMPER.cropHeight,
+                Literal(self.height, datatype=XSD.positiveInteger),
+            )
+        )
         return g
 
     @classmethod
@@ -151,15 +193,31 @@ class Resize(Operation):
     def graph(self) -> Graph:
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.Resize))
-        g.add((self.subject, TAMPER.targetWidth, Literal(self.width, datatype=XSD.positiveInteger)))
-        g.add((self.subject, TAMPER.targetHeight, Literal(self.height, datatype=XSD.positiveInteger)))
+        g.add(
+            (
+                self.subject,
+                TAMPER.targetWidth,
+                Literal(self.width, datatype=XSD.positiveInteger),
+            )
+        )
+        g.add(
+            (
+                self.subject,
+                TAMPER.targetHeight,
+                Literal(self.height, datatype=XSD.positiveInteger),
+            )
+        )
         g.add((self.subject, TAMPER.interpolation, Literal(self.interpolation)))
         return g
 
-    def transform(self, input_image_file: PathLike[str], output_image_file: PathLike[str]):
+    def transform(
+        self, input_image_file: PathLike[str], output_image_file: PathLike[str]
+    ):
         img = cv2.imread(str(input_image_file))
         resized = cv2.resize(
-            img, (self.width, self.height), interpolation=_INTERPOLATIONS[self.interpolation]
+            img,
+            (self.width, self.height),
+            interpolation=_INTERPOLATIONS[self.interpolation],
         )
         ext = Path(input_image_file).suffix or ".png"
         ok, buf = cv2.imencode(ext, resized)
@@ -181,23 +239,35 @@ class Resize(Operation):
         if interpolation is None:
             raise PropertyMissingError(subject, TAMPER.interpolation)
 
-        return cls(width=int(width), height=int(height), interpolation=str(interpolation))
+        return cls(
+            width=int(width), height=int(height), interpolation=str(interpolation)
+        )
 
 
 class MedianFilter(Operation):
     def __init__(self, kernel_size: int):
         super().__init__()
         if kernel_size < 3 or kernel_size % 2 == 0:
-            raise ValueError(f"kernel_size must be an odd integer >= 3, got {kernel_size}")
+            raise ValueError(
+                f"kernel_size must be an odd integer >= 3, got {kernel_size}"
+            )
         self.kernel_size = kernel_size
 
     def graph(self) -> Graph:
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.MedianFilter))
-        g.add((self.subject, TAMPER.kernelSize, Literal(self.kernel_size, datatype=XSD.positiveInteger)))
+        g.add(
+            (
+                self.subject,
+                TAMPER.kernelSize,
+                Literal(self.kernel_size, datatype=XSD.positiveInteger),
+            )
+        )
         return g
 
-    def transform(self, input_image_file: PathLike[str], output_image_file: PathLike[str]):
+    def transform(
+        self, input_image_file: PathLike[str], output_image_file: PathLike[str]
+    ):
         img = cv2.imread(str(input_image_file))
         filtered = cv2.medianBlur(img, self.kernel_size)
         ext = Path(input_image_file).suffix or ".png"
@@ -218,20 +288,34 @@ class GaussianBlur(Operation):
     def __init__(self, kernel_size: int, sigma: float = 0.0):
         super().__init__()
         if kernel_size < 1 or kernel_size % 2 == 0:
-            raise ValueError(f"kernel_size must be an odd positive integer, got {kernel_size}")
+            raise ValueError(
+                f"kernel_size must be an odd positive integer, got {kernel_size}"
+            )
         self.kernel_size = kernel_size
         self.sigma = sigma
 
     def graph(self) -> Graph:
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.GaussianBlur))
-        g.add((self.subject, TAMPER.kernelSize, Literal(self.kernel_size, datatype=XSD.positiveInteger)))
-        g.add((self.subject, TAMPER.blurSigma, Literal(self.sigma, datatype=XSD.decimal)))
+        g.add(
+            (
+                self.subject,
+                TAMPER.kernelSize,
+                Literal(self.kernel_size, datatype=XSD.positiveInteger),
+            )
+        )
+        g.add(
+            (self.subject, TAMPER.blurSigma, Literal(self.sigma, datatype=XSD.decimal))
+        )
         return g
 
-    def transform(self, input_image_file: PathLike[str], output_image_file: PathLike[str]):
+    def transform(
+        self, input_image_file: PathLike[str], output_image_file: PathLike[str]
+    ):
         img = cv2.imread(str(input_image_file))
-        blurred = cv2.GaussianBlur(img, (self.kernel_size, self.kernel_size), sigmaX=self.sigma)
+        blurred = cv2.GaussianBlur(
+            img, (self.kernel_size, self.kernel_size), sigmaX=self.sigma
+        )
         ext = Path(input_image_file).suffix or ".png"
         ok, buf = cv2.imencode(ext, blurred)
         if not ok:
@@ -263,12 +347,28 @@ class AddGaussianNoise(Operation):
     def graph(self) -> Graph:
         g = Graph()
         g.add((self.subject, RDF.type, TAMPER.AddGaussianNoise))
-        g.add((self.subject, TAMPER.gaussianMean, Literal(self.mean, datatype=XSD.decimal)))
-        g.add((self.subject, TAMPER.gaussianStd, Literal(self.std, datatype=XSD.decimal)))
-        g.add((self.subject, TAMPER.gaussianSeed, Literal(self.seed, datatype=XSD.nonNegativeInteger)))
+        g.add(
+            (
+                self.subject,
+                TAMPER.gaussianMean,
+                Literal(self.mean, datatype=XSD.decimal),
+            )
+        )
+        g.add(
+            (self.subject, TAMPER.gaussianStd, Literal(self.std, datatype=XSD.decimal))
+        )
+        g.add(
+            (
+                self.subject,
+                TAMPER.gaussianSeed,
+                Literal(self.seed, datatype=XSD.nonNegativeInteger),
+            )
+        )
         return g
 
-    def transform(self, input_image_file: PathLike[str], output_image_file: PathLike[str]):
+    def transform(
+        self, input_image_file: PathLike[str], output_image_file: PathLike[str]
+    ):
         img = cv2.imread(str(input_image_file))
         rng = np.random.default_rng(self.seed)
         noise = rng.normal(self.mean, self.std, img.shape)
@@ -291,4 +391,8 @@ class AddGaussianNoise(Operation):
 
         seed = graph.value(subject=subject, predicate=TAMPER.gaussianSeed)
 
-        return cls(mean=float(mean), std=float(std), seed=int(seed) if seed is not None else None)
+        return cls(
+            mean=float(mean),
+            std=float(std),
+            seed=int(seed) if seed is not None else None,
+        )

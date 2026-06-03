@@ -55,13 +55,16 @@ class AsyncPlanQueue:
         while True:
             try:
                 *_, future = self.queue.get_nowait()
-            except (asyncio.QueueEmpty, asyncio.QueueShutDown):
+            except asyncio.QueueEmpty, asyncio.QueueShutDown:
                 break
             if not future.done():
-                future.set_exception(asyncio.QueueShutDown("Plan queue is shutting down"))
+                future.set_exception(
+                    asyncio.QueueShutDown("Plan queue is shutting down")
+                )
 
-    def put_plan(self, plan_graph: Graph, seed_graph: Graph,
-                 initial_variables: dict[Node, Node]) -> asyncio.Future:
+    def put_plan(
+        self, plan_graph: Graph, seed_graph: Graph, initial_variables: dict[Node, Node]
+    ) -> asyncio.Future:
         """Enqueues a plan for execution and returns a future resolved with its result graph.
 
         Must be called from within the event loop running the queue's workers, so the
@@ -77,7 +80,12 @@ class AsyncPlanQueue:
         logger.info(f"(worker {worker_id}): Starting worker")
         while True:
             try:
-                plan_graph, seed_graph, initial_variables, future = await self.queue.get()
+                (
+                    plan_graph,
+                    seed_graph,
+                    initial_variables,
+                    future,
+                ) = await self.queue.get()
             except asyncio.QueueShutDown:
                 logger.info(f"(worker {worker_id}): Queue shut down, stopping worker")
                 return
@@ -86,7 +94,10 @@ class AsyncPlanQueue:
             logger.info(f"(worker {worker_id}): Executing plan {plan_uri}")
             try:
                 result_graph = await asyncio.to_thread(
-                    self.plan_executor.execute, plan_graph, seed_graph, initial_variables
+                    self.plan_executor.execute,
+                    plan_graph,
+                    seed_graph,
+                    initial_variables,
                 )
                 logger.info(f"(worker {worker_id}): Plan {plan_uri} completed")
                 future.set_result(result_graph)
@@ -94,8 +105,12 @@ class AsyncPlanQueue:
                 # shutting down mid-execution: this plan is no longer in the queue,
                 # so the worker is the only one that can fail its future
                 if not future.done():
-                    future.set_exception(PlanQueueShutDown("Plan queue is shutting down"))
+                    future.set_exception(
+                        PlanQueueShutDown("Plan queue is shutting down")
+                    )
                 raise
             except Exception as e:
-                logger.error(f"(worker {worker_id}): Error executing plan {plan_uri} failed: {e}")
+                logger.error(
+                    f"(worker {worker_id}): Error executing plan {plan_uri} failed: {e}"
+                )
                 future.set_exception(e)

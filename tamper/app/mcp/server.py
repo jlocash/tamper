@@ -11,15 +11,23 @@ from fastmcp.exceptions import ToolError
 from rdflib import Graph, URIRef, RDF, RDFS
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
-from tamper.plans import OperationPlanExecutor, validate_plan_graph, GraphValidationError
+from tamper.plans import (
+    validate_plan_graph,
+    GraphValidationError,
+)
 from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
 from tamper.assets import load_asset_from_file
 from tamper.plans.async_plan_queue import AsyncPlanQueue
-from tamper.vocabularies import TAMPER, PLAN, load_prov_ontology, load_core_ontology, \
-    load_plan_ontology
+from tamper.vocabularies import (
+    TAMPER,
+    PLAN,
+    load_prov_ontology,
+    load_core_ontology,
+    load_plan_ontology,
+)
 from tamper.utils.make_tarball import make_tarball
 
-TAMPER_HOME_DIR = Path(os.environ['TAMPER_HOME'])
+TAMPER_HOME_DIR = Path(os.environ["TAMPER_HOME"])
 TAMPER_PLANS_DIR = TAMPER_HOME_DIR / "plans"
 TAMPER_MEDIA_DIR = TAMPER_HOME_DIR / "media"
 
@@ -84,13 +92,15 @@ async def list_plans():
         label = plan_graph.value(plan_uri, RDFS.label)
         comment = plan_graph.value(plan_uri, RDFS.comment)
 
-        plans.append({
-            "name": plan_file.stem,
-            "uri": plan_uri,
-            "num_steps": len(set(plan_graph.subjects(RDF.type, PLAN.Step))),
-            "label": label,
-            "description": comment,
-        })
+        plans.append(
+            {
+                "name": plan_file.stem,
+                "uri": plan_uri,
+                "num_steps": len(set(plan_graph.subjects(RDF.type, PLAN.Step))),
+                "label": label,
+                "description": comment,
+            }
+        )
 
     return {"plans": plans}
 
@@ -228,7 +238,9 @@ async def delete_plan(plan_name: str):
 
 
 @mcp.tool
-async def execute_operation_plan(plan_name: str, initial_variables: dict[str, str], ctx: Context):
+async def execute_operation_plan(
+    plan_name: str, initial_variables: dict[str, str], ctx: Context
+):
     """
     Executes an operation plan on the knowledge graph using the provided initial variables.
 
@@ -262,7 +274,9 @@ async def execute_operation_plan(plan_name: str, initial_variables: dict[str, st
     seed_graph = result.graph
 
     try:
-        result_graph = await plan_queue.put_plan(plan_graph, seed_graph, initial_variables)
+        result_graph = await plan_queue.put_plan(
+            plan_graph, seed_graph, initial_variables
+        )
         kg.insert_statements_default(result_graph)
         kg.commit()
         return result_graph.serialize(format="turtle")

@@ -35,6 +35,7 @@ def audio_stream(path: Path) -> dict:
 
 # --- ResampleAudio -------------------------------------------------------
 
+
 class TestResampleAudio:
     def test_produces_output(self, sample_wav: Path, tmp_path: Path):
         out = tmp_path / "out.wav"
@@ -81,6 +82,7 @@ class TestResampleAudio:
 
 
 # --- TranscodeAudio ------------------------------------------------------
+
 
 class TestTranscodeAudio:
     def test_produces_output(self, sample_mp3: Path, tmp_path: Path):
