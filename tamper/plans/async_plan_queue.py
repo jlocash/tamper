@@ -1,11 +1,7 @@
 import asyncio
 import logging
-from pathlib import Path
-
-from rdflib import Graph, Node, RDF
-
-from tamper.plans import OperationPlanExecutor
-from tamper.vocabularies import PLAN
+from rdflib import Graph, Node
+from tamper.plans import OperationPlan, OperationPlanExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -19,16 +15,15 @@ class AsyncPlanQueue:
     An asynchronous queue for executing operation plans.
     """
 
-    def __init__(self, out_dir: Path, num_workers: int = 1):
+    def __init__(self, plan_executor: OperationPlanExecutor, num_workers: int = 1):
         """
-        :param out_dir: The directory to write output files to.
+        :param plan_executor: A plan executor used by the background workers
         :param num_workers: The number of async background workers to use.
         """
-        self.out_dir = out_dir
         self.queue = asyncio.Queue()
         self._worker_tasks = []
         self.num_workers = num_workers
-        self.plan_executor = OperationPlanExecutor(out_dir)
+        self.plan_executor = plan_executor
 
     async def start(self):
         """Starts the background worker tasks."""
@@ -63,7 +58,10 @@ class AsyncPlanQueue:
                 )
 
     def put_plan(
-        self, plan_graph: Graph, seed_graph: Graph, initial_variables: dict[Node, Node]
+        self,
+        plan: OperationPlan,
+        seed_graph: Graph,
+        initial_variables: dict[Node, Node],
     ) -> asyncio.Future:
         """Enqueues a plan for execution and returns a future resolved with its result graph.
 
@@ -73,7 +71,7 @@ class AsyncPlanQueue:
         """
         loop = asyncio.get_running_loop()
         future = loop.create_future()
-        self.queue.put_nowait((plan_graph, seed_graph, initial_variables, future))
+        self.queue.put_nowait((plan, seed_graph, initial_variables, future))
         return future
 
     async def _run_worker(self, worker_id: int):
@@ -81,7 +79,7 @@ class AsyncPlanQueue:
         while True:
             try:
                 (
-                    plan_graph,
+                    plan,
                     seed_graph,
                     initial_variables,
                     future,
@@ -90,16 +88,15 @@ class AsyncPlanQueue:
                 logger.info(f"(worker {worker_id}): Queue shut down, stopping worker")
                 return
 
-            plan_uri = plan_graph.value(None, RDF.type, PLAN.OperationPlan)
-            logger.info(f"(worker {worker_id}): Executing plan {plan_uri}")
+            logger.info(f"(worker {worker_id}): Executing plan {plan.identifier}")
             try:
                 result_graph = await asyncio.to_thread(
                     self.plan_executor.execute,
-                    plan_graph,
+                    plan,
                     seed_graph,
                     initial_variables,
                 )
-                logger.info(f"(worker {worker_id}): Plan {plan_uri} completed")
+                logger.info(f"(worker {worker_id}): Plan {plan} completed")
                 future.set_result(result_graph)
             except asyncio.CancelledError:
                 # shutting down mid-execution: this plan is no longer in the queue,
@@ -111,6 +108,6 @@ class AsyncPlanQueue:
                 raise
             except Exception as e:
                 logger.error(
-                    f"(worker {worker_id}): Error executing plan {plan_uri} failed: {e}"
+                    f"(worker {worker_id}): Error executing plan {plan.identifier} failed: {e}"
                 )
                 future.set_exception(e)
