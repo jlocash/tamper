@@ -15,6 +15,12 @@ class PlanVariable(Resource):
             return PlanStep(self.graph, step_uri)
 
 
+class OperationParameters(Resource):
+    @property
+    def operation_type(self):
+        return self.graph.value(self.identifier, PLAN.operationType)
+
+
 class PlanStep(Resource):
     @property
     def input_variables(self) -> list[PlanVariable]:
@@ -33,6 +39,11 @@ class PlanStep(Resource):
                 self.objects(PLAN.hasOutputVariable),
             )
         )
+
+    @property
+    def operation_parameters(self) -> OperationParameters:
+        resource = self.value(PLAN.operationParameters)
+        return OperationParameters(self.graph, resource.identifier)
 
 
 class OperationPlan(Resource):
@@ -75,4 +86,14 @@ class OperationPlanExecutor(abc.ABC):
         seed_graph: Graph,
         initial_variables: dict[Node, Node],
     ):
+        """
+        Executes the given operation plan and returns the materialized subgraph
+
+        :param plan: The OperationPlan to execute
+        :param seed_graph: A starting graph used to initiate plan execution
+        :initial_variables: A dictionary mapping variable URIs in the plan graph to asset URIs in the seed graph
+
+        :returns: A Graph representing the subgraph of materialized operations
+        """
+
         pass

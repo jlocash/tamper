@@ -7,36 +7,13 @@ from ray.actor import ActorHandle
 from ray.types import ObjectRef
 
 from tamper.assets import load_asset_from_file
-from tamper.ops.audio import ResampleAudio, TranscodeAudio
-from tamper.ops.image import (
-    CompressJPEG,
-    CompressWebP,
-    AddGaussianNoise,
-    Resize,
-    MedianFilter,
-    GaussianBlur,
-    CropImage,
-)
-from tamper.ops.video import TranscodeVideo
 
 from .operation_plan import OperationPlanExecutor, OperationPlan, PlanStep
+from .thread_executor import operation_map
 from rdflib import PROV, Graph, Literal, Node
 from tamper.vocabularies import TAMPER, PLAN
 from pathlib import Path
 import ray
-
-operation_map = {
-    TAMPER.CompressJPEG: CompressJPEG,
-    TAMPER.CompressWebP: CompressWebP,
-    TAMPER.TranscodeVideo: TranscodeVideo,
-    TAMPER.AddGaussianNoise: AddGaussianNoise,
-    TAMPER.Resize: Resize,
-    TAMPER.MedianFilter: MedianFilter,
-    TAMPER.GaussianBlur: GaussianBlur,
-    TAMPER.ResampleAudio: ResampleAudio,
-    TAMPER.TranscodeAudio: TranscodeAudio,
-    TAMPER.CropImage: CropImage,
-}
 
 
 @ray.remote
@@ -129,10 +106,10 @@ class RayExecutor(OperationPlanExecutor):
         }
 
         # steps that have been submitted
-        ref_to_step: dict[ObjectRef[Node], Node] = {}
+        ref_to_step: dict[ObjectRef[Node], PlanStep] = {}
 
         # steps that are ready but can't be submitted because max_in_flight is reached
-        pending: list[Node] = []
+        pending: list[PlanStep] = []
 
         sorter = plan.get_sorter()
         sorter.prepare()
@@ -167,8 +144,8 @@ class RayExecutor(OperationPlanExecutor):
             # wait for at least one to complete, then mark done to unlock dependents
             done_refs, _ = ray.wait(list(ref_to_step), num_returns=1)
             for ref in done_refs:
-                step_uri = ref_to_step.pop(ref)
-                sorter.done(step_uri)
+                step = ref_to_step.pop(ref)
+                sorter.done(step)
                 print(f"Step {step.identifier.n3()} competed")
 
         ray.get(list(var_futures.values()))
