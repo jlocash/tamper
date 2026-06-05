@@ -67,7 +67,7 @@ class StepExecutor:
         subgraph.add((op.subject, PROV.endedAtTime, Literal(end)))
         subgraph.add((op.subject, PROV.used, asset_uri))
         subgraph.add((new_asset.identifier, PROV.wasGeneratedBy, op.subject))
-
+        subgraph += op.graph()
         return new_asset.identifier, subgraph
 
 
