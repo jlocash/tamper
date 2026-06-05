@@ -469,7 +469,7 @@ class TestAddGaussianNoise:
 
         subject = URIRef("operation://test")
         g = Graph()
-        g.add((subject, TAMPER.gaussianMean, Literal(0.0, datatype=XSD.decimal)))
+        g.add((subject, TAMPER.gaussianMean, Literal(0.0)))
         with pytest.raises(ValueError, match="gaussianStd"):
             AddGaussianNoise.copy_from_graph(g, subject)
 
@@ -480,8 +480,8 @@ class TestAddGaussianNoise:
 
         subject = URIRef("operation://test")
         g = Graph()
-        g.add((subject, TAMPER.gaussianMean, Literal(0.0, datatype=XSD.decimal)))
-        g.add((subject, TAMPER.gaussianStd, Literal(1.0, datatype=XSD.decimal)))
+        g.add((subject, TAMPER.gaussianMean, Literal(0.0)))
+        g.add((subject, TAMPER.gaussianStd, Literal(1.0)))
         restored = AddGaussianNoise.copy_from_graph(g, subject)
         assert isinstance(restored.seed, int)
         assert restored.seed >= 0

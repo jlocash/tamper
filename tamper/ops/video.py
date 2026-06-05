@@ -3,6 +3,7 @@ from os import PathLike
 import ffmpeg
 from rdflib import RDF, Literal, XSD, Node
 from rdflib.graph import Graph
+from rdflib.resource import Resource
 
 from .operation import Operation
 from tamper.vocabularies import TAMPER
@@ -19,17 +20,11 @@ class TranscodeVideo(Operation):
         self.crf = crf
 
     def graph(self) -> Graph:
-        g = Graph()
-        g.add((self.subject, RDF.type, TAMPER.TranscodeVideo))
-        g.add((self.subject, TAMPER.videoEncoder, Literal(self.video_encoder)))
-        g.add(
-            (
-                self.subject,
-                TAMPER.crf,
-                Literal(self.crf, datatype=XSD.nonNegativeInteger),
-            )
-        )
-        return g
+        r = Resource(Graph(), self.subject)
+        r[RDF.type] = TAMPER.TranscodeVideo
+        r[TAMPER.videoEncoder] = Literal(self.video_encoder)
+        r[TAMPER.crf] = Literal(self.crf, datatype=XSD.nonNegativeInteger)
+        return r.graph
 
     def transform(
         self, input_video_file: PathLike[str], output_video_file: PathLike[str]

@@ -1,12 +1,19 @@
 from os import PathLike
 
-from rdflib import URIRef, Graph, Dataset
+from rdflib import URIRef, Graph, Dataset, XSD
 
+import owlrl.DatatypeHandling
 from owlrl import OWLRL_Semantics
 
 from tamper.vocabularies import TAMPER, load_core_ontology
 from .knowledge_graph import KnowledgeGraph
 from pathlib import Path
+
+
+# AltXSDToPYTHON is owlrl's source table; use_Alt_lexical_conversions() copies it
+# into rdflib's _toPythonMapping, which is what the reasoner actually dispatches on.
+owlrl.DatatypeHandling.AltXSDToPYTHON[XSD.double] = float
+owlrl.DatatypeHandling.AltXSDToPYTHON[XSD.float] = float
 
 
 class InconsistencyError(Exception):

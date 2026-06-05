@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from rdflib import Graph, Node, RDF, XSD, Literal
+from rdflib.resource import Resource
 
 from tamper.vocabularies import TAMPER
 from .operation import Operation
@@ -39,16 +40,12 @@ class ResampleAudio(Operation):
             raise RuntimeError(f"ffmpeg failed: {stderr}") from e
 
     def graph(self) -> Graph:
-        g = Graph()
-        g.add((self.subject, RDF.type, TAMPER.ResampleAudio))
-        g.add(
-            (
-                self.subject,
-                TAMPER.targetSampleRate,
-                Literal(self.target_sample_rate, datatype=XSD.positiveInteger),
-            )
+        r = Resource(Graph(), self.subject)
+        r[RDF.type] = TAMPER.ResampleAudio
+        r[TAMPER.targetSampleRate] = Literal(
+            self.target_sample_rate, datatype=XSD.positiveInteger
         )
-        return g
+        return r.graph
 
     @classmethod
     def copy_from_graph(cls, graph: Graph, subject: Node):
@@ -92,17 +89,13 @@ class TranscodeAudio(Operation):
             raise RuntimeError(f"ffmpeg failed: {stderr}") from e
 
     def graph(self) -> Graph:
-        g = Graph()
-        g.add((self.subject, RDF.type, TAMPER.TranscodeAudio))
-        g.add(
-            (
-                self.subject,
-                TAMPER.targetBitRate,
-                Literal(self.target_bitrate, datatype=XSD.positiveInteger),
-            )
+        r = Resource(Graph(), self.subject)
+        r[RDF.type] = TAMPER.TranscodeAudio
+        r[TAMPER.targetBitRate] = Literal(
+            self.target_bitrate, datatype=XSD.positiveInteger
         )
-        g.add((self.subject, TAMPER.audioEncoder, Literal(self.audio_encoder)))
-        return g
+        r[TAMPER.audioEncoder] = Literal(self.audio_encoder)
+        return r.graph
 
     @classmethod
     def copy_from_graph(cls, graph: Graph, subject: Node):

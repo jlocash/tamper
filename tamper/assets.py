@@ -5,7 +5,7 @@ from pathlib import Path
 
 import ffmpeg
 from magic import Magic
-from rdflib import Graph, URIRef, XSD, Node, RDF, Literal
+from rdflib import Graph, URIRef, Node, RDF, Literal
 from rdflib.extras.describer import Describer
 from rdflib.resource import Resource
 from tamper.vocabularies import TAMPER
@@ -204,7 +204,7 @@ def _extract_container_metadata(asset: Describer, asset_file: PathLike[str]):
 
                 frame_rate = _get_frame_rate(stream)
                 if frame_rate is not None:
-                    asset.value(TAMPER.frameRate, frame_rate, datatype=XSD.float)
+                    asset.value(TAMPER.frameRate, frame_rate)
                 # TODO: color space
                 # TODO: bit depth
 

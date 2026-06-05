@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 from rdflib import Node, RDF, Literal, XSD
 from rdflib.graph import Graph
+from rdflib.resource import Resource
 from rdflib.term import URIRef
 
 from tamper.vocabularies import TAMPER
@@ -36,10 +37,10 @@ class CompressJPEG(Operation):
         Path(output_asset_file).write_bytes(buf.tobytes())
 
     def graph(self) -> Graph:
-        g = Graph()
-        g.add((self.subject, RDF.type, TAMPER.CompressJPEG))
-        g.add((self.subject, TAMPER.qualityFactor, Literal(self.quality_factor)))
-        return g
+        r = Resource(Graph(), self.subject)
+        r[RDF.type] = TAMPER.CompressJPEG
+        r[TAMPER.qualityFactor] = Literal(self.quality_factor)
+        return r.graph
 
     @classmethod
     def copy_from_graph(cls, graph: Graph, subject: Node):
@@ -72,10 +73,10 @@ class CompressWebP(Operation):
         Path(output_asset_file).write_bytes(buf.tobytes())
 
     def graph(self) -> Graph:
-        g = Graph()
-        g.add((self.subject, RDF.type, TAMPER.CompressWebP))
-        g.add((self.subject, TAMPER.qualityFactor, Literal(self.quality_factor)))
-        return g
+        r = Resource(Graph(), self.subject)
+        r[RDF.type] = TAMPER.CompressWebP
+        r[TAMPER.qualityFactor] = Literal(self.quality_factor)
+        return r.graph
 
     @classmethod
     def copy_from_graph(cls, graph: Graph, subject: Node):
@@ -121,37 +122,13 @@ class CropImage(Operation):
         Path(output_asset_file).write_bytes(buf.tobytes())
 
     def graph(self) -> Graph:
-        g = Graph()
-        g.add((self.subject, RDF.type, TAMPER.CropImage))
-        g.add(
-            (
-                self.subject,
-                TAMPER.cropX,
-                Literal(self.x, datatype=XSD.nonNegativeInteger),
-            )
-        )
-        g.add(
-            (
-                self.subject,
-                TAMPER.cropY,
-                Literal(self.y, datatype=XSD.nonNegativeInteger),
-            )
-        )
-        g.add(
-            (
-                self.subject,
-                TAMPER.cropWidth,
-                Literal(self.width, datatype=XSD.positiveInteger),
-            )
-        )
-        g.add(
-            (
-                self.subject,
-                TAMPER.cropHeight,
-                Literal(self.height, datatype=XSD.positiveInteger),
-            )
-        )
-        return g
+        r = Resource(Graph(), self.subject)
+        r[RDF.type] = TAMPER.CropImage
+        r[TAMPER.cropX] = Literal(self.x, datatype=XSD.nonNegativeInteger)
+        r[TAMPER.cropY] = Literal(self.y, datatype=XSD.nonNegativeInteger)
+        r[TAMPER.cropWidth] = Literal(self.width, datatype=XSD.positiveInteger)
+        r[TAMPER.cropHeight] = Literal(self.height, datatype=XSD.positiveInteger)
+        return r.graph
 
     @classmethod
     def copy_from_graph(cls, graph: Graph, subject: Node):
@@ -191,24 +168,12 @@ class Resize(Operation):
         self.interpolation = interpolation
 
     def graph(self) -> Graph:
-        g = Graph()
-        g.add((self.subject, RDF.type, TAMPER.Resize))
-        g.add(
-            (
-                self.subject,
-                TAMPER.targetWidth,
-                Literal(self.width, datatype=XSD.positiveInteger),
-            )
-        )
-        g.add(
-            (
-                self.subject,
-                TAMPER.targetHeight,
-                Literal(self.height, datatype=XSD.positiveInteger),
-            )
-        )
-        g.add((self.subject, TAMPER.interpolation, Literal(self.interpolation)))
-        return g
+        r = Resource(Graph(), self.subject)
+        r[RDF.type] = TAMPER.Resize
+        r[TAMPER.targetWidth] = Literal(self.width, datatype=XSD.positiveInteger)
+        r[TAMPER.targetHeight] = Literal(self.height, datatype=XSD.positiveInteger)
+        r[TAMPER.interpolation] = Literal(self.interpolation)
+        return r.graph
 
     def transform(
         self, input_image_file: PathLike[str], output_image_file: PathLike[str]
@@ -254,16 +219,10 @@ class MedianFilter(Operation):
         self.kernel_size = kernel_size
 
     def graph(self) -> Graph:
-        g = Graph()
-        g.add((self.subject, RDF.type, TAMPER.MedianFilter))
-        g.add(
-            (
-                self.subject,
-                TAMPER.kernelSize,
-                Literal(self.kernel_size, datatype=XSD.positiveInteger),
-            )
-        )
-        return g
+        r = Resource(Graph(), self.subject)
+        r[RDF.type] = TAMPER.MedianFilter
+        r[TAMPER.kernelSize] = Literal(self.kernel_size, datatype=XSD.positiveInteger)
+        return r.graph
 
     def transform(
         self, input_image_file: PathLike[str], output_image_file: PathLike[str]
@@ -295,19 +254,11 @@ class GaussianBlur(Operation):
         self.sigma = sigma
 
     def graph(self) -> Graph:
-        g = Graph()
-        g.add((self.subject, RDF.type, TAMPER.GaussianBlur))
-        g.add(
-            (
-                self.subject,
-                TAMPER.kernelSize,
-                Literal(self.kernel_size, datatype=XSD.positiveInteger),
-            )
-        )
-        g.add(
-            (self.subject, TAMPER.blurSigma, Literal(self.sigma, datatype=XSD.decimal))
-        )
-        return g
+        r = Resource(Graph(), self.subject)
+        r[RDF.type] = TAMPER.GaussianBlur
+        r[TAMPER.kernelSize] = Literal(self.kernel_size, datatype=XSD.positiveInteger)
+        r[TAMPER.blurSigma] = Literal(self.sigma)
+        return r.graph
 
     def transform(
         self, input_image_file: PathLike[str], output_image_file: PathLike[str]
@@ -345,26 +296,12 @@ class AddGaussianNoise(Operation):
         self.seed = secrets.randbits(64) if seed is None else seed
 
     def graph(self) -> Graph:
-        g = Graph()
-        g.add((self.subject, RDF.type, TAMPER.AddGaussianNoise))
-        g.add(
-            (
-                self.subject,
-                TAMPER.gaussianMean,
-                Literal(self.mean, datatype=XSD.decimal),
-            )
-        )
-        g.add(
-            (self.subject, TAMPER.gaussianStd, Literal(self.std, datatype=XSD.decimal))
-        )
-        g.add(
-            (
-                self.subject,
-                TAMPER.gaussianSeed,
-                Literal(self.seed, datatype=XSD.nonNegativeInteger),
-            )
-        )
-        return g
+        r = Resource(Graph(), self.subject)
+        r[RDF.type] = TAMPER.AddGaussianNoise
+        r[TAMPER.gaussianMean] = Literal(self.mean)
+        r[TAMPER.gaussianStd] = Literal(self.std)
+        r[TAMPER.gaussianSeed] = Literal(self.seed, datatype=XSD.nonNegativeInteger)
+        return r.graph
 
     def transform(
         self, input_image_file: PathLike[str], output_image_file: PathLike[str]
