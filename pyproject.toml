@@ -15,9 +15,11 @@ dependencies = [
     "pyshacl>=0.31.0",
     "pytest>=9.0.3",
     "python-magic>=0.4.27",
-    "ray>=2.55.1",
     "rdflib>=7.6.0",
 ]
+
+[project.optional-dependencies]
+ray = ["ray>=2.55.1"]
 
 [dependency-groups]
 dev = []

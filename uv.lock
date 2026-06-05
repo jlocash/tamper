@@ -1400,8 +1400,12 @@ dependencies = [
     { name = "pyshacl" },
     { name = "pytest" },
     { name = "python-magic" },
-    { name = "ray" },
     { name = "rdflib" },
+]
+
+[package.optional-dependencies]
+ray = [
+    { name = "ray" },
 ]
 
 [package.metadata]
@@ -1415,9 +1419,10 @@ requires-dist = [
     { name = "pyshacl", specifier = ">=0.31.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "python-magic", specifier = ">=0.4.27" },
-    { name = "ray", specifier = ">=2.55.1" },
+    { name = "ray", marker = "extra == 'ray'", specifier = ">=2.55.1" },
     { name = "rdflib", specifier = ">=7.6.0" },
 ]
+provides-extras = ["ray"]
 
 [package.metadata.requires-dev]
 dev = []

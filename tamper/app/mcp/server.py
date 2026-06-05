@@ -5,7 +5,6 @@ from graphlib import CycleError
 from os import PathLike
 from pathlib import Path
 
-import ray
 from fastmcp import FastMCP, Context
 from fastmcp.exceptions import ToolError
 from rdflib import Graph, URIRef, RDF, RDFS
@@ -385,5 +384,4 @@ def get_p_plan_ontology() -> str:
 
 
 if __name__ == "__main__":
-    ray.init()
     mcp.run()
