@@ -15,7 +15,7 @@ from tamper.plans import (
     validate_plan_graph,
     GraphValidationError,
 )
-from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
+from tamper.app.kg.local import LocalKnowledgeGraph
 from tamper.assets import load_asset_from_file
 from tamper.plans.async_plan_queue import AsyncPlanQueue
 from tamper.plans.operation_plan import OperationPlan
@@ -73,10 +73,10 @@ def get_plan_queue(ctx: Context) -> AsyncPlanQueue:
     return ctx.lifespan_context["plan_queue"]
 
 
-mcp = FastMCP("Tamper MCP Server", lifespan=lifespan)
+mcp = FastMCP("Tamper", lifespan=lifespan)
 
 
-@mcp.tool
+@mcp.tool("TrackMediaAsset")
 async def track_media_asset(file_path: PathLike[str], ctx: Context) -> str:
     """
     Tracks a media asset in the knowledge graph.
@@ -91,7 +91,7 @@ async def track_media_asset(file_path: PathLike[str], ctx: Context) -> str:
     return g.serialize(format="turtle")
 
 
-@mcp.tool
+@mcp.tool("ListPlans")
 async def list_plans():
     """
     Lists the available operation plans.
@@ -121,7 +121,7 @@ async def list_plans():
     return {"plans": plans}
 
 
-@mcp.tool
+@mcp.tool("CreatePlan")
 async def create_plan(plan_graph_ttl: str, plan_name: str):
     """
     Creates an operation plan. An operation plan can be thought of as a blueprint for
@@ -224,7 +224,7 @@ async def create_plan(plan_graph_ttl: str, plan_name: str):
         raise ToolError(f"Graph failed shape validation: {str(e)}") from e
 
 
-@mcp.tool
+@mcp.tool("GetPlan")
 async def get_plan(plan_name: str):
     """
     Retrieves the graph associated with the given plan name.
@@ -240,7 +240,7 @@ async def get_plan(plan_name: str):
     return plan_graph_ttl
 
 
-@mcp.tool
+@mcp.tool("DeletePlan")
 async def delete_plan(plan_name: str):
     """
     Deletes the graph associated with the given plan name.
@@ -253,7 +253,7 @@ async def delete_plan(plan_name: str):
     plan_file.unlink()
 
 
-@mcp.tool(task=True)
+@mcp.tool("SubmitPlan", task=True)
 async def submit_plan(plan_name: str, initial_variables: dict[str, str], ctx: Context):
     """
     Submits an operation plan for execution against the knowledge graph using the provided
@@ -303,8 +303,8 @@ async def submit_plan(plan_name: str, initial_variables: dict[str, str], ctx: Co
         raise ToolError("Plan graph cannot contain cycles") from e
 
 
-@mcp.tool
-async def sparql_query(sparql_query_str: str, ctx: Context):
+@mcp.tool("QuerySPARQL")
+async def query_sparql(sparql_query_str: str, ctx: Context):
     """
     Executes a (read-only) SPARQL query against the knowledge graph. The vocabulary should ALWAYS be fetched prior to
     executing any queries. Available vocabularies are exposed via MCP resources at:
@@ -322,23 +322,7 @@ async def sparql_query(sparql_query_str: str, ctx: Context):
     return result.serialize(format="json")
 
 
-@mcp.tool
-async def sparql_update(sparql_update_str: str, ctx: Context) -> None:
-    """
-    Executes a SPARQL update against the knowledge graph.
-
-    :param sparql_update_str: The SPARQL update to execute.
-    :return: None. Throws if the update fails.
-    """
-    kg = get_kg(ctx)
-    try:
-        kg.update(sparql_update_str)
-        kg.commit()
-    except InconsistencyError as e:
-        raise ToolError(str(e)) from e
-
-
-@mcp.tool
+@mcp.tool("ExportDataset")
 async def export_dataset(output_filename: PathLike[str], ctx: Context) -> None:
     """
     Exports the RDF dataset and all referenced media asset files to a tarball archive.
@@ -374,7 +358,7 @@ def get_prov_ontology() -> str:
 
 
 @mcp.resource("vocabulary://tamper/plan")
-def get_p_plan_ontology() -> str:
+def get_plan_ontology() -> str:
     """
     Retrieves the Tamper Plan vocabulary, which provides a set of terms for creating blueprints of media operations.
 
@@ -384,4 +368,4 @@ def get_p_plan_ontology() -> str:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
