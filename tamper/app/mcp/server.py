@@ -11,6 +11,7 @@ from fastmcp.exceptions import ToolError
 from rdflib import Graph, URIRef, RDF, RDFS
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
+from tamper.app.kg.knowledge_graph import KnowledgeGraph
 from tamper.plans import (
     validate_plan_graph,
     GraphValidationError,
@@ -18,6 +19,8 @@ from tamper.plans import (
 from tamper.app.kg.local import LocalKnowledgeGraph, InconsistencyError
 from tamper.assets import load_asset_from_file
 from tamper.plans.async_plan_queue import AsyncPlanQueue
+from tamper.plans.operation_plan import OperationPlan
+from tamper.plans.thread_executor import ThreadPoolPlanExecutor
 from tamper.vocabularies import (
     TAMPER,
     PLAN,
@@ -48,13 +51,27 @@ async def lifespan(server: FastMCP):
 
     kg = LocalKnowledgeGraph(tamper_dataset_file)
 
-    plan_queue = AsyncPlanQueue(TAMPER_HOME_DIR / "media")
+    executor = ThreadPoolPlanExecutor(
+        TAMPER_HOME_DIR / "media", max_workers=4, max_in_flight=32
+    )
+    plan_queue = AsyncPlanQueue(executor)
     await plan_queue.start()
 
     yield {
         "kg": kg,
         "plan_queue": plan_queue,
     }
+
+
+def get_kg(ctx: Context) -> KnowledgeGraph:
+    # Read via ctx.lifespan_context (server._lifespan_result) rather than
+    # ctx.request_context: background tasks run outside the request, so
+    # request_context is None there.
+    return ctx.lifespan_context["kg"]
+
+
+def get_plan_queue(ctx: Context) -> AsyncPlanQueue:
+    return ctx.lifespan_context["plan_queue"]
 
 
 mcp = FastMCP("Tamper MCP Server", lifespan=lifespan)
@@ -67,7 +84,7 @@ async def track_media_asset(file_path: PathLike[str], ctx: Context) -> str:
     :param file_path: The file path of the media asset.
     :return: The serialized media asset graph in Turtle format.
     """
-    kg = ctx.request_context.lifespan_context["kg"]
+    kg = get_kg(ctx)
     g = Graph()
     load_asset_from_file(g, file_path)
     kg.insert_statements_default(g)
@@ -237,15 +254,18 @@ async def delete_plan(plan_name: str):
     plan_file.unlink()
 
 
-@mcp.tool
-async def execute_operation_plan(
-    plan_name: str, initial_variables: dict[str, str], ctx: Context
-):
+@mcp.tool(task=True)
+async def submit_plan(plan_name: str, initial_variables: dict[str, str], ctx: Context):
     """
-    Executes an operation plan on the knowledge graph using the provided initial variables.
+    Submits an operation plan for execution against the knowledge graph using the provided
+    initial variables.
+
+    This tool runs as a background task: the call returns a task ID immediately while the plan
+    executes asynchronously, freeing the caller to do other work. Poll the task by its ID to
+    retrieve the result graph once execution completes.
 
     Example initial_variables (assumes "asset://myimage" resolves to a
-    valid asset in the knowledge graph): `{ "plan://v0": "asset://myimage" }`
+    valid asset in the knowledge graph): ``{ "plan://v0": "asset://myimage" }``
 
     :param plan_name: The name of the operation plan to execute.
     :param initial_variables: A dictionary mapping plan:Variable URIs in the operation plan to asset URIs in the
@@ -254,8 +274,8 @@ async def execute_operation_plan(
         satisfy the original image being compressed. Without appropriate bindings, those variables remain ambiguous.
     """
 
-    kg = ctx.request_context.lifespan_context["kg"]
-    plan_queue = ctx.request_context.lifespan_context["plan_queue"]
+    kg = get_kg(ctx)
+    plan_queue = get_plan_queue(ctx)
 
     plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
     if not plan_file.exists():
@@ -264,6 +284,8 @@ async def execute_operation_plan(
     # parse plan graph
     plan_graph = Graph()
     plan_graph.parse(plan_file, format="turtle")
+    plan_uri = plan_graph.value(predicate=RDF.type, object=PLAN.OperationPlan)
+    plan = OperationPlan(plan_graph, plan_uri)
 
     # Create URIRefs of initial vars
     initial_variables = {URIRef(k): URIRef(v) for k, v in initial_variables.items()}
@@ -274,9 +296,7 @@ async def execute_operation_plan(
     seed_graph = result.graph
 
     try:
-        result_graph = await plan_queue.put_plan(
-            plan_graph, seed_graph, initial_variables
-        )
+        result_graph = await plan_queue.put_plan(plan, seed_graph, initial_variables)
         kg.insert_statements_default(result_graph)
         kg.commit()
         return result_graph.serialize(format="turtle")
@@ -295,7 +315,7 @@ async def sparql_query(sparql_query_str: str, ctx: Context):
     :param sparql_query_str: The SPARQL query to execute. Must be one of the following: SELECT, ASK, CONSTRUCT, DESCRIBE.
     :return: In the case of a CONSTRUCT query, the result is the graph serialized in Turtle format. Otherwise, the result is a JSON object containing the results of the query.
     """
-    kg = ctx.request_context.lifespan_context["kg"]
+    kg = get_kg(ctx)
     result = kg.query(sparql_query_str)
     if result.graph:
         result.graph.bind("tamper", TAMPER)
@@ -311,7 +331,7 @@ async def sparql_update(sparql_update_str: str, ctx: Context) -> None:
     :param sparql_update_str: The SPARQL update to execute.
     :return: None. Throws if the update fails.
     """
-    kg = ctx.request_context.lifespan_context["kg"]
+    kg = get_kg(ctx)
     try:
         kg.update(sparql_update_str)
         kg.commit()
@@ -328,7 +348,7 @@ async def export_dataset(output_filename: PathLike[str], ctx: Context) -> None:
 
     :param output_filename: The filename of the output tarball.
     """
-    kg = ctx.request_context.lifespan_context["kg"]
+    kg = get_kg(ctx)
     try:
         make_tarball(kg.dataset, output_filename)
     except Exception as e:
