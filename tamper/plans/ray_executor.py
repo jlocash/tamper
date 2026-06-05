@@ -76,11 +76,11 @@ def execute_step(
     subgraph.add((op.subject, PROV.startedAtTime, Literal(start)))
     subgraph.add((op.subject, PROV.endedAtTime, Literal(end)))
     subgraph.add((op.subject, PROV.used, mapped_uri))
-    subgraph.add((new_asset.subject, PROV.wasGeneratedBy, op.subject))
+    subgraph.add((new_asset.identifier, PROV.wasGeneratedBy, op.subject))
 
     # update remote graph
     ray.get(result_graph.add_statements.remote(subgraph))
-    return new_asset.subject
+    return new_asset.identifier
 
 
 class RayExecutor(OperationPlanExecutor):

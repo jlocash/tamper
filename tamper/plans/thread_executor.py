@@ -66,9 +66,9 @@ class StepExecutor:
         subgraph.add((op.subject, PROV.startedAtTime, Literal(start)))
         subgraph.add((op.subject, PROV.endedAtTime, Literal(end)))
         subgraph.add((op.subject, PROV.used, asset_uri))
-        subgraph.add((new_asset.subject, PROV.wasGeneratedBy, op.subject))
+        subgraph.add((new_asset.identifier, PROV.wasGeneratedBy, op.subject))
 
-        return new_asset.subject, subgraph
+        return new_asset.identifier, subgraph
 
 
 class ThreadPoolPlanExecutor(OperationPlanExecutor):
@@ -132,7 +132,7 @@ class ThreadPoolPlanExecutor(OperationPlanExecutor):
                         )
 
                     input_asset_uri, _ = var_to_future[step_input.identifier].result()
-                    asset = MediaAsset.from_graph(result_graph, input_asset_uri)
+                    asset = MediaAsset(result_graph, input_asset_uri)
                     asset_file = asset.file_path
                     if asset_file is None or not asset_file.exists():
                         raise ValueError(f"Asset {asset} does not have a local file")

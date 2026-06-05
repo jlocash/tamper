@@ -88,14 +88,14 @@ class TestImageAsset:
         return asset
 
     def test_uri_starts_with_asset_scheme(self, jpg):
-        assert jpg.subject.startswith("asset://")
+        assert jpg.identifier.startswith("asset://")
 
     def test_uri_encodes_sha256(self, jpg):
         checksum = get_file_sha256(IMAGES / "file_example_JPG_100kB.jpg")
-        assert str(jpg.subject) == f"asset://{checksum}"
+        assert str(jpg.identifier) == f"asset://{checksum}"
 
     def test_rdftype_image_asset(self, jpg):
-        assert TAMPER.ImageAsset in _objects(jpg.graph, jpg.subject, RDF.type)
+        assert TAMPER.ImageAsset in _objects(jpg.graph, jpg.identifier, RDF.type)
 
     def test_media_type_jpeg(self, jpg):
         assert jpg.media_type == "image/jpeg"
@@ -117,20 +117,20 @@ class TestImageAsset:
     def test_png_classified_correctly(self):
         g = Graph()
         img = load_asset_from_file(g, IMAGES / "file_example_PNG_500kB.png")
-        assert TAMPER.ImageAsset in _objects(g, img.subject, RDF.type)
+        assert TAMPER.ImageAsset in _objects(g, img.identifier, RDF.type)
         assert img.media_type == "image/png"
 
     def test_webp_classified_correctly(self):
         g = Graph()
         img = load_asset_from_file(g, IMAGES / "file_example_WEBP_50kB.webp")
-        assert TAMPER.ImageAsset in _objects(g, img.subject, RDF.type)
-        assert str(_value(g, img.subject, TAMPER.mediaType)) == "image/webp"
+        assert TAMPER.ImageAsset in _objects(g, img.identifier, RDF.type)
+        assert str(_value(g, img.identifier, TAMPER.mediaType)) == "image/webp"
 
     def test_gif_classified_correctly(self):
         g = Graph()
         img = load_asset_from_file(g, IMAGES / "file_example_GIF_500kB.gif")
-        assert TAMPER.ImageAsset in _objects(g, img.subject, RDF.type)
-        assert str(_value(g, img.subject, TAMPER.mediaType)) == "image/gif"
+        assert TAMPER.ImageAsset in _objects(g, img.identifier, RDF.type)
+        assert str(_value(g, img.identifier, TAMPER.mediaType)) == "image/gif"
 
 
 class TestAudioAsset:
@@ -141,7 +141,7 @@ class TestAudioAsset:
         return asset
 
     def test_rdftype_audio_asset(self, mp3: AudioAsset):
-        assert TAMPER.AudioAsset in _objects(mp3.graph, mp3.subject, RDF.type)
+        assert TAMPER.AudioAsset in _objects(mp3.graph, mp3.identifier, RDF.type)
 
     def test_media_type_starts_with_audio(self, mp3: AudioAsset):
         assert mp3.media_type.startswith("audio/")
@@ -174,14 +174,14 @@ class TestVideoAsset:
         return asset
 
     def test_rdftype_video_asset(self, mp4: VideoAsset):
-        assert TAMPER.VideoAsset in _objects(mp4.graph, mp4.subject, RDF.type)
+        assert TAMPER.VideoAsset in _objects(mp4.graph, mp4.identifier, RDF.type)
 
     def test_media_type_starts_with_video(self, mp4: VideoAsset):
         assert mp4.media_type.startswith("video/")
 
     def test_uri_encodes_sha256(self, mp4: VideoAsset):
         checksum = get_file_sha256(VIDEO / "file_example_MP4_480_1_5MG.mp4")
-        assert str(mp4.subject) == f"asset://{checksum}"
+        assert str(mp4.identifier) == f"asset://{checksum}"
 
     def test_has_video_stream(self, mp4: VideoAsset):
         assert any(s for s in mp4.streams if isinstance(s, VideoStream))

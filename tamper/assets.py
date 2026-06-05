@@ -2,50 +2,51 @@ import hashlib
 import shutil
 from os import PathLike
 from pathlib import Path
-from typing import Self
 
 import ffmpeg
 from magic import Magic
 from rdflib import Graph, URIRef, XSD, Node, RDF, Literal
 from rdflib.extras.describer import Describer
+from rdflib.resource import Resource
 from tamper.vocabularies import TAMPER
 from PIL import Image as PILImage
 
 
-def _unwrap_literal(graph: Graph, subject: Node, predicate: Node):
-    value = graph.value(subject, predicate)
+def _unwrap_literal(resource: Resource, predicate: Node):
+    value = resource.value(predicate)
     if isinstance(value, Literal):
         return value.toPython()
+    elif value is not None:
+        raise ValueError(
+            f"Expected value of subject {resource} and predicate {predicate.n3()} to be Literal, got: {type(value)}"
+        )
 
 
-def _unwrap_expect_literal(graph: Graph, subject: Node, predicate: Node):
-    value = graph.value(subject, predicate)
+def _unwrap_expect_literal(resource: Resource, predicate: Node):
+    value = resource.value(predicate)
     if value is None:
         raise ValueError(
-            f"Missing expected value for subject {subject.n3()} and predicate {predicate.n3()}"
+            f"Missing expected value for subject {resource} and predicate {predicate.n3()}"
         )
     if not isinstance(value, Literal):
         raise ValueError(
-            f"Expected value of subject {subject.n3()} and predicate {predicate.n3()} to be Literal, got: {type(value)}"
+            f"Expected value of subject {resource} and predicate {predicate.n3()} to be Literal, got: {type(value)}"
         )
     return value.toPython()
 
 
-class MediaAsset:
-    subject: Node
-    graph: Graph
-
+class MediaAsset(Resource):
     @property
     def media_type(self) -> str:
-        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.mediaType)
+        return _unwrap_expect_literal(self, TAMPER.mediaType)
 
     @property
     def checksum(self) -> str:
-        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.checksum)
+        return _unwrap_expect_literal(self, TAMPER.checksum)
 
     @property
     def file_path(self) -> Path | None:
-        val = self.graph.value(self.subject, TAMPER.filePath)
+        val = self.graph.value(self.identifier, TAMPER.filePath)
         if val is not None:
             return Path(str(val))
         return None
@@ -60,89 +61,75 @@ class MediaAsset:
         if current_path == new_path:
             return
         shutil.move(current_path, new_path)
-        self.graph.remove((self.subject, TAMPER.filePath, None))
-        self.graph.add(
-            (self.subject, TAMPER.filePath, Literal(str(new_path.absolute())))
-        )
-
-    @classmethod
-    def from_graph(cls, graph: Graph, subject: Node) -> Self:
-        inst = cls.__new__(cls)
-        inst.graph = graph
-        inst.subject = subject
-        return inst
+        self.set(TAMPER.filePath, Literal(str(new_path.absolute())))
 
 
 class ImageAsset(MediaAsset):
     @property
     def width(self) -> int:
-        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.width)
+        return _unwrap_expect_literal(self, TAMPER.width)
 
     @property
     def height(self) -> int:
-        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.height)
+        return _unwrap_expect_literal(self, TAMPER.height)
 
     @property
     def pixel_format(self) -> str:
-        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.pixelFormat)
+        return _unwrap_expect_literal(self, TAMPER.pixelFormat)
 
 
-class Stream:
-    def __init__(self, graph: Graph, subject: Node):
-        self.graph = graph
-        self.subject = subject
-
+class Stream(Resource):
     @property
     def stream_index(self) -> int:
-        return _unwrap_expect_literal(self.graph, self.subject, TAMPER.streamIndex)
+        return _unwrap_expect_literal(self, TAMPER.streamIndex)
 
     @property
     def codec(self) -> str | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.codec)
+        return _unwrap_literal(self, TAMPER.codec)
 
     @property
     def bit_rate(self) -> int | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.bitRate)
+        return _unwrap_literal(self, TAMPER.bitRate)
 
     @property
     def language(self) -> str | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.language)
+        return _unwrap_literal(self, TAMPER.language)
 
 
 class AudioStream(Stream):
     @property
     def sample_rate(self) -> int | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.sampleRate)
+        return _unwrap_literal(self, TAMPER.sampleRate)
 
     @property
     def channels(self) -> int | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.channels)
+        return _unwrap_literal(self, TAMPER.channels)
 
     @property
     def bit_depth(self) -> int | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.bitDepth)
+        return _unwrap_literal(self, TAMPER.bitDepth)
 
 
 class VideoStream(Stream):
     @property
     def width(self) -> int | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.width)
+        return _unwrap_literal(self, TAMPER.width)
 
     @property
     def height(self) -> int | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.height)
+        return _unwrap_literal(self, TAMPER.height)
 
     @property
     def pixel_format(self) -> str | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.pixelFormat)
+        return _unwrap_literal(self, TAMPER.pixelFormat)
 
     @property
     def bit_depth(self) -> int | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.bitDepth)
+        return _unwrap_literal(self, TAMPER.bitDepth)
 
     @property
     def frame_rate(self) -> float | None:
-        return _unwrap_literal(self.graph, self.subject, TAMPER.frameRate)
+        return _unwrap_literal(self, TAMPER.frameRate)
 
 
 class StreamContainer(MediaAsset):
@@ -152,12 +139,12 @@ class StreamContainer(MediaAsset):
     def streams(self) -> list[AudioStream | VideoStream]:
         if self._streams is None:
             streams = []
-            for stream_uri in self.graph.objects(self.subject, TAMPER.hasStream):
-                stream_type = self.graph.value(stream_uri, RDF.type)
+            for stream in self.objects(TAMPER.hasStream):
+                stream_type = self.graph.value(stream.identifier, RDF.type)
                 if stream_type == TAMPER.VideoStream:
-                    streams.append(VideoStream(self.graph, stream_uri))
+                    streams.append(VideoStream(self.graph, stream.identifier))
                 elif stream_type == TAMPER.AudioStream:
-                    streams.append(AudioStream(self.graph, stream_uri))
+                    streams.append(AudioStream(self.graph, stream.identifier))
             self._streams = sorted(streams, key=lambda s: s.stream_index)
         return self._streams
 
@@ -251,15 +238,15 @@ def load_asset_from_file(g: Graph, asset_file: PathLike[str]) -> MediaAsset:
     if mimetype.startswith("image/"):
         asset.rdftype(TAMPER.ImageAsset)
         _extract_image_metadata(asset, asset_file)
-        return ImageAsset.from_graph(g, asset_uri)
+        return ImageAsset(g, asset_uri)
     elif mimetype.startswith("audio/"):
         asset.rdftype(TAMPER.AudioAsset)
         _extract_container_metadata(asset, asset_file)
-        return AudioAsset.from_graph(g, asset_uri)
+        return AudioAsset(g, asset_uri)
     elif mimetype.startswith("video/"):
         asset.rdftype(TAMPER.VideoAsset)
         _extract_container_metadata(asset, asset_file)
-        return VideoAsset.from_graph(g, asset_uri)
+        return VideoAsset(g, asset_uri)
 
     return asset_uri
 
