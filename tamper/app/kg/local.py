@@ -4,9 +4,10 @@ from rdflib import URIRef, Graph, Dataset, XSD
 
 import owlrl.DatatypeHandling
 from owlrl import OWLRL_Semantics
+from rdflib.graph import _TripleOrQuadPatternType
 
 from tamper.vocabularies import TAMPER, load_core_ontology
-from .knowledge_graph import KnowledgeGraph
+from .knowledge_graph import GraphNotFoundError, KnowledgeGraph
 from pathlib import Path
 
 
@@ -33,12 +34,6 @@ def check_consistency(ctx: Graph | Dataset) -> None:
     reasoner.closure()
     if reasoner.error_messages:
         raise InconsistencyError(reasoner.error_messages)
-
-
-def _read_dataset(path: PathLike[str]) -> Dataset:
-    dataset = Dataset()
-    dataset.parse(Path(path), format="trig")
-    return dataset
 
 
 class LocalKnowledgeGraph(KnowledgeGraph):
@@ -84,8 +79,19 @@ class LocalKnowledgeGraph(KnowledgeGraph):
         g = self.dataset.graph(graph_name)
         g -= statements
 
-    def query(self, sparql_query: str):
-        return self.dataset.query(sparql_query)
+    def query(
+        self,
+        sparql_query: str,
+        default_graph: bool = True,
+        named_graphs: list[URIRef] | None = None,
+    ):
+        ctx = Graph()
+        if default_graph:
+            ctx += self.dataset.default_graph
+        if named_graphs:
+            for named_graph in named_graphs:
+                ctx += self.dataset.graph(named_graph)
+        return ctx.query(sparql_query)
 
     def update(self, sparql_update_query: str):
         tmp = Dataset()
@@ -93,3 +99,27 @@ class LocalKnowledgeGraph(KnowledgeGraph):
         tmp.update(sparql_update_query)
         check_consistency(tmp)
         self.dataset = tmp
+
+    def get_default_graph(self) -> Graph:
+        copy = Graph()
+        copy += self.dataset.default_graph
+        return copy
+
+    def get_named_graph(self, identifier: URIRef) -> Graph:
+        copy = Graph(identifier=identifier)
+        copy += self.dataset.graph(identifier)
+        if len(copy) == 0:
+            raise GraphNotFoundError(identifier)
+        return copy
+
+    def any(self, quad: _TripleOrQuadPatternType) -> bool:
+        return any(self.dataset.quads(quad))
+
+    def describe(self, identifier: URIRef, graph_name: URIRef | None = None) -> Graph:
+        if graph_name is not None:
+            graph = self.dataset.graph(graph_name)
+        else:
+            graph = self.dataset.default_graph
+
+        result = graph.query(f"DESCRIBE {identifier.n3()}")
+        return result.graph

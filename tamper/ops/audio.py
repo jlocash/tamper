@@ -33,7 +33,7 @@ class ResampleAudio(Operation):
             (
                 ffmpeg.input(str(input_asset_file))
                 .output(str(output_asset_file), **output_kwargs)
-                .run(capture_stdout=False, capture_stderr=True)
+                .run(capture_stdout=False, capture_stderr=True, overwrite_output=True)
             )
         except ffmpeg.Error as e:
             stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else ""
@@ -82,7 +82,7 @@ class TranscodeAudio(Operation):
             (
                 ffmpeg.input(str(input_asset_file))
                 .output(str(output_asset_file), **output_kwargs)
-                .run(capture_stdout=False, capture_stderr=True)
+                .run(capture_stdout=False, capture_stderr=True, overwrite_output=True)
             )
         except ffmpeg.Error as e:
             stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else ""

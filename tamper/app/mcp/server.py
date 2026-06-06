@@ -1,16 +1,18 @@
+from datetime import datetime
 import os
-import re
 from contextlib import asynccontextmanager
 from graphlib import CycleError
 from os import PathLike
 from pathlib import Path
+import re
 
 from fastmcp import FastMCP, Context
 from fastmcp.exceptions import ToolError
-from rdflib import Graph, URIRef, RDF, RDFS
+from rdflib import DCAT, DCTERMS, PROV, Graph, URIRef, RDF, RDFS
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
-from tamper.app.kg.knowledge_graph import KnowledgeGraph
+from tamper.app.kg.knowledge_graph import GraphNotFoundError, KnowledgeGraph
+from tamper.dataset import Catalog, Dataset as TamperDataset
 from tamper.plans import (
     validate_plan_graph,
     GraphValidationError,
@@ -33,22 +35,60 @@ TAMPER_HOME_DIR = Path(os.environ["TAMPER_HOME"])
 TAMPER_PLANS_DIR = TAMPER_HOME_DIR / "plans"
 TAMPER_MEDIA_DIR = TAMPER_HOME_DIR / "media"
 
+CATALOG_URI = URIRef("catalog")
+
+
+def serialize_ttl(g: Graph):
+    """
+    Serializes the given graph in Turtle format with bindings
+    for the common Tamper namespaces
+    """
+    g.bind("tamper", TAMPER)
+    g.bind("plan", PLAN)
+    g.bind("prov", PROV)
+    g.bind("dcterms", DCTERMS)
+    g.bind("dcat", DCAT)
+    return g.serialize(format="turtle")
+
+
+def test_slug(slug: str):
+    # Matches alphanumeric strings joined by single hyphens
+    pattern = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    if not bool(re.match(pattern, slug)):
+        raise ValueError(f"plan name is not valid (must satisfy {pattern})")
+
+
+def init_catalog(kg: KnowledgeGraph):
+    cat = Catalog.new(Graph(), CATALOG_URI)
+    cat.title = "Tamper dataset catalog"
+    cat.description = "A simple catalog of the datasets available to Tamper"
+    cat.created = datetime.now()
+
+    kg.insert_statements_default(cat.graph)
+    kg.commit()
+
 
 @asynccontextmanager
 async def lifespan(server: FastMCP):
     if not TAMPER_HOME_DIR.exists():
         print(f"Initializing Tamper home directory at {TAMPER_HOME_DIR}")
         TAMPER_HOME_DIR.mkdir(parents=True, exist_ok=True)
+
     if not TAMPER_PLANS_DIR.exists():
         print(f"Initializing Tamper plans directory at {TAMPER_PLANS_DIR}")
         TAMPER_PLANS_DIR.mkdir(parents=True, exist_ok=True)
+
     if not TAMPER_MEDIA_DIR.exists():
         print(f"Initializing Tamper media directory at {TAMPER_MEDIA_DIR}")
         TAMPER_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
-    tamper_dataset_file = TAMPER_HOME_DIR / "dataset.trig"
-    print(f"Using dataset file at {tamper_dataset_file}")
 
-    kg = LocalKnowledgeGraph(tamper_dataset_file)
+    tamper_catalog_file = TAMPER_HOME_DIR / "catalog.trig"
+    print(f"Using catalog file at {tamper_catalog_file}")
+    kg = LocalKnowledgeGraph(tamper_catalog_file)
+
+    if not tamper_catalog_file.exists():
+        print("Initializing Tamper catalog")
+        init_catalog(kg)
 
     executor = ThreadPoolPlanExecutor(
         TAMPER_HOME_DIR / "media", max_workers=4, max_in_flight=32
@@ -63,32 +103,139 @@ async def lifespan(server: FastMCP):
 
 
 def get_kg(ctx: Context) -> KnowledgeGraph:
-    # Read via ctx.lifespan_context (server._lifespan_result) rather than
-    # ctx.request_context: background tasks run outside the request, so
-    # request_context is None there.
+    """Helper to retrieve the active knowledge graph object from the FastMCP context"""
     return ctx.lifespan_context["kg"]
 
 
 def get_plan_queue(ctx: Context) -> AsyncPlanQueue:
+    """Helper to retrieve the active operation plan queue from the FastMCP context"""
     return ctx.lifespan_context["plan_queue"]
 
 
 mcp = FastMCP("Tamper", lifespan=lifespan)
 
 
-@mcp.tool("TrackMediaAsset")
-async def track_media_asset(file_path: PathLike[str], ctx: Context) -> str:
+@mcp.tool("InspectCatalog")
+async def inspect_catalog(ctx: Context) -> str:
     """
-    Tracks a media asset in the knowledge graph.
+    Returns the catalog graph, detailing the available datasets
+
+    :return: An RDF graph of the dataset catalog, serialized in Turtle format
+    """
+    kg = get_kg(ctx)
+    default_graph = kg.get_default_graph()
+    return serialize_ttl(default_graph)
+
+
+@mcp.tool("CreateDataset")
+async def create_dataset(slug: str, title: str, description: str, ctx: Context) -> str:
+    """
+    Creates a new dataset
+
+    :param slug: The valid URI slug used to mint a new URI for the dataset
+    :param title: A human-readable display name for the dataset
+    :param description: A human-readable description of the dataset
+
+    :return: An RDF description of the new dataset, in Turtle format
+    """
+    try:
+        test_slug(slug)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
+
+    ds_uri = URIRef(f"dataset://{slug}")
+    kg = get_kg(ctx)
+    if kg.any((ds_uri, None, None, None)):
+        raise ToolError(f"Identifier {ds_uri} already in use")
+
+    subgraph = Graph()
+
+    dataset = TamperDataset.new(subgraph, ds_uri)
+    dataset.title = title
+    dataset.description = description
+    dataset.created = datetime.now()
+
+    catalog = Catalog(subgraph, CATALOG_URI)
+    catalog.add_dataset(dataset.identifier)
+
+    kg.insert_statements_default(subgraph)
+    kg.commit()
+
+    return serialize_ttl(subgraph)
+
+
+@mcp.tool("DescribeDataset")
+async def describe_dataset(identifier: str, ctx: Context) -> str:
+    """
+    Retrieves the top-level information about the dataset, excluding its contents.
+
+    :param identifier: The identifier of the dataset to retrieve
+    :returns: An RDF description of the dataset, serialized in Turtle format
+    """
+    identifier = URIRef(identifier)
+    kg = get_kg(ctx)
+    description = kg.describe(identifier)
+
+    if len(description) == 0 or (identifier, RDF.type, DCAT.Dataset) not in description:
+        raise ToolError(f"Dataset {identifier} not found")
+
+    return serialize_ttl(description)
+
+
+@mcp.tool("GetDatasetGraph")
+async def get_dataset_graph(identifier: str, ctx: Context) -> str:
+    """
+    Returns a graph containing the contents of the dataset.
+    NOTE: These graphs can get quite large, so prefer querying the dataset's graph
+        instead of fetching it in its entirety whenever possible
+
+    :param identifier: The identifier of the dataset to retrieve the contents of
+    :return: A graph containing the contents of the dataset, serialized in Turtle format
+    :raises ToolError: When the dataset is empty, i.e when no media assets or
+        operations have been added to it
+    """
+    identifier = URIRef(identifier)
+    kg = get_kg(ctx)
+    if not kg.any((identifier, RDF.type, DCAT.Dataset)):
+        raise ToolError(f"Identifier {identifier} is not associated a dataset")
+
+    try:
+        dataset_graph = kg.get_named_graph(identifier)
+    except GraphNotFoundError as e:
+        raise ToolError(f"Dataset {identifier} is empty") from e
+
+    return serialize_ttl(dataset_graph)
+
+
+@mcp.tool("LoadMediaAsset")
+async def load_media_asset(
+    dataset_uri: str, file_path: PathLike[str], ctx: Context
+) -> str:
+    """
+    Loads a media asset into the knowledge graph.
+
+    :param dataset_uri: The identifier of the dataset to load the media asset into
     :param file_path: The file path of the media asset.
     :return: The serialized media asset graph in Turtle format.
     """
+    dataset_uri = URIRef(dataset_uri)
     kg = get_kg(ctx)
-    g = Graph()
-    load_asset_from_file(g, file_path)
-    kg.insert_statements_default(g)
+    if not kg.any((dataset_uri, RDF.type, DCAT.Dataset)):
+        raise ToolError(f"Identifier {dataset_uri} is not associated a dataset")
+
+    kg = get_kg(ctx)
+    subgraph = Graph()
+    load_asset_from_file(subgraph, file_path)
+    kg.insert_statements(dataset_uri, subgraph)
+
+    # update dataset modified time
+    ds = TamperDataset(Graph(), dataset_uri)
+    ds.modified = datetime.now()
+    kg.insert_statements_default(ds.graph)
+
     kg.commit()
-    return g.serialize(format="turtle")
+
+    return serialize_ttl(subgraph)
 
 
 @mcp.tool("ListPlans")
@@ -203,10 +350,10 @@ async def create_plan(plan_graph_ttl: str, plan_name: str):
     :param plan_name: The name to be associated with the operation plan. This name may be used
         to retrieve the plan later
     """
-    # Matches alphanumeric strings joined by single hyphens
-    pattern = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    if not bool(re.match(pattern, plan_name)):
-        raise ToolError(f"plan name is not valid (must satisfy {pattern})")
+    try:
+        test_slug(plan_name)
+    except ValueError as e:
+        raise ToolError(str(e)) from e
 
     try:
         plan_graph = Graph()
@@ -217,7 +364,8 @@ async def create_plan(plan_graph_ttl: str, plan_name: str):
 
         # Create plan file
         plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
-        plan_graph.serialize(plan_file, format="turtle")
+        plan_graph_ttl = serialize_ttl(plan_graph)
+        plan_file.write_text(plan_graph)
     except BadSyntax as e:
         raise ToolError(f"Graph contains syntax errors: {str(e)}") from e
     except GraphValidationError as e:
@@ -254,7 +402,12 @@ async def delete_plan(plan_name: str):
 
 
 @mcp.tool("SubmitPlan", task=True)
-async def submit_plan(plan_name: str, initial_variables: dict[str, str], ctx: Context):
+async def submit_plan(
+    dataset_uri: str,
+    plan_name: str,
+    initial_variables: dict[str, str],
+    ctx: Context,
+):
     """
     Submits an operation plan for execution against the knowledge graph using the provided
     initial variables.
@@ -266,15 +419,20 @@ async def submit_plan(plan_name: str, initial_variables: dict[str, str], ctx: Co
     Example initial_variables (assumes "asset://myimage" resolves to a
     valid asset in the knowledge graph): ``{ "plan://v0": "asset://myimage" }``
 
+    :param dataset_uri: The identifier of the dataset to execute the plan on
     :param plan_name: The name of the operation plan to execute.
     :param initial_variables: A dictionary mapping plan:Variable URIs in the operation plan to asset URIs in the
         knowledge graph. These bindings should provide only the variables not produced by some step in the plan. For
         example, if a plan compresses an image and then adds noise to the compressed image, then the bindings should
         satisfy the original image being compressed. Without appropriate bindings, those variables remain ambiguous.
     """
-
     kg = get_kg(ctx)
     plan_queue = get_plan_queue(ctx)
+
+    dataset_uri = URIRef(dataset_uri)
+    dataset = TamperDataset(kg.describe(dataset_uri), dataset_uri)
+    if len(dataset.graph) == 0:
+        raise ToolError(f"Datasest {dataset_uri} does not exist")
 
     plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
     if not plan_file.exists():
@@ -291,44 +449,55 @@ async def submit_plan(plan_name: str, initial_variables: dict[str, str], ctx: Co
 
     # create a starting seed graph
     asset_uris = " ".join(uri.n3() for uri in initial_variables.values())
-    result = kg.query("DESCRIBE " + asset_uris)
+    result = kg.query_named(dataset.identifier, f"DESCRIBE {asset_uris}")
     seed_graph = result.graph
 
     try:
         result_graph = await plan_queue.put_plan(plan, seed_graph, initial_variables)
-        kg.insert_statements_default(result_graph)
+        kg.insert_statements(dataset.identifier, result_graph)
+        dataset.modified = datetime.now()
+        kg.insert_statements_default(dataset.graph)
         kg.commit()
-        return result_graph.serialize(format="turtle")
+        return serialize_ttl(result_graph)
     except CycleError as e:
         raise ToolError("Plan graph cannot contain cycles") from e
 
 
 @mcp.tool("QuerySPARQL")
-async def query_sparql(sparql_query_str: str, ctx: Context):
+async def query_sparql(
+    sparql_query_str: str, dataset_uris: list[str], default_graph: bool, ctx: Context
+):
     """
     Executes a (read-only) SPARQL query against the knowledge graph. The vocabulary should ALWAYS be fetched prior to
     executing any queries. Available vocabularies are exposed via MCP resources at:
     - vocabulary://tamper/core (the Tamper core ontology)
     - vocabulary://prov-o (the PROV-O ontology)
 
+    The query behavior can be modified by configuring ``dataset_uris`` and ``default_graph`` parameters.
+    These parameters control which graphs form the union the query will be run on.
+
     :param sparql_query_str: The SPARQL query to execute. Must be one of the following: SELECT, ASK, CONSTRUCT, DESCRIBE.
+    :param dataset_uris: A list of URIs of datasets to include in the queried union
+    :param default_graph: If set to true, will include the default graph in the queried union
     :return: In the case of a CONSTRUCT query, the result is the graph serialized in Turtle format. Otherwise, the result is a JSON object containing the results of the query.
     """
     kg = get_kg(ctx)
-    result = kg.query(sparql_query_str)
+    dataset_uris = list(map(URIRef, dataset_uris))
+    result = kg.query(sparql_query_str, default_graph, dataset_uris)
     if result.graph:
         result.graph.bind("tamper", TAMPER)
-        return result.graph.serialize(format="turtle")
+        return serialize_ttl(result.graph)
     return result.serialize(format="json")
 
 
-@mcp.tool("ExportDataset")
-async def export_dataset(output_filename: PathLike[str], ctx: Context) -> None:
+@mcp.tool("ExportCatalog", task=True)
+async def export_catalog(output_filename: PathLike[str], ctx: Context) -> None:
     """
-    Exports the RDF dataset and all referenced media asset files to a tarball archive.
-    The dataset is stored in TriG format in <archive root>/dataset.trig.
+    Exports the entire Tamper catalog, with all datasets and all referenced media asset files
+    to a tarball archive. The dataset is stored in TriG format in <archive root>/catalog.trig.
     Media assets are stored under <archive root>/assets and are renamed to <checksum>.<ext>.
 
+    :param dataset_uri: the identifier of the dataset to export.
     :param output_filename: The filename of the output tarball.
     """
     kg = get_kg(ctx)
@@ -344,7 +513,7 @@ def get_ontology() -> str:
     Retrieves the Tamper Core ontology, which is the set of terms used to describe media assets and operations.
     :return: The Tamper Core ontology serialized in Turtle format.
     """
-    return load_core_ontology().serialize(format="turtle")
+    return serialize_ttl(load_core_ontology())
 
 
 @mcp.resource("vocabulary://prov-o")
@@ -354,7 +523,7 @@ def get_prov_ontology() -> str:
 
     :return: The PROV-O ontology serialized in Turtle format.
     """
-    return load_prov_ontology().serialize(format="turtle")
+    return serialize_ttl(load_prov_ontology())
 
 
 @mcp.resource("vocabulary://tamper/plan")
@@ -364,7 +533,7 @@ def get_plan_ontology() -> str:
 
     :return: The Tamper Plan ontology serialized in Turtle format.
     """
-    return load_plan_ontology().serialize(format="turtle")
+    return serialize_ttl(load_plan_ontology())
 
 
 if __name__ == "__main__":
