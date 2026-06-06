@@ -76,11 +76,16 @@ class TestInsertAndQuery:
         assert result[0]
 
     def test_insert_named_graph_and_select(self, kg, simple_graph):
+        # query() materializes a flat union of the requested graphs, so named
+        # graphs are selected out-of-band via named_graphs rather than an
+        # in-query GRAPH {} clause.
         graph_name = URIRef("https://example.org/g1")
         kg.insert_statements(graph_name, simple_graph)
         result = list(
             kg.query(
-                f"SELECT ?o WHERE {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> ?o }} }}"
+                f"SELECT ?o WHERE {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}",
+                default_graph=False,
+                named_graphs=[graph_name],
             )
         )
         assert len(result) == 1
@@ -95,6 +100,126 @@ class TestInsertAndQuery:
         result = kg.query(f"DESCRIBE <{_SUBJECT}>")
         assert result.graph is not None
         assert len(result.graph) > 0
+
+
+# ---------------------------------------------------------------------------
+# query scoping — default_graph toggle + named_graphs union
+# ---------------------------------------------------------------------------
+
+
+class TestQueryScoping:
+    """query() runs against the flat union of the selected graphs."""
+
+    def _ask(self, kg, **kwargs):
+        return list(kg.query(f"ASK {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}", **kwargs))[0]
+
+    def test_default_query_excludes_named_graph(self, kg, simple_graph):
+        graph_name = URIRef("https://example.org/g1")
+        kg.insert_statements(graph_name, simple_graph)
+        # default graph only (the default) does not see named-graph triples
+        assert not self._ask(kg)
+
+    def test_named_graph_excluded_from_default_only_query(self, kg, simple_graph):
+        kg.insert_statements_default(simple_graph)
+        # asking for a named graph with default_graph=False sees nothing
+        assert not self._ask(
+            kg, default_graph=False, named_graphs=[URIRef("https://example.org/g1")]
+        )
+
+    def test_union_of_default_and_named(self, kg):
+        default_g = Graph()
+        default_g.add((_SUBJECT, _PREDICATE, Literal("from-default")))
+        kg.insert_statements_default(default_g)
+
+        named = URIRef("https://example.org/g1")
+        named_g = Graph()
+        named_g.add(
+            (URIRef("https://example.org/s2"), _PREDICATE, Literal("from-named"))
+        )
+        kg.insert_statements(named, named_g)
+
+        rows = list(
+            kg.query(
+                "SELECT ?o WHERE { ?s ?p ?o }",
+                default_graph=True,
+                named_graphs=[named],
+            )
+        )
+        values = {str(r.o) for r in rows}
+        assert values == {"from-default", "from-named"}
+
+    def test_query_named_helper_scopes_to_single_graph(self, kg, simple_graph):
+        kg.insert_statements_default(simple_graph)  # noise in the default graph
+        named = URIRef("https://example.org/g1")
+        kg.insert_statements(named, simple_graph)
+
+        rows = list(
+            kg.query_named(
+                named, f"SELECT ?o WHERE {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}"
+            )
+        )
+        # exactly one row — only the named graph is in scope, not the default
+        assert len(rows) == 1
+
+
+# ---------------------------------------------------------------------------
+# graph accessors — get_default_graph / get_named_graph / any / describe
+# ---------------------------------------------------------------------------
+
+
+class TestGraphAccessors:
+    def test_get_default_graph_returns_contents(self, kg, simple_graph):
+        kg.insert_statements_default(simple_graph)
+        g = kg.get_default_graph()
+        assert (_SUBJECT, _PREDICATE, _OBJECT) in g
+
+    def test_get_default_graph_is_detached_copy(self, kg, simple_graph):
+        kg.insert_statements_default(simple_graph)
+        g = kg.get_default_graph()
+        g.remove((_SUBJECT, _PREDICATE, _OBJECT))
+        # mutating the returned copy must not affect the store
+        assert kg.any((_SUBJECT, _PREDICATE, None))
+
+    def test_get_named_graph_returns_contents(self, kg, simple_graph):
+        named = URIRef("https://example.org/g1")
+        kg.insert_statements(named, simple_graph)
+        g = kg.get_named_graph(named)
+        assert (_SUBJECT, _PREDICATE, _OBJECT) in g
+
+    def test_get_named_graph_missing_raises(self, kg):
+        from tamper.app.kg.knowledge_graph import GraphNotFoundError
+
+        with pytest.raises(GraphNotFoundError):
+            kg.get_named_graph(URIRef("https://example.org/missing"))
+
+    def test_any_true_for_present_triple(self, kg, simple_graph):
+        kg.insert_statements_default(simple_graph)
+        assert kg.any((_SUBJECT, None, None, None))
+
+    def test_any_accepts_triple_pattern(self, kg, simple_graph):
+        # the server relies on the 3-element pattern form
+        kg.insert_statements_default(simple_graph)
+        assert kg.any((_SUBJECT, _PREDICATE, None))
+
+    def test_any_false_for_absent_triple(self, kg):
+        assert not kg.any((URIRef("https://example.org/nope"), None, None, None))
+
+    def test_any_sees_named_graph(self, kg, simple_graph):
+        named = URIRef("https://example.org/g1")
+        kg.insert_statements(named, simple_graph)
+        assert kg.any((_SUBJECT, None, None, None))
+
+    def test_describe_default_graph(self, kg, simple_graph):
+        kg.insert_statements_default(simple_graph)
+        g = kg.describe(_SUBJECT)
+        assert (_SUBJECT, _PREDICATE, _OBJECT) in g
+
+    def test_describe_scoped_to_named_graph(self, kg, simple_graph):
+        named = URIRef("https://example.org/g1")
+        kg.insert_statements(named, simple_graph)
+        # without the graph_name the subject lives in a named graph, not default
+        assert len(kg.describe(_SUBJECT)) == 0
+        assert (_SUBJECT, _PREDICATE, _OBJECT) in kg.describe(_SUBJECT, named)
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +240,9 @@ class TestDelete:
         kg.delete_statements(graph_name, simple_graph)
         result = list(
             kg.query(
-                f"ASK {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> ?o }} }}"
+                f"ASK {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}",
+                default_graph=False,
+                named_graphs=[graph_name],
             )
         )
         assert not result[0]
@@ -167,7 +294,9 @@ class TestSparqlUpdate:
         )
         result = list(
             kg.query(
-                f"ASK {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> ?o }} }}"
+                f"ASK {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}",
+                default_graph=False,
+                named_graphs=[graph_name],
             )
         )
         assert result[0]
