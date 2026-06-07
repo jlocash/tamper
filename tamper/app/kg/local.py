@@ -37,8 +37,7 @@ def check_consistency(ctx: Graph | Dataset) -> None:
 
 
 class LocalKnowledgeGraph(KnowledgeGraph):
-    def __init__(self, path: PathLike[str], fmt="trig"):
-        self.format = fmt
+    def __init__(self, path: PathLike[str]):
         self.path = Path(path)
         self.dataset = Dataset()
         self._open()
@@ -46,26 +45,26 @@ class LocalKnowledgeGraph(KnowledgeGraph):
     def _open(self):
         if not self.path.exists():
             return
-        dataset = Dataset()
-        dataset.parse(self.path, format=self.format)
+        dataset = Dataset(store="Oxigraph")
+        dataset.parse(self.path, format="ox-trig")
         self.dataset = dataset
 
     def commit(self):
         self.dataset.bind("tamper", TAMPER)
-        self.dataset.serialize(self.path, format=self.format)
+        self.dataset.serialize(self.path, format="ox-trig")
 
     def rollback(self):
         self._open()
 
     def insert_statements_default(self, statements: Graph):
-        tmp = Dataset()
+        tmp = Dataset(store="Oxigraph")
         tmp += self.dataset
         tmp.default_graph += statements
         check_consistency(tmp)
         self.dataset = tmp
 
     def insert_statements(self, graph_name: URIRef, statements: Graph):
-        tmp = Dataset()
+        tmp = Dataset(store="Oxigraph")
         tmp += self.dataset
         g = tmp.graph(graph_name)
         g += statements
@@ -94,14 +93,14 @@ class LocalKnowledgeGraph(KnowledgeGraph):
         return ctx.query(sparql_query)
 
     def update(self, sparql_update_query: str):
-        tmp = Dataset()
+        tmp = Dataset(store="Oxigraph")
         tmp += self.dataset
         tmp.update(sparql_update_query)
         check_consistency(tmp)
         self.dataset = tmp
 
     def get_default_graph(self) -> Graph:
-        copy = Graph()
+        copy = Graph(store="Oxigraph")
         copy += self.dataset.default_graph
         return copy
 
@@ -116,10 +115,11 @@ class LocalKnowledgeGraph(KnowledgeGraph):
         return any(self.dataset.quads(quad))
 
     def describe(self, identifier: URIRef, graph_name: URIRef | None = None) -> Graph:
+        query_str = f"DESCRIBE {identifier.n3()}"
         if graph_name is not None:
-            graph = self.dataset.graph(graph_name)
+            result = self.query(
+                query_str, default_graph=False, named_graphs=[graph_name]
+            )
         else:
-            graph = self.dataset.default_graph
-
-        result = graph.query(f"DESCRIBE {identifier.n3()}")
+            result = self.query(query_str)
         return result.graph

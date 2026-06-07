@@ -3,7 +3,7 @@
 import tarfile
 
 import pytest
-from rdflib import Graph, URIRef, Literal, Dataset
+from rdflib import Graph, URIRef, Literal, Dataset, XSD
 
 from tamper.app.kg.local import (
     LocalKnowledgeGraph,
@@ -15,7 +15,7 @@ from tamper.vocabularies import TAMPER
 _EX = URIRef("https://example.org/")
 _SUBJECT = URIRef("https://example.org/subject")
 _PREDICATE = URIRef("https://example.org/predicate")
-_OBJECT = Literal("hello")
+_OBJECT = Literal("hello", datatype=XSD.string)
 
 
 # ---------------------------------------------------------------------------
@@ -219,7 +219,8 @@ class TestGraphAccessors:
         kg.insert_statements(named, simple_graph)
         # without the graph_name the subject lives in a named graph, not default
         assert len(kg.describe(_SUBJECT)) == 0
-        assert (_SUBJECT, _PREDICATE, _OBJECT) in kg.describe(_SUBJECT, named)
+        result = kg.describe(_SUBJECT, named)
+        assert (_SUBJECT, _PREDICATE, _OBJECT) in result
 
 
 # ---------------------------------------------------------------------------
