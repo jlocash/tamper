@@ -280,34 +280,6 @@ class TestCommitAndRollback:
 
 
 # ---------------------------------------------------------------------------
-# SPARQL update
-# ---------------------------------------------------------------------------
-
-
-class TestSparqlUpdate:
-    # NOTE: rdflib's Dataset.update() requires quads; bare triples in
-    # INSERT DATA (without GRAPH {}) raise ValueError. The correct pattern
-    # is always to insert into a named graph.
-    def test_update_inserts_into_named_graph(self, kg):
-        graph_name = URIRef("https://example.org/g1")
-        kg.update(
-            f"INSERT DATA {{ GRAPH <{graph_name}> {{ <{_SUBJECT}> <{_PREDICATE}> 42 }} }}"
-        )
-        result = list(
-            kg.query(
-                f"ASK {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}",
-                default_graph=False,
-                named_graphs=[graph_name],
-            )
-        )
-        assert result[0]
-
-    def test_update_invalid_sparql_raises(self, kg):
-        with pytest.raises(Exception):
-            kg.update("THIS IS NOT SPARQL")
-
-
-# ---------------------------------------------------------------------------
 # check_consistency
 # ---------------------------------------------------------------------------
 

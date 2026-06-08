@@ -1,5 +1,7 @@
+from contextlib import contextmanager
 from os import PathLike
 
+from oxrdflib import OxigraphStore
 from rdflib import URIRef, Graph, Dataset, XSD
 
 import owlrl.DatatypeHandling
@@ -37,39 +39,48 @@ def check_consistency(ctx: Graph | Dataset) -> None:
 
 
 class LocalKnowledgeGraph(KnowledgeGraph):
+    """
+    Implementation of KnowledgeGraph using a local file
+    NOT thread safe
+    """
+
     def __init__(self, path: PathLike[str]):
         self.path = Path(path)
-        self.dataset = Dataset()
+        self.dataset = None
         self._open()
 
     def _open(self):
+        store = OxigraphStore()
+        self.dataset = Dataset(store=store)
         if not self.path.exists():
             return
-        dataset = Dataset(store="Oxigraph")
-        dataset.parse(self.path, format="ox-trig")
-        self.dataset = dataset
+        self.dataset.parse(self.path, format="ox-trig")
 
     def commit(self):
+        # throws if graph contains semantic inconsistencies
+        check_consistency(self.dataset)
         self.dataset.bind("tamper", TAMPER)
+        self.dataset.commit()
         self.dataset.serialize(self.path, format="ox-trig")
 
     def rollback(self):
         self._open()
 
+    @contextmanager
+    def commit_or_rollback(self):
+        try:
+            yield None
+            self.commit()
+        except Exception:
+            self.rollback()
+            raise
+
     def insert_statements_default(self, statements: Graph):
-        tmp = Dataset(store="Oxigraph")
-        tmp += self.dataset
-        tmp.default_graph += statements
-        check_consistency(tmp)
-        self.dataset = tmp
+        self.dataset.default_graph += statements
 
     def insert_statements(self, graph_name: URIRef, statements: Graph):
-        tmp = Dataset(store="Oxigraph")
-        tmp += self.dataset
-        g = tmp.graph(graph_name)
+        g = self.dataset.graph(graph_name)
         g += statements
-        check_consistency(tmp)
-        self.dataset = tmp
 
     def delete_statements_default(self, statements: Graph):
         self.dataset.default_graph -= statements
@@ -91,13 +102,6 @@ class LocalKnowledgeGraph(KnowledgeGraph):
             for named_graph in named_graphs:
                 ctx += self.dataset.graph(named_graph)
         return ctx.query(sparql_query)
-
-    def update(self, sparql_update_query: str):
-        tmp = Dataset(store="Oxigraph")
-        tmp += self.dataset
-        tmp.update(sparql_update_query)
-        check_consistency(tmp)
-        self.dataset = tmp
 
     def get_default_graph(self) -> Graph:
         copy = Graph(store="Oxigraph")

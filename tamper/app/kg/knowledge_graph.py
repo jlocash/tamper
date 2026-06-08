@@ -50,10 +50,6 @@ class KnowledgeGraph(abc.ABC):
         return self.query(sparql_query, False, [identifier])
 
     @abc.abstractmethod
-    def update(self, sparql_update_query: str):
-        pass
-
-    @abc.abstractmethod
     def get_default_graph(self) -> Graph:
         """Retrieves the default graph"""
         pass

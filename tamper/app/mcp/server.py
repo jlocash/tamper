@@ -35,7 +35,7 @@ TAMPER_HOME_DIR = Path(os.environ["TAMPER_HOME"])
 TAMPER_PLANS_DIR = TAMPER_HOME_DIR / "plans"
 TAMPER_MEDIA_DIR = TAMPER_HOME_DIR / "media"
 
-CATALOG_URI = URIRef("catalog")
+CATALOG_URI = URIRef("tamper://catalog")
 
 
 def serialize_ttl(g: Graph):
@@ -63,9 +63,8 @@ def init_catalog(kg: KnowledgeGraph):
     cat.title = "Tamper dataset catalog"
     cat.description = "A simple catalog of the datasets available to Tamper"
     cat.created = datetime.now()
-
-    kg.insert_statements_default(cat.graph)
-    kg.commit()
+    with kg.commit_or_rollback():
+        kg.insert_statements_default(cat.graph)
 
 
 @asynccontextmanager
@@ -157,9 +156,8 @@ async def create_dataset(slug: str, title: str, description: str, ctx: Context) 
 
     catalog = Catalog(subgraph, CATALOG_URI)
     catalog.add_dataset(dataset.identifier)
-
-    kg.insert_statements_default(subgraph)
-    kg.commit()
+    with kg.commit_or_rollback():
+        kg.insert_statements_default(subgraph)
 
     return serialize_ttl(subgraph)
 
@@ -226,14 +224,15 @@ async def load_media_asset(
     kg = get_kg(ctx)
     subgraph = Graph()
     load_asset_from_file(subgraph, file_path)
-    kg.insert_statements(dataset_uri, subgraph)
 
-    # update dataset modified time
-    ds = TamperDataset(Graph(), dataset_uri)
-    ds.modified = datetime.now()
-    kg.insert_statements_default(ds.graph)
+    with kg.commit_or_rollback():
+        kg.insert_statements(dataset_uri, subgraph)
 
-    kg.commit()
+        # update dataset modified time
+        ds = TamperDataset(Graph(), dataset_uri)
+        ds.modified = datetime.now()
+
+        kg.insert_statements_default(ds.graph)
 
     return serialize_ttl(subgraph)
 
@@ -453,11 +452,13 @@ async def submit_plan(
     seed_graph = result.graph
 
     try:
-        result_graph = await plan_queue.put_plan(plan, seed_graph, initial_variables)
-        kg.insert_statements(dataset.identifier, result_graph)
-        dataset.modified = datetime.now()
-        kg.insert_statements_default(dataset.graph)
-        kg.commit()
+        with kg.commit_or_rollback():
+            result_graph = await plan_queue.put_plan(
+                plan, seed_graph, initial_variables
+            )
+            kg.insert_statements(dataset.identifier, result_graph)
+            dataset.modified = datetime.now()
+            kg.insert_statements_default(dataset.graph)
         return serialize_ttl(result_graph)
     except CycleError as e:
         raise ToolError("Plan graph cannot contain cycles") from e
