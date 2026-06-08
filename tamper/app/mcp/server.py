@@ -1,13 +1,11 @@
 from datetime import datetime
-import os
-from contextlib import asynccontextmanager
 from graphlib import CycleError
 from os import PathLike
-from pathlib import Path
 import re
 
 from fastmcp import FastMCP, Context
 from fastmcp.exceptions import ToolError
+from fastmcp.server.lifespan import lifespan
 from rdflib import DCAT, DCTERMS, PROV, Graph, URIRef, RDF, RDFS
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
@@ -17,7 +15,6 @@ from tamper.plans import (
     validate_plan_graph,
     GraphValidationError,
 )
-from tamper.app.kg.local import LocalKnowledgeGraph
 from tamper.assets import load_asset_from_file
 from tamper.plans.async_plan_queue import AsyncPlanQueue
 from tamper.plans.operation_plan import OperationPlan
@@ -30,15 +27,10 @@ from tamper.vocabularies import (
     load_plan_ontology,
 )
 from tamper.utils.make_tarball import make_tarball
-
-TAMPER_HOME_DIR = Path(os.environ["TAMPER_HOME"])
-TAMPER_PLANS_DIR = TAMPER_HOME_DIR / "plans"
-TAMPER_MEDIA_DIR = TAMPER_HOME_DIR / "media"
-
-CATALOG_URI = URIRef("tamper://catalog")
+from tamper.app.config import config
 
 
-def serialize_ttl(g: Graph):
+def serialize_graph(g: Graph):
     """
     Serializes the given graph in Turtle format with bindings
     for the common Tamper namespaces
@@ -48,53 +40,17 @@ def serialize_ttl(g: Graph):
     g.bind("prov", PROV)
     g.bind("dcterms", DCTERMS)
     g.bind("dcat", DCAT)
-    return g.serialize(format="turtle")
+    return g.serialize(format="json-ld", auto_compact=True)
 
 
-def test_slug(slug: str):
-    # Matches alphanumeric strings joined by single hyphens
-    pattern = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
-    if not bool(re.match(pattern, slug)):
-        raise ValueError(f"plan name is not valid (must satisfy {pattern})")
-
-
-def init_catalog(kg: KnowledgeGraph):
-    cat = Catalog.new(Graph(), CATALOG_URI)
-    cat.title = "Tamper dataset catalog"
-    cat.description = "A simple catalog of the datasets available to Tamper"
-    cat.created = datetime.now()
-    with kg.commit_or_rollback():
-        kg.insert_statements_default(cat.graph)
-
-
-@asynccontextmanager
-async def lifespan(server: FastMCP):
-    if not TAMPER_HOME_DIR.exists():
-        print(f"Initializing Tamper home directory at {TAMPER_HOME_DIR}")
-        TAMPER_HOME_DIR.mkdir(parents=True, exist_ok=True)
-
-    if not TAMPER_PLANS_DIR.exists():
-        print(f"Initializing Tamper plans directory at {TAMPER_PLANS_DIR}")
-        TAMPER_PLANS_DIR.mkdir(parents=True, exist_ok=True)
-
-    if not TAMPER_MEDIA_DIR.exists():
-        print(f"Initializing Tamper media directory at {TAMPER_MEDIA_DIR}")
-        TAMPER_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
-
-    tamper_catalog_file = TAMPER_HOME_DIR / "catalog.trig"
-    print(f"Using catalog file at {tamper_catalog_file}")
-    kg = LocalKnowledgeGraph(tamper_catalog_file)
-
-    if not tamper_catalog_file.exists():
-        print("Initializing Tamper catalog")
-        init_catalog(kg)
-
+@lifespan
+async def app_lifespan(server: FastMCP):
+    kg = config.get_kg()
     executor = ThreadPoolPlanExecutor(
-        TAMPER_HOME_DIR / "media", max_workers=4, max_in_flight=32
+        config.TAMPER_MEDIA_DIR, max_workers=4, max_in_flight=32
     )
     plan_queue = AsyncPlanQueue(executor)
     await plan_queue.start()
-
     yield {
         "kg": kg,
         "plan_queue": plan_queue,
@@ -111,7 +67,7 @@ def get_plan_queue(ctx: Context) -> AsyncPlanQueue:
     return ctx.lifespan_context["plan_queue"]
 
 
-mcp = FastMCP("Tamper", lifespan=lifespan)
+mcp = FastMCP("Tamper", lifespan=app_lifespan)
 
 
 @mcp.tool("InspectCatalog")
@@ -123,7 +79,7 @@ async def inspect_catalog(ctx: Context) -> str:
     """
     kg = get_kg(ctx)
     default_graph = kg.get_default_graph()
-    return serialize_ttl(default_graph)
+    return serialize_graph(default_graph)
 
 
 @mcp.tool("CreateDataset")
@@ -131,18 +87,18 @@ async def create_dataset(slug: str, title: str, description: str, ctx: Context) 
     """
     Creates a new dataset
 
-    :param slug: The valid URI slug used to mint a new URI for the dataset
+    :param slug: A URI-safe identifier used to mint the dataset URI
     :param title: A human-readable display name for the dataset
     :param description: A human-readable description of the dataset
 
     :return: An RDF description of the new dataset, in Turtle format
     """
     try:
-        test_slug(slug)
-    except ValueError as e:
-        raise ToolError(str(e)) from e
+        ds_uri = URIRef(f"dataset://{slug}")
+        ds_uri.n3()
+    except Exception as e:
+        raise ToolError("slug must be URI-compatible") from e
 
-    ds_uri = URIRef(f"dataset://{slug}")
     kg = get_kg(ctx)
     if kg.any((ds_uri, None, None, None)):
         raise ToolError(f"Identifier {ds_uri} already in use")
@@ -154,12 +110,12 @@ async def create_dataset(slug: str, title: str, description: str, ctx: Context) 
     dataset.description = description
     dataset.created = datetime.now()
 
-    catalog = Catalog(subgraph, CATALOG_URI)
+    catalog = Catalog(subgraph, config.TAMPER_CATALOG_URI)
     catalog.add_dataset(dataset.identifier)
     with kg.commit_or_rollback():
         kg.insert_statements_default(subgraph)
 
-    return serialize_ttl(subgraph)
+    return serialize_graph(subgraph)
 
 
 @mcp.tool("DescribeDataset")
@@ -177,7 +133,7 @@ async def describe_dataset(identifier: str, ctx: Context) -> str:
     if len(description) == 0 or (identifier, RDF.type, DCAT.Dataset) not in description:
         raise ToolError(f"Dataset {identifier} not found")
 
-    return serialize_ttl(description)
+    return serialize_graph(description)
 
 
 @mcp.tool("GetDatasetGraph")
@@ -202,7 +158,7 @@ async def get_dataset_graph(identifier: str, ctx: Context) -> str:
     except GraphNotFoundError as e:
         raise ToolError(f"Dataset {identifier} is empty") from e
 
-    return serialize_ttl(dataset_graph)
+    return serialize_graph(dataset_graph)
 
 
 @mcp.tool("LoadMediaAsset")
@@ -234,7 +190,7 @@ async def load_media_asset(
 
         kg.insert_statements_default(ds.graph)
 
-    return serialize_ttl(subgraph)
+    return serialize_graph(subgraph)
 
 
 @mcp.tool("ListPlans")
@@ -246,7 +202,7 @@ async def list_plans():
     """
 
     plans = []
-    for plan_file in TAMPER_PLANS_DIR.glob("*.ttl"):
+    for plan_file in config.TAMPER_PLANS_DIR.glob("*.ttl"):
         plan_graph = Graph()
         plan_graph.parse(plan_file, format="turtle")
 
@@ -268,7 +224,7 @@ async def list_plans():
 
 
 @mcp.tool("CreatePlan")
-async def create_plan(plan_graph_ttl: str, plan_name: str):
+async def create_plan(plan_name: str, plan_graph_ttl: str):
     """
     Creates an operation plan. An operation plan can be thought of as a blueprint for
         materializing branches of the knowledge graph. It takes the shape of a DAG and contains steps and variables,
@@ -343,14 +299,16 @@ async def create_plan(plan_graph_ttl: str, plan_name: str):
         ] .
     ```
 
+    :param plan_name: The name to be associated with the operation plan. This name may be used
+        to retrieve the plan later
     :param plan_graph_ttl: The operation plan graph in RDF Turtle format. The graph should follow the plan vocabulary
         (`vocabulary://tamper/plan`). In essence, every plan:Variable should correspond to a media asset, and each
         plan:Step should correspond to a media operation defined by its plan:operationParameters.
-    :param plan_name: The name to be associated with the operation plan. This name may be used
-        to retrieve the plan later
     """
     try:
-        test_slug(plan_name)
+        pattern = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        if not bool(re.match(pattern, plan_name)):
+            raise ValueError(f"plan name is not valid (must satisfy {pattern})")
     except ValueError as e:
         raise ToolError(str(e)) from e
 
@@ -362,8 +320,8 @@ async def create_plan(plan_graph_ttl: str, plan_name: str):
         validate_plan_graph(plan_graph)
 
         # Create plan file
-        plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
-        plan_graph_ttl = serialize_ttl(plan_graph)
+        plan_file = config.TAMPER_PLANS_DIR / (plan_name + ".ttl")
+        plan_graph_ttl = serialize_graph(plan_graph)
         plan_file.write_text(plan_graph)
     except BadSyntax as e:
         raise ToolError(f"Graph contains syntax errors: {str(e)}") from e
@@ -379,7 +337,7 @@ async def get_plan(plan_name: str):
     :param plan_name: The name of the plan.
     :return: The graph associated with the given plan name, in RDF Turtle format.
     """
-    plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    plan_file = config.TAMPER_PLANS_DIR / (plan_name + ".ttl")
     if not plan_file.exists():
         raise ToolError(f"Plan with name {plan_file} does not exist")
 
@@ -394,7 +352,7 @@ async def delete_plan(plan_name: str):
 
     :param plan_name: The name of the plan.
     """
-    plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    plan_file = config.TAMPER_PLANS_DIR / (plan_name + ".ttl")
     if not plan_file.exists():
         raise ToolError(f"Plan with name {plan_file} does not exist")
     plan_file.unlink()
@@ -433,7 +391,7 @@ async def submit_plan(
     if len(dataset.graph) == 0:
         raise ToolError(f"Datasest {dataset_uri} does not exist")
 
-    plan_file = TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    plan_file = config.TAMPER_PLANS_DIR / (plan_name + ".ttl")
     if not plan_file.exists():
         raise ToolError(f"Plan with name {plan_file} does not exist")
 
@@ -459,7 +417,7 @@ async def submit_plan(
             kg.insert_statements(dataset.identifier, result_graph)
             dataset.modified = datetime.now()
             kg.insert_statements_default(dataset.graph)
-        return serialize_ttl(result_graph)
+        return serialize_graph(result_graph)
     except CycleError as e:
         raise ToolError("Plan graph cannot contain cycles") from e
 
@@ -487,7 +445,7 @@ async def query_sparql(
     result = kg.query(sparql_query_str, default_graph, dataset_uris)
     if result.graph:
         result.graph.bind("tamper", TAMPER)
-        return serialize_ttl(result.graph)
+        return serialize_graph(result.graph)
     return result.serialize(format="json")
 
 
@@ -514,7 +472,7 @@ def get_ontology() -> str:
     Retrieves the Tamper Core ontology, which is the set of terms used to describe media assets and operations.
     :return: The Tamper Core ontology serialized in Turtle format.
     """
-    return serialize_ttl(load_core_ontology())
+    return serialize_graph(load_core_ontology())
 
 
 @mcp.resource("vocabulary://prov-o")
@@ -524,7 +482,7 @@ def get_prov_ontology() -> str:
 
     :return: The PROV-O ontology serialized in Turtle format.
     """
-    return serialize_ttl(load_prov_ontology())
+    return serialize_graph(load_prov_ontology())
 
 
 @mcp.resource("vocabulary://tamper/plan")
@@ -534,7 +492,7 @@ def get_plan_ontology() -> str:
 
     :return: The Tamper Plan ontology serialized in Turtle format.
     """
-    return serialize_ttl(load_plan_ontology())
+    return serialize_graph(load_plan_ontology())
 
 
 if __name__ == "__main__":
