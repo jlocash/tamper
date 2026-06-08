@@ -89,6 +89,17 @@ class LocalKnowledgeGraph(KnowledgeGraph):
         g = self.dataset.graph(graph_name)
         g -= statements
 
+    def replace_statements_default(self, statements: Graph):
+        for s, p in statements.subject_predicates():
+            self.dataset.default_graph.remove((s, p, None))
+        self.dataset.default_graph += statements
+
+    def replace_statements(self, identifier: URIRef, statements: Graph):
+        g = self.dataset.graph(identifier)
+        for s, p in statements.subject_predicates():
+            g.remove((s, p, None))
+        g += statements
+
     def query(
         self,
         sparql_query: str,

@@ -188,7 +188,7 @@ async def load_media_asset(
         ds = TamperDataset(Graph(), dataset_uri)
         ds.modified = datetime.now()
 
-        kg.insert_statements_default(ds.graph)
+        kg.replace_statements_default(ds.graph)
 
     return serialize_graph(subgraph)
 

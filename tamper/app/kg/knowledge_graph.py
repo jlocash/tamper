@@ -31,6 +31,23 @@ class KnowledgeGraph(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def replace_statements_default(self, statements: Graph):
+        """
+        For each (s, p) pair in the given statements, removes all existing
+            triples with that pair from the default graph, and then inserts
+            the new statements.
+        """
+        pass
+
+    @abc.abstractmethod
+    def replace_statements(self, identifier: URIRef, statements: Graph):
+        """
+        For each (s, p) pair in the given statements, removes all existing
+            (s, p, ?) triples from the named graph, then inserts the new statements.
+        """
+        pass
+
+    @abc.abstractmethod
     def query(
         self,
         sparql_query: str,
