@@ -222,7 +222,7 @@ def _extract_image_metadata(asset: Describer, asset_file: PathLike[str]):
     with PILImage.open(asset_file) as img:
         asset.value(TAMPER.width, img.width)
         asset.value(TAMPER.height, img.height)
-        asset.value(TAMPER.pixelFormat, img.format)
+        asset.value(TAMPER.pixelFormat, img.mode)
 
 
 def load_asset_from_file(g: Graph, asset_file: PathLike[str]) -> MediaAsset:
