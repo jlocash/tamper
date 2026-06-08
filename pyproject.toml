@@ -23,4 +23,4 @@ dependencies = [
 ray = ["ray>=2.55.1"]
 
 [dependency-groups]
-dev = []
+dev = ["pytest-cov>=6.0.0"]
