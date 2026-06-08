@@ -1,4 +1,4 @@
-"""Tests for tamper.app.kg.local — LocalKnowledgeGraph and helpers."""
+"""Tests for the KnowledgeGraph interface and LocalKnowledgeGraph-specific helpers."""
 
 import tarfile
 
@@ -12,10 +12,11 @@ from tamper.app.kg.local import (
 from tamper.utils.make_tarball import get_asset_files, make_tarball
 from tamper.vocabularies import TAMPER
 
-_EX = URIRef("https://example.org/")
 _SUBJECT = URIRef("https://example.org/subject")
 _PREDICATE = URIRef("https://example.org/predicate")
+_PREDICATE2 = URIRef("https://example.org/predicate2")
 _OBJECT = Literal("hello", datatype=XSD.string)
+_OBJECT2 = Literal("world", datatype=XSD.string)
 
 
 # ---------------------------------------------------------------------------
@@ -23,10 +24,18 @@ _OBJECT = Literal("hello", datatype=XSD.string)
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
-def kg(tmp_path):
-    """A fresh LocalKnowledgeGraph backed by a temp file."""
+def _make_local_kg(tmp_path):
     return LocalKnowledgeGraph(tmp_path / "dataset.trig")
+
+
+_KG_IMPLS = [_make_local_kg]
+_KG_IDS = ["LocalKnowledgeGraph"]
+
+
+@pytest.fixture(params=_KG_IMPLS, ids=_KG_IDS)
+def kg(request, tmp_path):
+    """A fresh KnowledgeGraph instance, parameterized over all implementations."""
+    return request.param(tmp_path)
 
 
 @pytest.fixture
@@ -38,34 +47,7 @@ def simple_graph():
 
 
 # ---------------------------------------------------------------------------
-# LocalKnowledgeGraph — construction
-# ---------------------------------------------------------------------------
-
-
-class TestLocalKnowledgeGraphInit:
-    def test_opens_without_existing_file(self, tmp_path):
-        path = tmp_path / "new.trig"
-        assert not path.exists()
-        kg = LocalKnowledgeGraph(path)
-        assert kg is not None
-
-    def test_opens_existing_file(self, tmp_path):
-        path = tmp_path / "dataset.trig"
-        # create and persist a graph with one triple
-        kg1 = LocalKnowledgeGraph(path)
-        g = Graph()
-        g.add((_SUBJECT, _PREDICATE, _OBJECT))
-        kg1.insert_statements_default(g)
-        kg1.commit()
-
-        # re-open and verify the triple survived
-        kg2 = LocalKnowledgeGraph(path)
-        result = list(kg2.query(f"ASK {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}"))
-        assert result[0]
-
-
-# ---------------------------------------------------------------------------
-# insert / query
+# KnowledgeGraph interface — insert / query
 # ---------------------------------------------------------------------------
 
 
@@ -103,7 +85,7 @@ class TestInsertAndQuery:
 
 
 # ---------------------------------------------------------------------------
-# query scoping — default_graph toggle + named_graphs union
+# KnowledgeGraph interface — query scoping
 # ---------------------------------------------------------------------------
 
 
@@ -116,12 +98,10 @@ class TestQueryScoping:
     def test_default_query_excludes_named_graph(self, kg, simple_graph):
         graph_name = URIRef("https://example.org/g1")
         kg.insert_statements(graph_name, simple_graph)
-        # default graph only (the default) does not see named-graph triples
         assert not self._ask(kg)
 
     def test_named_graph_excluded_from_default_only_query(self, kg, simple_graph):
         kg.insert_statements_default(simple_graph)
-        # asking for a named graph with default_graph=False sees nothing
         assert not self._ask(
             kg, default_graph=False, named_graphs=[URIRef("https://example.org/g1")]
         )
@@ -158,12 +138,11 @@ class TestQueryScoping:
                 named, f"SELECT ?o WHERE {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}"
             )
         )
-        # exactly one row — only the named graph is in scope, not the default
         assert len(rows) == 1
 
 
 # ---------------------------------------------------------------------------
-# graph accessors — get_default_graph / get_named_graph / any / describe
+# KnowledgeGraph interface — graph accessors
 # ---------------------------------------------------------------------------
 
 
@@ -177,7 +156,6 @@ class TestGraphAccessors:
         kg.insert_statements_default(simple_graph)
         g = kg.get_default_graph()
         g.remove((_SUBJECT, _PREDICATE, _OBJECT))
-        # mutating the returned copy must not affect the store
         assert kg.any((_SUBJECT, _PREDICATE, None))
 
     def test_get_named_graph_returns_contents(self, kg, simple_graph):
@@ -197,7 +175,6 @@ class TestGraphAccessors:
         assert kg.any((_SUBJECT, None, None, None))
 
     def test_any_accepts_triple_pattern(self, kg, simple_graph):
-        # the server relies on the 3-element pattern form
         kg.insert_statements_default(simple_graph)
         assert kg.any((_SUBJECT, _PREDICATE, None))
 
@@ -217,14 +194,13 @@ class TestGraphAccessors:
     def test_describe_scoped_to_named_graph(self, kg, simple_graph):
         named = URIRef("https://example.org/g1")
         kg.insert_statements(named, simple_graph)
-        # without the graph_name the subject lives in a named graph, not default
         assert len(kg.describe(_SUBJECT)) == 0
         result = kg.describe(_SUBJECT, named)
         assert (_SUBJECT, _PREDICATE, _OBJECT) in result
 
 
 # ---------------------------------------------------------------------------
-# delete
+# KnowledgeGraph interface — delete
 # ---------------------------------------------------------------------------
 
 
@@ -250,7 +226,102 @@ class TestDelete:
 
 
 # ---------------------------------------------------------------------------
-# commit / rollback
+# KnowledgeGraph interface — replace
+# ---------------------------------------------------------------------------
+
+
+class TestReplace:
+    def test_replace_default_updates_existing_value(self, kg, simple_graph):
+        kg.insert_statements_default(simple_graph)
+
+        updated = Graph()
+        updated.add((_SUBJECT, _PREDICATE, _OBJECT2))
+        kg.replace_statements_default(updated)
+
+        g = kg.get_default_graph()
+        assert list(g.objects(_SUBJECT, _PREDICATE)) == [_OBJECT2]
+
+    def test_replace_default_no_duplicate_on_repeated_call(self, kg, simple_graph):
+        kg.insert_statements_default(simple_graph)
+        kg.replace_statements_default(simple_graph)
+
+        g = kg.get_default_graph()
+        assert len(list(g.objects(_SUBJECT, _PREDICATE))) == 1
+
+    def test_replace_default_only_clears_matching_sp_pairs(self, kg):
+        g = Graph()
+        g.add((_SUBJECT, _PREDICATE, _OBJECT))
+        g.add((_SUBJECT, _PREDICATE2, _OBJECT2))
+        kg.insert_statements_default(g)
+
+        replacement = Graph()
+        replacement.add((_SUBJECT, _PREDICATE, Literal("new", datatype=XSD.string)))
+        kg.replace_statements_default(replacement)
+
+        default = kg.get_default_graph()
+        assert list(default.objects(_SUBJECT, _PREDICATE)) == [
+            Literal("new", datatype=XSD.string)
+        ]
+        assert list(default.objects(_SUBJECT, _PREDICATE2)) == [_OBJECT2]
+
+    def test_replace_default_inserts_when_no_prior_value(self, kg):
+        replacement = Graph()
+        replacement.add((_SUBJECT, _PREDICATE, _OBJECT))
+        kg.replace_statements_default(replacement)
+
+        assert kg.any((_SUBJECT, _PREDICATE, None))
+
+    def test_replace_named_updates_existing_value(self, kg, simple_graph):
+        named = URIRef("https://example.org/g1")
+        kg.insert_statements(named, simple_graph)
+
+        updated = Graph()
+        updated.add((_SUBJECT, _PREDICATE, _OBJECT2))
+        kg.replace_statements(named, updated)
+
+        g = kg.get_named_graph(named)
+        assert list(g.objects(_SUBJECT, _PREDICATE)) == [_OBJECT2]
+
+    def test_replace_named_does_not_affect_default_graph(self, kg, simple_graph):
+        named = URIRef("https://example.org/g1")
+        kg.insert_statements_default(simple_graph)
+        kg.insert_statements(named, simple_graph)
+
+        updated = Graph()
+        updated.add((_SUBJECT, _PREDICATE, _OBJECT2))
+        kg.replace_statements(named, updated)
+
+        default = kg.get_default_graph()
+        assert list(default.objects(_SUBJECT, _PREDICATE)) == [_OBJECT]
+
+
+# ---------------------------------------------------------------------------
+# LocalKnowledgeGraph — construction
+# ---------------------------------------------------------------------------
+
+
+class TestLocalKnowledgeGraphInit:
+    def test_opens_without_existing_file(self, tmp_path):
+        path = tmp_path / "new.trig"
+        assert not path.exists()
+        kg = LocalKnowledgeGraph(path)
+        assert kg is not None
+
+    def test_opens_existing_file(self, tmp_path):
+        path = tmp_path / "dataset.trig"
+        kg1 = LocalKnowledgeGraph(path)
+        g = Graph()
+        g.add((_SUBJECT, _PREDICATE, _OBJECT))
+        kg1.insert_statements_default(g)
+        kg1.commit()
+
+        kg2 = LocalKnowledgeGraph(path)
+        result = list(kg2.query(f"ASK {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}"))
+        assert result[0]
+
+
+# ---------------------------------------------------------------------------
+# LocalKnowledgeGraph — commit / rollback
 # ---------------------------------------------------------------------------
 
 
@@ -269,7 +340,6 @@ class TestCommitAndRollback:
     def test_rollback_undoes_uncommitted_insert(self, tmp_path, simple_graph):
         path = tmp_path / "dataset.trig"
         kg = LocalKnowledgeGraph(path)
-        # commit empty state first
         kg.commit()
 
         kg.insert_statements_default(simple_graph)
@@ -280,7 +350,7 @@ class TestCommitAndRollback:
 
 
 # ---------------------------------------------------------------------------
-# check_consistency
+# check_consistency helper
 # ---------------------------------------------------------------------------
 
 
@@ -288,7 +358,6 @@ class TestCheckConsistency:
     def test_consistent_graph_does_not_raise(self):
         g = Graph()
         g.add((_SUBJECT, _PREDICATE, _OBJECT))
-        # plain graph with no ontology constraints should pass
         check_consistency(g)
 
     def test_consistent_dataset_does_not_raise(self):
@@ -367,6 +436,5 @@ class TestMakeTarball:
             f = tar.extractfile(trig_member)
             content = f.read().decode("utf-8")
 
-        # original absolute path should NOT appear; relative assets/ path should
         assert str(dummy) not in content
         assert "cafebabe" in content
