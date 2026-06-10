@@ -4,40 +4,17 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.14+](https://img.shields.io/badge/python-3.14%2B-blue.svg)](https://www.python.org/)
 
-> Take your media files, run degradation/tampering operations on them (JPEG
-> compression, blur, noise, video transcoding, …), and record every input,
+> Run degradation operations on media files (compression, blur, 
+> noise, transcoding etc), and record every input,
 > operation, and output as a queryable RDF provenance graph.
 
-## Highlights
-
-- **Media operations** — Compression, resizing, filtering, transcoding and [more](docs/operations.md).
-- **Provenance tracking** — each generated file is linked to the operation and
-  source it derived from via [PROV-O](https://www.w3.org/TR/prov-o/), so the
-  graph records the full derivation history.
-- **Operation plans** — define a DAG of operations once and run it over a set of
-  assets. Steps execute in dependency order, concurrently where possible, via
-  [Ray](https://www.ray.io/).
-- **SPARQL queries** — select assets by lineage, metadata, or the operations
-  that produced them.
-- **MCP server** — exposes tools and vocabularies so an MCP client or agent can
-  author plans and queries without prior RDF knowledge.
-- **Docs:** [RDF primer](docs/rdf-primer.md) ·
-  [Data Model](docs/data-model.md) · [Operations](docs/operations.md)
 
 ## Overview
 
 Tamper is a framework for describing multimedia assets and the media operations
-that transform them. It is built for people who work with media datasets and
-want to run progressive manipulations over them while keeping track of exactly
-how every output was produced.
-
-Media assets are the core _things_ Tamper tracks, and media operations are the
-processes that _transform_ them. When you compress an image, Tamper treats the
-result as an entirely new asset, related back to the original through the
-"compress" operation. When you are managing thousands of assets and running many
-combinations of operations, that web of relationships becomes very hard to
-manage. Tamper solves this by encoding the relationships directly in a semantic
-knowledge graph using RDF, so the lineage of any asset is always one query away.
+that transform them. It works by recording media assets as provenance entities 
+and operations as activities. Together, they form provenance chains that are
+semantically queryable. These chains form the basis of Tamper datasets.
 
 ```mermaid
 flowchart BT
@@ -54,27 +31,76 @@ flowchart BT
     class op1,op2,op3,op4,op5 op;
 ```
 
-### Why RDF?
+## Installation
 
-1. **Expressiveness.** Provenance relationships are deeply nested, and a graph
-   model represents them directly rather than forcing them into rows and
-   foreign keys.
-2. **Querying.** SPARQL traverses these relationships as paths through the
-   graph, avoiding the nested joins a relational schema would require.
-3. **Modularity.** Tamper defines its vocabulary in OWL, which assumes an open
-   world. You can integrate Tamper into your own RDF datasets, or define your
-   own operation types (planned).
+### Requirements
 
-New to RDF? You don't need to know it to use Tamper — the MCP server lets an AI
-agent handle it. For a short introduction, start with the
-[RDF primer](docs/rdf-primer.md).
+- **Python 3.14+**
+- [`uv`](https://docs.astral.sh/uv/) for dependency management
+- System packages `ffmpeg` (video/audio probing and transcoding) and `libmagic`
+  (MIME-type detection)
+
+### Install dependencies
+
+```shell
+# Initialize the environment
+uv venv
+source .venv/bin/activate
+
+# Install dependencies
+uv sync
+uv pip install -e .
+```
 
 ## Usage
 
+### MCP server
+
 The Tamper MCP server is the recommended way to use Tamper. It exposes tools and
 vocabularies so an AI agent (or any MCP client) can track assets, author
-operation plans, run them, and query the resulting graph. See
-[Installation](#installation) to get the server running first.
+operation plans, run them, and query the resulting graph.
+
+
+```shell
+# Run the MCP server (uses fastmcp.json)
+fastmcp run
+```
+
+`fastmcp.json` configures the server to listen over HTTP on `0.0.0.0:8000`
+and sets `TAMPER_HOME` to `~/.tamper` by default. This directory is where Tamper will store operation plans, media assets, and the RDF dataset.
+
+
+### Using the core library
+
+There is a set of core classes available for interfacing with the graph.
+Each class instance is mapped to a resource in the graph:
+
+```python
+from tamper.core import ImageAsset, load_asset_from_file
+from tamper.ops.image import CompressJPEG
+from rdflib import Graph, BNode
+
+# All of our data lives in a graph
+ctx = Graph()
+
+# Load an image asset
+img_asset = ImageAsset.from_file(ctx, "some-image.png")
+
+# Load an audio asset
+audio_asset = AudioAsset.from_file(ctx, "some-audio.wav")
+
+# Load a video asset
+video_asset = VideoAsset.from_file(ctx, "some-video.mp4")
+
+# Run an operation on the image
+op = CompressJPEG.new(ctx, BNode())
+op.quality_factor = 90          # compress with quality 90
+op.used(img)                    # uses the image asset
+
+# Generate the compressed image and save it in /media 
+op.mutate(out_dir="/media")
+```
+
 
 ### The data model
 
@@ -85,6 +111,7 @@ and the operation that produced it:
 
 ```turtle
 @prefix tamper: <https://example.org/tamper/core#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
 
 <asset://aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e> a tamper:ImageAsset ;
     tamper:checksum "sha256:aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e" ;
@@ -197,17 +224,20 @@ the resulting graph records the full derivation history.
 
 The server exposes the following tools to an MCP client:
 
-| Tool                     | Purpose                                                                                |
-| ------------------------ | -------------------------------------------------------------------------------------- |
-| `track_media_asset`      | Hash a file, extract its metadata, and add it to the knowledge graph.                  |
-| `create_plan`            | Validate an operation plan (Turtle) and save it under a name.                          |
-| `list_plans`             | List saved plans with their name, URI, step count, label, and description.             |
-| `get_plan`               | Return a saved plan's graph in Turtle.                                                 |
-| `delete_plan`            | Delete a saved plan by name.                                                           |
-| `execute_operation_plan` | Run a plan, binding its input variables to tracked assets, and materialize new assets. |
-| `sparql_query`           | Run a read-only SPARQL `SELECT`/`ASK`/`CONSTRUCT`/`DESCRIBE` against the graph.        |
-| `sparql_update`          | Run a SPARQL update against the graph.                                                 |
-| `export_dataset`         | Export the dataset and all referenced media files to a tarball.                        |
+| Tool                | Purpose                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------ |
+| `InspectCatalog`    | Return the catalog graph listing all available datasets.                                         |
+| `ExportCatalog`     | Export the entire catalog and all referenced media files to a tarball.                           |
+| `CreateDataset`     | Create a new named dataset with a title and description.                                         |
+| `DescribeDataset`   | Retrieve top-level metadata about a dataset.                                                     |
+| `GetDatasetGraph`   | Return the full RDF graph of a dataset's contents.                                     |
+| `LoadMediaAsset`    | Load an asset file into a dataset.                                   |
+| `CreatePlan`        | Saves an operation plan for later use.                                    |
+| `ListPlans`         | List saved plans.                                                                                |
+| `GetPlan`           | Retrieve a saved plan's graph.                                                           |
+| `DeletePlan`        | Delete a saved plan by name.                                                                     |
+| `SubmitPlan`        | Submit a plan for async execution against a dataset.              |
+| `QuerySPARQL`       | Run a read-only SPARQL `SELECT`/`ASK`/`CONSTRUCT`/`DESCRIBE` against the graph.                  |
 
 ### MCP resources
 
@@ -220,46 +250,3 @@ writing plans or queries:
 | `vocabulary://tamper/plan` | The Tamper plan vocabulary (steps and variables).     |
 | `vocabulary://prov-o`      | The PROV-O ontology (provenance relationships).       |
 
-## Installation
-
-### Requirements
-
-- **Python 3.14+**
-- [`uv`](https://docs.astral.sh/uv/) for dependency management
-- System packages `ffmpeg` (video/audio probing and transcoding) and `libmagic`
-  (MIME-type detection)
-
-### Install dependencies
-
-```shell
-# Initialize the environment
-uv venv
-source .venv/bin/activate
-
-# Install dependencies
-uv sync
-uv pip install -e .
-```
-
-### Run the MCP server
-
-```shell
-# Run the MCP server (uses fastmcp.json)
-fastmcp run
-```
-
-`fastmcp.json` configures the server to listen over **HTTP on `0.0.0.0:8000`**
-and sets `TAMPER_HOME` to `$HOME/.tamper` by default. On startup Tamper creates
-`TAMPER_HOME/` (and a `TAMPER_HOME/plans/` subdirectory) and stores the dataset
-at `TAMPER_HOME/dataset.trig`. Point your MCP client at the running HTTP
-endpoint to connect.
-
-## Feedback & Contributing
-
-Bug reports, feature requests, and questions about the data model are welcome —
-please [open an issue](https://github.com/jlocash/tamper/issues) on GitHub.
-Contributions of code, documentation, and new operation types are also welcome.
-
-## License
-
-Released under the [Apache License 2.0](LICENSE). Copyright (c) 2026 Joshua Locash.
