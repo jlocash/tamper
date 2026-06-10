@@ -198,7 +198,7 @@ tamper:streamIndex a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "stream index"@en ;
     rdfs:comment "The zero-based index of the stream within its container."@en ;
     rdfs:domain tamper:Stream ;
-    rdfs:range xsd:nonNegativeInteger .
+    rdfs:range xsd:integer .
 
 tamper:codec a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "codec"@en ;
@@ -210,7 +210,7 @@ tamper:bitRate a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "bit rate"@en ;
     rdfs:comment "The bit rate of the stream in bits per second."@en ;
     rdfs:domain tamper:Stream ;
-    rdfs:range xsd:nonNegativeInteger .
+    rdfs:range xsd:integer .
 
 tamper:language a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "language"@en ;
@@ -232,7 +232,7 @@ tamper:width a owl:DatatypeProperty, owl:FunctionalProperty ;
             tamper:VideoStream
         )
     ] ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:height a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "height"@en ;
@@ -244,7 +244,7 @@ tamper:height a owl:DatatypeProperty, owl:FunctionalProperty ;
             tamper:VideoStream
         )
     ] ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:colorSpace a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "color space"@en ;
@@ -268,7 +268,7 @@ tamper:bitDepth a owl:DatatypeProperty, owl:FunctionalProperty ;
             tamper:VideoStream
         )
     ] ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:pixelFormat a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "pixel format"@en ;
@@ -301,19 +301,19 @@ tamper:sampleRate a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "sample rate"@en ;
     rdfs:comment "The audio sample rate in Hertz."@en ;
     rdfs:domain tamper:AudioStream ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:channels a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "channels"@en ;
     rdfs:comment "The number of audio channels."@en ;
     rdfs:domain tamper:AudioStream ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:bitsPerSample a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "bits per sample"@en ;
     rdfs:comment "The number of bits per audio sample."@en ;
     rdfs:domain tamper:AudioStream ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 #################################################################
 # Datatype Properties - Operation specific
@@ -329,7 +329,7 @@ tamper:qualityFactor a owl:DatatypeProperty, owl:FunctionalProperty ;
             tamper:CompressWebP
         )
     ] ;
-    rdfs:range xsd:nonNegativeInteger .
+    rdfs:range xsd:integer .
 
 tamper:gaussianMean a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "gaussian mean"@en ;
@@ -345,19 +345,19 @@ tamper:gaussianSeed a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "gaussian seed"@en ;
     rdfs:comment "The seed for the random number generator used to draw the noise, recorded so the operation is exactly reproducible."@en ;
     rdfs:domain tamper:AddGaussianNoise ;
-    rdfs:range xsd:nonNegativeInteger .
+    rdfs:range xsd:integer .
 
 tamper:targetWidth a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "target width"@en ;
     rdfs:comment "The target width in pixels for a resize operation."@en ;
     rdfs:domain tamper:Resize ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:targetHeight a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "target height"@en ;
     rdfs:comment "The target height in pixels for a resize operation."@en ;
     rdfs:domain tamper:Resize ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:interpolation a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "interpolation"@en ;
@@ -375,7 +375,7 @@ tamper:kernelSize a owl:DatatypeProperty, owl:FunctionalProperty ;
             tamper:GaussianBlur
         )
     ] ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:blurSigma a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "blur sigma"@en ;
@@ -387,25 +387,25 @@ tamper:cropX a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "crop x"@en ;
     rdfs:comment "The x coordinate, in pixels, of the top-left corner of the crop region."@en ;
     rdfs:domain tamper:CropImage ;
-    rdfs:range xsd:nonNegativeInteger .
+    rdfs:range xsd:integer .
 
 tamper:cropY a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "crop y"@en ;
     rdfs:comment "The y coordinate, in pixels, of the top-left corner of the crop region."@en ;
     rdfs:domain tamper:CropImage ;
-    rdfs:range xsd:nonNegativeInteger .
+    rdfs:range xsd:integer .
 
 tamper:cropWidth a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "crop width"@en ;
     rdfs:comment "The width in pixels of the crop region."@en ;
     rdfs:domain tamper:CropImage ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:cropHeight a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "crop height"@en ;
     rdfs:comment "The height in pixels of the crop region."@en ;
     rdfs:domain tamper:CropImage ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:videoEncoder a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "video encoder"@en ;
@@ -417,7 +417,7 @@ tamper:crf a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "CRF"@en ;
     rdfs:comment "Constant Rate Factor — a perceptual-quality target for the encoder. Lower values mean higher quality and larger file size; 0 is lossless on x264."@en ;
     rdfs:domain tamper:TranscodeVideo ;
-    rdfs:range xsd:nonNegativeInteger .
+    rdfs:range xsd:integer .
 
 tamper:audioEncoder a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "audio encoder"@en ;
@@ -429,13 +429,13 @@ tamper:targetBitRate a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "target bit rate"@en ;
     rdfs:comment "The target bit rate in bits per second for an audio transcode operation."@en ;
     rdfs:domain tamper:TranscodeAudio ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 tamper:targetSampleRate a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "target sample rate"@en ;
     rdfs:comment "The target sample rate in Hertz for an audio resample operation."@en ;
     rdfs:domain tamper:ResampleAudio ;
-    rdfs:range xsd:positiveInteger .
+    rdfs:range xsd:integer .
 
 
 [] a owl:AllDisjointClasses ;
