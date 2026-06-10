@@ -1,62 +1,55 @@
 from os import PathLike
+from pathlib import Path
 
 import ffmpeg
-from rdflib import RDF, Literal, XSD, Node
-from rdflib.graph import Graph
-from rdflib.resource import Resource
+from rdflib import XSD
 
-from .operation import Operation
+from tamper.core import Operation, MappedProperty, VideoAsset
 from tamper.vocabularies import TAMPER
+
+_ENCODER_TO_SUFFIX = {
+    "libx264": ".mp4",
+    "libx265": ".mp4",
+    "libvpx": ".webm",
+    "libvpx-vp9": ".webm",
+    "libaom-av1": ".webm",
+    "libsvtav1": ".webm",
+    "prores": ".mov",
+    "mpeg2video": ".mpg",
+}
 
 
 class TranscodeVideo(Operation):
-    def __init__(self, video_encoder: str, crf: int):
-        super().__init__()
-        if not video_encoder:
-            raise ValueError("video_encoder must be a non-empty string")
-        if not 0 <= crf <= 63:
-            raise ValueError(f"crf must be between 0 and 63, got {crf}")
-        self.video_encoder = video_encoder
-        self.crf = crf
+    __rdf_type__ = TAMPER.TranscodeVideo
 
-    def graph(self) -> Graph:
-        r = Resource(Graph(), self.subject)
-        r[RDF.type] = TAMPER.TranscodeVideo
-        r[TAMPER.videoEncoder] = Literal(self.video_encoder)
-        r[TAMPER.crf] = Literal(self.crf, datatype=XSD.nonNegativeInteger)
-        return r.graph
+    video_encoder: MappedProperty[str] = MappedProperty(TAMPER.videoEncoder, XSD.string)
+    crf: MappedProperty[int] = MappedProperty(TAMPER.crf, XSD.integer)
 
-    def transform(
-        self, input_video_file: PathLike[str], output_video_file: PathLike[str]
-    ):
-        probe_result = ffmpeg.probe(str(input_video_file))
-        streams = probe_result["streams"]
+    def mutate(self, out_dir: PathLike[str] | None = None):
+        used = self.get_used()
+        if len(used) != 1:
+            raise ValueError("Operation requires exactly one video asset")
 
-        codec_types = {s["codec_type"] for s in streams}
+        video_asset = VideoAsset(self.graph, used[0])
+        if not video_asset.has_video():
+            raise ValueError("Input asset has no video stream to transcode")
 
-        output_kwargs = {"format": probe_result["format"]["format_name"].split(",")[0]}
-        if "video" in codec_types:
-            output_kwargs["vcodec"] = self.video_encoder
-            output_kwargs["crf"] = str(self.crf)
-        if "audio" in codec_types:
+        output_kwargs = {"vcodec": self.video_encoder, "crf": self.crf}
+        if video_asset.has_audio():
             output_kwargs["acodec"] = "copy"
 
+        suffix = _ENCODER_TO_SUFFIX.get(
+            self.video_encoder, Path(video_asset.file_path).suffix
+        )
         try:
-            (
-                ffmpeg.input(str(input_video_file))
-                .output(str(output_video_file), **output_kwargs)
-                .run(capture_stderr=True, overwrite_output=True)
-            )
+            with self._generates_file(dir=out_dir, suffix=suffix) as output_asset_file:
+                (
+                    ffmpeg.input(str(video_asset.file_path))
+                    .output(str(output_asset_file), **output_kwargs)
+                    .run(
+                        capture_stdout=False, capture_stderr=True, overwrite_output=True
+                    )
+                )
         except ffmpeg.Error as e:
             stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else ""
             raise RuntimeError(f"ffmpeg failed: {stderr}") from e
-
-    @classmethod
-    def copy_from_graph(cls, graph: Graph, subject: Node):
-        video_encoder = graph.value(subject, TAMPER.videoEncoder)
-        if video_encoder is None:
-            raise ValueError("No video encoder found")
-        crf = graph.value(subject, TAMPER.crf)
-        if crf is None:
-            raise ValueError("No CRF found")
-        return cls(str(video_encoder), int(crf))

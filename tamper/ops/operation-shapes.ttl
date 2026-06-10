@@ -1,0 +1,213 @@
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix plan:   <https://example.org/tamper/plan#> .
+@prefix tamper: <https://example.org/tamper/core#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+
+# Property Shapes
+
+# Image-related Property Shapes
+
+tamper:QualityFactorShape a sh:PropertyShape ;
+    sh:path tamper:qualityFactor ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 0 ;
+    sh:maxInclusive 100 ;
+    sh:message "Quality factor must be a non-negative integer between 0 - 100" .
+
+tamper:CropXShape a sh:PropertyShape;
+    sh:path tamper:cropX ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 0 ;
+    sh:message "Crop x-coordinate must be a non-negative integer." .
+
+tamper:CropYShape a sh:PropertyShape;
+    sh:path tamper:cropY ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 0 ;
+    sh:message "Crop x-coordinate must be a non-negative integer." .
+
+tamper:CropWidthShape a sh:PropertyShape;
+    sh:path tamper:cropWidth ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 1 ;
+    sh:message "Crop width must be a positive integer." .
+
+tamper:CropHeightShape a sh:PropertyShape;
+    sh:path tamper:cropHeight ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 1 ;
+    sh:message "Crop height must be a positive integer." .
+
+tamper:TargetWidthShape a sh:PropertyShape ;
+    sh:path tamper:targetWidth ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 1 ;
+    sh:message "Target width must be a positive integer." .
+
+tamper:TargetHeightShape a sh:PropertyShape ;
+    sh:path tamper:targetHeight ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 1 ;
+    sh:message "Target height must be a positive integer." .
+
+tamper:InterpolationShape a sh:PropertyShape ;
+    sh:path tamper:interpolation ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:in ( "nearest" "linear" "cubic" "area" "lanczos4" ) ;
+    sh:message "Interpolation must be one of (nearest, linear, cubic, area, lanczos4)" .
+
+tamper:KernelSizeShape a sh:PropertyShape ;
+    sh:path tamper:kernelSize ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 1 ;
+    sh:message "kernel size must be a positive integer" .
+
+tamper:BlurSigmaShape a sh:PropertyShape ;
+    sh:path tamper:blurSigma ;
+    sh:datatype xsd:double ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 0 ;
+    sh:message "blur sigma must be a non-negative double" .
+
+tamper:GaussianMeanShape a sh:PropertyShape ;
+    sh:path tamper:gaussianMean ;
+    sh:datatype xsd:double ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:message "Gaussian mean must be a double." .
+
+tamper:GaussianStdShape a sh:PropertyShape ;
+    sh:path tamper:gaussianStd ;
+    sh:datatype xsd:double ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:message "Gaussian std must be a double" .
+
+tamper:GaussianSeedShape a sh:PropertyShape ;
+    sh:path tamper:gaussianSeed ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 0 ;
+    sh:message "Gaussian seed must be a non-negative integer" .
+
+# Audio-related Property Shapes
+
+tamper:TargetSampleRateShape a sh:PropertyShape ;
+    sh:path tamper:targetSampleRate ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 1 ;
+    sh:message "Target sample rate must be a positive integer" .
+
+tamper:AudioEncoderShape a sh:PropertyShape ;
+    sh:path tamper:audioEncoder ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:message "Audio encoder must be a string" .
+
+tamper:TargetBitRateShape a sh:PropertyShape ;
+    sh:path tamper:targetBitRate ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 1 ;
+    sh:message "Target bit rate must be a positive integer" .
+
+# Video-related Property Shapes
+
+tamper:VideoEncoderShape a sh:PropertyShape ;
+    sh:path tamper:videoEncoder ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:message "Video encoder must be a string" .
+
+tamper:CRFShape a sh:PropertyShape ;
+    sh:path tamper:crf ;
+    sh:datatype xsd:integer ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 0 ;
+    sh:message "CRF must be a non-negative integer" .
+
+# Node Shapes
+
+# Image Operations
+
+tamper:CompressJPEGShape a sh:NodeShape ;
+    sh:targetClass tamper:CompressJPEG ;
+    sh:property tamper:QualityFactorShape .
+
+tamper:CompressWebPShape a sh:NodeShape ;
+    sh:targetClass tamper:CompressWebP ;
+    sh:property tamper:QualityFactorShape .
+
+tamper:CropImageShape a sh:NodeShape ;
+    sh:targetClass tamper:CropImage ;
+    sh:property tamper:CropXShape ;
+    sh:property tamper:CropYShape ;
+    sh:property tamper:CropWidthShape ;
+    sh:property tamper:CropHeightShape .
+
+tamper:ResizeShape a sh:NodeShape ;
+    sh:targetClass tamper:Resize ;
+    sh:property tamper:TargetWidthShape ;
+    sh:property tamper:TargetHeightShape ;
+    sh:property tamper:InterpolationShape .
+
+tamper:MedianFilterShape a sh:NodeShape ;
+    sh:targetClass tamper:MedianFilter ;
+    sh:property tamper:KernelSizeShape .
+
+tamper:GaussianBlurShape a sh:NodeShape ;
+    sh:targetClass tamper:GaussianBlur ;
+    sh:property tamper:KernelSizeShape ;
+    sh:property tamper:BlurSigmaShape .
+
+tamper:AddGaussianNoiseShape a sh:NodeShape ;
+    sh:targetClass tamper:AddGaussianNoise ;
+    sh:property tamper:GaussianMeanShape ;
+    sh:property tamper:GaussianStdShape ;
+    sh:property tamper:GaussianSeedShape .
+
+# Audio Operations
+
+tamper:ResampleAudioShape a sh:NodeShape ;
+    sh:targetClass tamper:ResampleAudio ;
+    sh:property tamper:TargetSampleRateShape .
+
+tamper:TranscodeAudioShape a sh:NodeShape ;
+    sh:targetClass tamper:TranscodeAudio ;
+    sh:property tamper:AudioEncoderShape ;
+    sh:property tamper:TargetBitRateShape .
+
+# Video Operations
+
+tamper:TranscodeVideoShape a sh:NodeShape ;
+    sh:targetClass tamper:TranscodeVideo ;
+    sh:property tamper:VideoEncoderShape ;
+    sh:property tamper:CRFShape .

@@ -30,7 +30,7 @@ be defined as part of a `plan:Step` in an operation plan:
 @prefix tamper: <https://example.org/tamper/core#> .
 
 [] a plan:Step ;
-    plan:operationParameters [
+    plan:parameters [
         plan:operationType tamper:CompressJPEG ;
         tamper:qualityFactor 90
     ] .

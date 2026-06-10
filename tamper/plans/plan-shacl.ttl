@@ -57,20 +57,27 @@ plan:StepShape a sh:NodeShape ;
         sh:message "A step must have exactly one output variable." ;
     ] ;
 
-    # Every stem must have operation parameters
+    # Every step must have an operation type
     sh:property [
-        sh:path plan:operationParameters ;
+        sh:path plan:operationType ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:node plan:OperationParametersShape ;
-        sh:message "A step must have exactly one plan:operationParameters." ;
+        sh:message "A steup must have exactly one operation type" ;
+    ] ;
+
+    # Every stem must have operation parameters
+    sh:property [
+        sh:path plan:parameters ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "A step must have exactly one plan:parameters." ;
     ] ;
 
     # A step cannot consume and produce the same variable (self-loop).
     sh:sparql [
         sh:message "A step's input and output variable must be different." ;
         sh:select """
-            PREFIX plan: <http://purl.org/net/p-plan#>
+            PREFIX plan: <https://example.org/tamper/plan#>
             SELECT $this WHERE {
                 $this plan:hasInputVariable  ?in .
                 $this plan:hasOutputVariable ?out .
@@ -79,14 +86,6 @@ plan:StepShape a sh:NodeShape ;
         """ ;
     ] .
 
-plan:OperationParametersShape a sh:NodeShape ;
-    # Must have operation type
-    sh:property [
-        sh:path plan:operationType ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-        sh:message "Operation parameters must include operation type" ;
-    ] .
 
 plan:VariableShape a sh:NodeShape ;
     sh:targetClass plan:Variable ;

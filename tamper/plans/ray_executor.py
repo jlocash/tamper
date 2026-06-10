@@ -1,17 +1,14 @@
-from datetime import datetime
-import mimetypes
 import os
-import tempfile
 
 from ray.actor import ActorHandle
 from ray.types import ObjectRef
 
-from tamper.assets import load_asset_from_file
+from tamper.core import OperationPlan, PlanStep
 
-from .operation_plan import OperationPlanExecutor, OperationPlan, PlanStep
-from .thread_executor import operation_map
-from rdflib import PROV, Graph, Literal, Node
-from tamper.vocabularies import TAMPER, PLAN
+from .operation_plan import OperationPlanExecutor
+from .thread_executor import StepExecutor, materialize_operations
+from rdflib import Graph, Node, URIRef
+from tamper.vocabularies import TAMPER
 from pathlib import Path
 import ray
 
@@ -33,54 +30,26 @@ class RemoteGraph:
     def get_graph(self) -> Graph:
         return self.graph
 
+    def cbd(self, identifiers: list[Node]) -> Graph:
+        subgraph = Graph()
+        for identifier in identifiers:
+            self.graph.cbd(identifier, target_graph=subgraph)
+        return subgraph
+
 
 @ray.remote
-def execute_step(
-    plan_graph: Graph,
-    step_uri: Node,
-    result_graph: ActorHandle[RemoteGraph],
-    out_dir: Path,
-    mapped_uri: Node,
-) -> Node:
-    params_uri = plan_graph.value(step_uri, PLAN.operationParameters)
-    if params_uri is None:
-        raise ValueError("No operation parameters found")
-    op_type = plan_graph.value(params_uri, predicate=PLAN.operationType)
-    if op_type is None:
-        raise ValueError("No operation type found")
-    if op_type not in operation_map:
-        raise ValueError(f"Unsupported operation type: {op_type}")
+class RemoteStepExecutor(StepExecutor):
+    def __init__(self, plan_graph: Graph, step_uri: URIRef, out_dir: os.PathLike[str]):
+        step = PlanStep(plan_graph, step_uri)
+        super().__init__(step, out_dir)
 
-    # prep operation
-    op = operation_map[op_type].copy_from_graph(plan_graph, params_uri)
-
-    asset_file = ray.get(result_graph.get_asset_file_path.remote(mapped_uri))
-    if asset_file is None:
-        raise ValueError(f"Asset {mapped_uri} does not have a local file path")
-
-    fd, tmp_path = tempfile.mkstemp()
-    os.close(fd)
-
-    start = datetime.now()
-    op.transform(asset_file, tmp_path)
-    end = datetime.now()
-
-    # move asset to final location
-    subgraph = Graph()
-    new_asset = load_asset_from_file(subgraph, tmp_path)
-    suffix = mimetypes.guess_extension(new_asset.media_type)
-    checksum = new_asset.checksum.split(":")[-1]
-    new_asset.move_file(out_dir / (checksum + suffix))
-
-    # construct the subgraph
-    subgraph.add((op.subject, PROV.startedAtTime, Literal(start)))
-    subgraph.add((op.subject, PROV.endedAtTime, Literal(end)))
-    subgraph.add((op.subject, PROV.used, mapped_uri))
-    subgraph.add((new_asset.identifier, PROV.wasGeneratedBy, op.subject))
-
-    # update remote graph
-    ray.get(result_graph.add_statements.remote(subgraph))
-    return new_asset.identifier
+    def execute(
+        self, result_graph: ActorHandle[RemoteGraph], mapping: dict[Node, Node]
+    ):
+        subgraph = ray.get(result_graph.cbd.remote(mapping.values()))
+        result_uri, subgraph = super().execute(subgraph, mapping)
+        ray.get(result_graph.add_statements.remote(subgraph))
+        return result_uri
 
 
 class RayExecutor(OperationPlanExecutor):
@@ -97,8 +66,10 @@ class RayExecutor(OperationPlanExecutor):
         # make immutable copy of plan_graph shared by all workers
         plan_graph_ref = ray.put(plan.graph)
 
+        result_graph, step_to_op = materialize_operations(plan)
+
         # actor to hold the final result graph, updated by each worker task
-        result_graph = RemoteGraph.remote(seed_graph)
+        result_graph = RemoteGraph.remote(result_graph)
 
         # maps variable URIs to asset URIs
         var_futures: dict[Node, ObjectRef[Node]] = {
@@ -122,22 +93,22 @@ class RayExecutor(OperationPlanExecutor):
 
             while pending and len(ref_to_step) < self.max_in_flight:
                 step: PlanStep = pending.pop(0)
-                step_input = step.input_variables[0]
                 step_output = step.output_variables[0]
-                if step_input.identifier not in var_futures:
-                    raise RuntimeError(
-                        f"Missing input variables for step {step.identifier}"
-                    )
 
-                print(f"Executing step {step.identifier.n3()}")
-                ref = execute_step.remote(
-                    plan_graph_ref,
-                    step.identifier,
-                    result_graph,
-                    self.out_dir,
-                    var_futures[step_input.identifier],
+                mapping = {step.identifier: step_to_op[step.identifier]}
+                for step_input in step.input_variables:
+                    if step_input.identifier not in var_futures:
+                        raise RuntimeError(
+                            f"Missing input variables for step {step.identifier}"
+                        )
+                    asset_uri = ray.get(var_futures[step_input.identifier])
+                    mapping[step_input.identifier] = asset_uri
+
+                step_actor = RemoteStepExecutor.remote(
+                    plan_graph_ref, step.identifier, self.out_dir
                 )
-
+                print(f"Executing step {step.identifier.n3()}")
+                ref = step_actor.execute.remote(result_graph, mapping)
                 var_futures[step_output.identifier] = ref
                 ref_to_step[ref] = step
 

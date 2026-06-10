@@ -25,7 +25,7 @@ plan:OperationPlan a owl:Class;
 plan:Step a owl:Class;
   rdfs:label "Step"@en;
   rdfs:comment """A single node in a plan. Purely structural: it wires inputs to an
-        output and points at the operation to run via plan:operationParameters."""@en;
+        output and points at the operation to run via plan:parameters."""@en;
   rdfs:subClassOf p-plan:Step.
 
 plan:isStepOfPlan a owl:ObjectProperty ;
@@ -85,12 +85,9 @@ plan:variable a owl:ObjectProperty, owl:FunctionalProperty;
 
 plan:OperationParameters a owl:Class;
   rdfs:label "Operation Parameters"@en;
-  rdfs:comment """A bundle naming an operation (plan:operationType) and carrying its
-        parameter values. Decoupling these from plan:Step keeps the step purely
-        structural and confines any parameter-property domain entailment to a single
-        neutral class instead of leaking an operation type onto the step."""@en.
+  rdfs:comment """A bundle carrying the parameters associated with the operation."""@en.
 
-plan:operationParameters a owl:ObjectProperty, owl:FunctionalProperty;
+plan:parameters a owl:ObjectProperty, owl:FunctionalProperty;
   rdfs:label "operation parameters"@en;
   rdfs:comment "Binds a step to the operation (and parameters) it executes."@en;
   rdfs:domain plan:Step;

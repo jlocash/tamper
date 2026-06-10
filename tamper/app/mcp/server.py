@@ -6,16 +6,15 @@ import re
 from fastmcp import FastMCP, Context
 from fastmcp.exceptions import ToolError
 from fastmcp.server.lifespan import lifespan
-from rdflib import DCAT, DCTERMS, PROV, Graph, URIRef, RDF, RDFS
+from rdflib import DCAT, DCTERMS, PROV, XSD, Graph, URIRef, RDF, RDFS
 from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from tamper.app.kg.knowledge_graph import GraphNotFoundError, KnowledgeGraph
-from tamper.dataset import Catalog, Dataset as TamperDataset
+from tamper.core import Catalog, Dataset as TamperDataset, load_asset_from_file
 from tamper.plans import (
     validate_plan_graph,
     GraphValidationError,
 )
-from tamper.assets import load_asset_from_file
 from tamper.plans.async_plan_queue import AsyncPlanQueue
 from tamper.plans.operation_plan import OperationPlan
 from tamper.plans.thread_executor import ThreadPoolPlanExecutor
@@ -40,7 +39,21 @@ def serialize_graph(g: Graph):
     g.bind("prov", PROV)
     g.bind("dcterms", DCTERMS)
     g.bind("dcat", DCAT)
-    return g.serialize(format="json-ld", auto_compact=True)
+    g.bind("xsd", XSD)
+    g.bind("rdf", RDF)
+    g.bind("rdfs", RDFS)
+
+    context = {
+        "@vocab": str(TAMPER),
+        "plan": str(PLAN),
+        "prov": str(PROV),
+        "dcterms": str(DCTERMS),
+        "dcat": str(DCAT),
+        "xsd": str(XSD),
+        "rdf": str(RDF),
+        "rdfs": str(RDFS),
+    }
+    return g.serialize(format="json-ld", auto_compact=True, context=context)
 
 
 @lifespan
@@ -264,16 +277,15 @@ async def create_plan(plan_name: str, plan_graph_ttl: str):
         rdfs:label "The re-compressed image" .
 
     # ---------
-    # Steps (media operations). Each step points at a plan:OperationParameters
+    # Steps (media operations). Each step points at a plan:parameters
     # bundle that names the operation (plan:operationType) and carries its parameters.
     # ---------
     <plan://s1> a plan:Step ;
         plan:isStepOfPlan <plan://example-plan> ;
         plan:hasInputVariable <plan://v0> ;
         plan:hasOutputVariable <plan://v1> ;
-        plan:operationParameters [
-            a plan:OperationParameters ;
-            plan:operationType tamper:CompressJPEG ;
+        plan:operationType tamper:CompressJPEG ;
+        plan:parameters [
             tamper:qualityFactor 90
         ] .
 
@@ -281,9 +293,8 @@ async def create_plan(plan_name: str, plan_graph_ttl: str):
         plan:isStepOfPlan <plan://example-plan> ;
         plan:hasInputVariable <plan://v1> ;
         plan:hasOutputVariable <plan://v2> ;
-        plan:operationParameters [
-            a plan:OperationParameters ;
-            plan:operationType tamper:AddGaussianNoise ;
+        plan:operationType tamper:AddGaussianNoise ;
+        plan:parameters [
             tamper:gaussianMean 0.0 ;
             tamper:gaussianStd 1.0
         ] .
@@ -292,9 +303,8 @@ async def create_plan(plan_name: str, plan_graph_ttl: str):
         plan:isStepOfPlan <plan://example-plan> ;
         plan:hasInputVariable <plan://v1> ;
         plan:hasOutputVariable <plan://v3> ;
-        plan:operationParameters [
-            a plan:OperationParameters ;
-            plan:operationType tamper:CompressJPEG ;
+        plan:operationType tamper:CompressJPEG ;
+        plan:parameters [
             tamper:qualityFactor 50
         ] .
     ```
@@ -303,7 +313,7 @@ async def create_plan(plan_name: str, plan_graph_ttl: str):
         to retrieve the plan later
     :param plan_graph_ttl: The operation plan graph in RDF Turtle format. The graph should follow the plan vocabulary
         (`vocabulary://tamper/plan`). In essence, every plan:Variable should correspond to a media asset, and each
-        plan:Step should correspond to a media operation defined by its plan:operationParameters.
+        plan:Step should correspond to a media operation defined by its plan:parameters.
     """
     try:
         pattern = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
@@ -321,8 +331,7 @@ async def create_plan(plan_name: str, plan_graph_ttl: str):
 
         # Create plan file
         plan_file = config.TAMPER_PLANS_DIR / (plan_name + ".ttl")
-        plan_graph_ttl = serialize_graph(plan_graph)
-        plan_file.write_text(plan_graph)
+        plan_graph.serialize(plan_file, format="turtle")
     except BadSyntax as e:
         raise ToolError(f"Graph contains syntax errors: {str(e)}") from e
     except GraphValidationError as e:

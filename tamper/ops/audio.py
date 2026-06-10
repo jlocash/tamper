@@ -1,112 +1,110 @@
+from os import PathLike
 from pathlib import Path
 
-from rdflib import Graph, Node, RDF, XSD, Literal
-from rdflib.resource import Resource
+from rdflib import XSD
 
+from tamper.core.assets import AudioAsset, AudioStream, VideoStream
 from tamper.vocabularies import TAMPER
-from .operation import Operation
+from tamper.core import Operation, MappedProperty
 import ffmpeg
 
 
+# ffprobe reports the codec (e.g. "mp3"), but re-encoding needs an encoder name,
+# which differs for codecs whose default encoder is an external library.
+_CODEC_TO_ENCODER = {
+    "mp3": "libmp3lame",
+    "opus": "libopus",
+    "vorbis": "libvorbis",
+}
+
+# Maps encoder name to the container format suffix it produces.
+_ENCODER_TO_SUFFIX = {
+    "libmp3lame": ".mp3",
+    "libopus": ".opus",
+    "libvorbis": ".ogg",
+    "aac": ".aac",
+    "flac": ".flac",
+    "pcm_s16le": ".wav",
+    "pcm_s24le": ".wav",
+}
+
+
 class ResampleAudio(Operation):
-    def __init__(self, target_sample_rate: int):
-        super().__init__()
-        if target_sample_rate <= 0:
-            raise ValueError(
-                f"Target sample rate must be positive, got {target_sample_rate}"
-            )
-        self.target_sample_rate = target_sample_rate
+    __rdf_type__ = TAMPER.ResampleAudio
 
-    def transform(self, input_asset_file: Path, output_asset_file: Path):
-        probe_result = ffmpeg.probe(str(input_asset_file))
-        streams = probe_result["streams"]
+    target_sample_rate: MappedProperty[int] = MappedProperty(
+        TAMPER.targetSampleRate, XSD.integer
+    )
 
-        output_kwargs = {"format": probe_result["format"]["format_name"].split(",")[0]}
-        for s in streams:
-            if s["codec_type"] == "video":
+    def mutate(self, out_dir: PathLike[str] | None = None):
+        used = self.get_used()
+        if len(used) != 1:
+            raise ValueError("Operation requires exactly one audio asset")
+
+        audio_asset = AudioAsset(self.graph, used[0])
+
+        output_kwargs = {}
+        has_audio = False
+        for s in audio_asset.streams:
+            if isinstance(s, VideoStream):
                 output_kwargs["vcodec"] = "copy"
-            elif s["codec_type"] == "audio":
-                output_kwargs["acodec"] = s["codec_name"]
-                output_kwargs["ar"] = str(self.target_sample_rate)
+            elif isinstance(s, AudioStream):
+                has_audio = True
+                output_kwargs["acodec"] = _CODEC_TO_ENCODER.get(s.codec, s.codec)
+                output_kwargs["ar"] = self.target_sample_rate
+        if not has_audio:
+            raise ValueError("Input asset has no audio stream to resample")
 
+        suffix = Path(audio_asset.file_path).suffix
         try:
-            (
-                ffmpeg.input(str(input_asset_file))
-                .output(str(output_asset_file), **output_kwargs)
-                .run(capture_stdout=False, capture_stderr=True, overwrite_output=True)
-            )
+            with self._generates_file(dir=out_dir, suffix=suffix) as output_asset_file:
+                (
+                    ffmpeg.input(str(audio_asset.file_path))
+                    .output(str(output_asset_file), **output_kwargs)
+                    .run(
+                        capture_stdout=False, capture_stderr=True, overwrite_output=True
+                    )
+                )
         except ffmpeg.Error as e:
             stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else ""
             raise RuntimeError(f"ffmpeg failed: {stderr}") from e
-
-    def graph(self) -> Graph:
-        r = Resource(Graph(), self.subject)
-        r[RDF.type] = TAMPER.ResampleAudio
-        r[TAMPER.targetSampleRate] = Literal(
-            self.target_sample_rate, datatype=XSD.positiveInteger
-        )
-        return r.graph
-
-    @classmethod
-    def copy_from_graph(cls, graph: Graph, subject: Node):
-        target_sample_rate = graph.value(subject, TAMPER.targetSampleRate)
-        if target_sample_rate is None:
-            raise ValueError(
-                f"Graph is missing property {TAMPER.targetSampleRate} for subject {subject}"
-            )
-        return cls(int(target_sample_rate))
 
 
 class TranscodeAudio(Operation):
-    def __init__(self, audio_encoder: str, target_bitrate: int):
-        super().__init__()
-        if not audio_encoder:
-            raise ValueError("audio_encoder must be a non-empty string")
-        if target_bitrate <= 0:
-            raise ValueError(f"target_bitrate must be positive, got {target_bitrate}")
-        self.audio_encoder = audio_encoder
-        self.target_bitrate = target_bitrate
+    __rdf_type__ = TAMPER.TranscodeAudio
 
-    def transform(self, input_asset_file: Path, output_asset_file: Path):
-        probe_result = ffmpeg.probe(str(input_asset_file))
-        streams = probe_result["streams"]
-        output_kwargs = {"format": probe_result["format"]["format_name"].split(",")[0]}
-        for s in streams:
-            if s["codec_type"] == "video":
+    audio_encoder: MappedProperty[str] = MappedProperty(TAMPER.audioEncoder, XSD.string)
+    target_bitrate: MappedProperty[int] = MappedProperty(
+        TAMPER.targetBitRate, XSD.integer
+    )
+
+    def mutate(self, out_dir: PathLike[str] | None = None):
+        used = self.get_used()
+        if len(used) != 1:
+            raise ValueError("Operation requires exactly one audio asset")
+
+        audio_asset = AudioAsset(self.graph, used[0])
+
+        output_kwargs = {
+            "acodec": self.audio_encoder,
+            "audio_bitrate": self.target_bitrate,
+        }
+        for s in audio_asset.streams:
+            if isinstance(s, VideoStream):
                 output_kwargs["vcodec"] = "copy"
-                break
-        output_kwargs["acodec"] = self.audio_encoder
-        output_kwargs["audio_bitrate"] = self.target_bitrate
 
+        suffix = _ENCODER_TO_SUFFIX.get(
+            self.audio_encoder, Path(audio_asset.file_path).suffix
+        )
         try:
-            (
-                ffmpeg.input(str(input_asset_file))
-                .output(str(output_asset_file), **output_kwargs)
-                .run(capture_stdout=False, capture_stderr=True, overwrite_output=True)
-            )
+            with self._generates_file(dir=out_dir, suffix=suffix) as output_asset_file:
+                (
+                    ffmpeg.input(str(audio_asset.file_path))
+                    .output(str(output_asset_file), **output_kwargs)
+                    .run(
+                        capture_stdout=False, capture_stderr=True, overwrite_output=True
+                    )
+                )
         except ffmpeg.Error as e:
             stderr = e.stderr.decode("utf-8", errors="replace") if e.stderr else ""
             raise RuntimeError(f"ffmpeg failed: {stderr}") from e
-
-    def graph(self) -> Graph:
-        r = Resource(Graph(), self.subject)
-        r[RDF.type] = TAMPER.TranscodeAudio
-        r[TAMPER.targetBitRate] = Literal(
-            self.target_bitrate, datatype=XSD.positiveInteger
-        )
-        r[TAMPER.audioEncoder] = Literal(self.audio_encoder)
-        return r.graph
-
-    @classmethod
-    def copy_from_graph(cls, graph: Graph, subject: Node):
-        target_bitrate = graph.value(subject, TAMPER.targetBitRate)
-        if target_bitrate is None:
-            raise ValueError(
-                f"Graph is missing property {TAMPER.targetBitRate} for subject {subject}"
-            )
-        audio_encoder = graph.value(subject, TAMPER.audioEncoder)
-        if audio_encoder is None:
-            raise ValueError(
-                f"Graph is missing property {TAMPER.audioEncoder} for subject {subject}"
-            )
-        return cls(str(audio_encoder), int(target_bitrate))

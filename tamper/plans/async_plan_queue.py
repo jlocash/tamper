@@ -1,7 +1,8 @@
 import asyncio
 import logging
 from rdflib import Graph, Node
-from tamper.plans import OperationPlan, OperationPlanExecutor
+from tamper.core import OperationPlan
+from .operation_plan import OperationPlanExecutor
 
 logger = logging.getLogger(__name__)
 

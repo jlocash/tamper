@@ -7,7 +7,7 @@ from rdflib import Graph, URIRef
 
 from tamper.app.kg.knowledge_graph import KnowledgeGraph
 from tamper.app.kg.local import LocalKnowledgeGraph
-from tamper.dataset import Catalog
+from tamper.core import Catalog
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class Config:
         if "TAMPER_HOME" in os.environ:
             self.TAMPER_HOME_DIR = Path(os.environ["TAMPER_HOME"])
         else:
-            self.TAMPER_HOME_DIR = Path(os.environ["HOME"]) / ".tamper"
+            self.TAMPER_HOME_DIR = Path.home() / ".tamper"
             logger.info("TAMPER_HOME not set, defaulting to %s", self.TAMPER_HOME_DIR)
 
         self.TAMPER_PLANS_DIR = self.TAMPER_HOME_DIR / "plans"

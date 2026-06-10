@@ -2,11 +2,7 @@ from pathlib import Path
 from rdflib import Graph
 import pyshacl
 
-
-class GraphValidationError(Exception):
-    def __init__(self, results_graph, results_message):
-        super().__init__(results_message)
-        self.results_graph = results_graph
+from tamper.errors import GraphValidationError
 
 
 def validate_plan_graph(plan_graph: Graph):

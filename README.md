@@ -138,7 +138,7 @@ flowchart RL
 ```
 
 Plans are written in RDF using the `plan:` vocabulary. Each step points at a
-`plan:OperationParameters` bundle that names the `tamper:` operation to run and
+`plan:parameters` bundle that names the `tamper:` operation to run and
 its parameters. The plan below has three variables (`v0` → `v1` → `v2`) and two
 steps: step `s1` compresses the input image, then step `s2` adds Gaussian noise
 to the result.
@@ -168,9 +168,8 @@ to the result.
     plan:isStepOfPlan <plan://example> ;
     plan:hasInputVariable <plan://v0> ;
     plan:hasOutputVariable <plan://v1> ;
-    plan:operationParameters [
-        a plan:OperationParameters ;
-        plan:operationType tamper:CompressJPEG ;
+    plan:operationType tamper:CompressJPEG ;
+    plan:parameters [        
         tamper:qualityFactor 90
     ] .
 
@@ -178,9 +177,8 @@ to the result.
     plan:isStepOfPlan <plan://example> ;
     plan:hasInputVariable <plan://v1> ;
     plan:hasOutputVariable <plan://v2> ;
-    plan:operationParameters [
-        a plan:OperationParameters ;
-        plan:operationType tamper:AddGaussianNoise ;
+    plan:operationType tamper:AddGaussianNoise ;
+    plan:parameters [        
         tamper:gaussianMean 0.0 ;
         tamper:gaussianStd 12.0
     ] .
