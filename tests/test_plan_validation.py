@@ -32,9 +32,8 @@ _MINIMAL_VALID_TTL = (
     plan:isStepOfPlan <plan://p1> ;
     plan:hasInputVariable <plan://v0> ;
     plan:hasOutputVariable <plan://v1> ;
-    plan:operationParameters [
-        a plan:OperationParameters ;
-        plan:operationType tamper:CompressJPEG ;
+    plan:operationType tamper:CompressJPEG ;
+    plan:parameters [
         tamper:qualityFactor 90
     ] .
 """
@@ -72,19 +71,15 @@ class TestValidPlanGraph:
     plan:isStepOfPlan <plan://p1> ;
     plan:hasInputVariable <plan://v0> ;
     plan:hasOutputVariable <plan://v1> ;
-    plan:operationParameters [
-        a plan:OperationParameters ;
-        plan:operationType tamper:CompressJPEG
-    ] .
+    plan:operationType tamper:CompressJPEG ;
+    plan:parameters [] .
 
 <plan://s2> a plan:Step ;
     plan:isStepOfPlan <plan://p1> ;
     plan:hasInputVariable <plan://v1> ;
     plan:hasOutputVariable <plan://v2> ;
-    plan:operationParameters [
-        a plan:OperationParameters ;
-        plan:operationType tamper:AddGaussianNoise
-    ] .
+    plan:operationType tamper:AddGaussianNoise ;
+    plan:parameters [] .
 """
         )
         validate_plan_graph(_parse(ttl))
@@ -107,10 +102,8 @@ class TestMissingPlanDeclaration:
     plan:isStepOfPlan <plan://p1> ;
     plan:hasInputVariable <plan://v0> ;
     plan:hasOutputVariable <plan://v1> ;
-    plan:operationParameters [
-        a plan:OperationParameters ;
-        plan:operationType tamper:CompressJPEG
-    ] .
+    plan:operationType tamper:CompressJPEG ;
+    plan:parameters [] .
 """
         )
         with pytest.raises(GraphValidationError):
@@ -141,10 +134,8 @@ class TestStepMissingIsStepOfPlan:
 <plan://s1> a plan:Step ;
     plan:hasInputVariable <plan://v0> ;
     plan:hasOutputVariable <plan://v1> ;
-    plan:operationParameters [
-        a plan:OperationParameters ;
-        plan:operationType tamper:CompressJPEG
-    ] .
+    plan:operationType tamper:CompressJPEG ;
+    plan:parameters [] .
 """
         )
         with pytest.raises(GraphValidationError):
@@ -163,10 +154,8 @@ class TestStepMissingInputVariable:
 <plan://s1> a plan:Step ;
     plan:isStepOfPlan <plan://p1> ;
     plan:hasOutputVariable <plan://v1> ;
-    plan:operationParameters [
-        a plan:OperationParameters ;
-        plan:operationType tamper:CompressJPEG
-    ] .
+    plan:operationType tamper:CompressJPEG ;
+    plan:parameters [] .
 """
         )
         with pytest.raises(GraphValidationError):
@@ -184,10 +173,8 @@ class TestStepMissingOutputVariable:
 <plan://s1> a plan:Step ;
     plan:isStepOfPlan <plan://p1> ;
     plan:hasInputVariable <plan://v0> ;
-    plan:operationParameters [
-        a plan:OperationParameters ;
-        plan:operationType tamper:CompressJPEG
-    ] .
+    plan:operationType tamper:CompressJPEG ;
+    plan:parameters [] .
 """
         )
         with pytest.raises(GraphValidationError):
@@ -226,9 +213,7 @@ class TestOperationParametersMissingOperationType:
     plan:isStepOfPlan <plan://p1> ;
     plan:hasInputVariable <plan://v0> ;
     plan:hasOutputVariable <plan://v1> ;
-    plan:operationParameters [
-        a plan:OperationParameters
-    ] .
+    plan:parameters [] .
 """
         )
         with pytest.raises(GraphValidationError):
@@ -248,10 +233,8 @@ class TestVariableMissingPlanLink:
     plan:isStepOfPlan <plan://p1> ;
     plan:hasInputVariable <plan://v0> ;
     plan:hasOutputVariable <plan://v1> ;
-    plan:operationParameters [
-        a plan:OperationParameters ;
-        plan:operationType tamper:CompressJPEG
-    ] .
+    plan:operationType tamper:CompressJPEG ;
+    plan:parameters [] .
 """
         )
         with pytest.raises(GraphValidationError):

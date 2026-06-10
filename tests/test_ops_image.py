@@ -1,12 +1,18 @@
-"""Tests for tamper.ops.image — image operation classes."""
+"""Behavioral tests for tamper.ops.image operations.
+
+Each operation is exercised through its public interface: instantiate with
+``Operation.new``, set parameters via the mapped properties, attach the input
+asset with ``used()``, run ``mutate(out_dir)``, and observe the generated
+asset recorded in the graph.
+"""
 
 from pathlib import Path
+from uuid import uuid4
 
-import cv2
 import pytest
-from rdflib import Graph, RDF, Literal, XSD
+from rdflib import PROV, Graph, URIRef
 
-from tamper.app.kg.local import check_consistency
+from tamper.core import ImageAsset, load_asset_from_file
 from tamper.ops.image import (
     AddGaussianNoise,
     CompressJPEG,
@@ -16,584 +22,157 @@ from tamper.ops.image import (
     MedianFilter,
     Resize,
 )
-from tamper.vocabularies import TAMPER
 
-TEST_MEDIA = Path(__file__).parent / "test-media"
-IMAGES = TEST_MEDIA / "images"
+IMAGES = Path(__file__).parent / "test-media" / "images"
+JPG = IMAGES / "file_example_JPG_100kB.jpg"
+PNG = IMAGES / "file_example_PNG_500kB.png"
 
-# A small, stable test image used across transform tests.
-_JPG = IMAGES / "file_example_JPG_100kB.jpg"
+# One representative parameterization per operation, shared by the
+# interface-contract tests below.
+OPS = [
+    (CompressJPEG, {"quality_factor": 80}),
+    (CompressWebP, {"quality_factor": 80}),
+    (CropImage, {"x": 0, "y": 0, "width": 50, "height": 40}),
+    (Resize, {"width": 64, "height": 48, "interpolation": "linear"}),
+    (MedianFilter, {"kernel_size": 3}),
+    (GaussianBlur, {"kernel_size": 3, "sigma": 2.0}),
+    (AddGaussianNoise, {"mean": 0.0, "std": 25.0, "seed": 42}),
+]
+
+OP_IDS = [cls.__name__ for cls, _ in OPS]
 
 
-# ---------------------------------------------------------------------------
-# CompressJPEG
-# ---------------------------------------------------------------------------
+def _run(op_cls, src: Path, out_dir: Path, **params):
+    """Run ``op_cls`` over ``src``, returning (input asset, output asset, op)."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    g = Graph()
+    asset = load_asset_from_file(g, src)
+    op = op_cls.new(g, URIRef(f"operation://{uuid4()}"))
+    for name, value in params.items():
+        setattr(op, name, value)
+    op.used(asset.identifier)
+    op.mutate(out_dir)
+
+    generated = next(op.get_generated(), None)
+    assert generated is not None, "operation did not record a generated asset"
+    return asset, ImageAsset(g, generated.identifier), op
+
+
+# --- Interface contract shared by every image operation --------------------
+
+
+@pytest.mark.parametrize("op_cls,params", OPS, ids=OP_IDS)
+def test_records_provenance(op_cls, params, tmp_path):
+    src, out, op = _run(op_cls, JPG, tmp_path, **params)
+
+    assert (out.identifier, PROV.wasGeneratedBy, op.identifier) in op.graph
+    assert op.get_used() == [src.identifier]
+    assert out.identifier != src.identifier
+
+
+@pytest.mark.parametrize("op_cls,params", OPS, ids=OP_IDS)
+def test_writes_content_addressed_file_to_out_dir(op_cls, params, tmp_path):
+    _, out, _ = _run(op_cls, JPG, tmp_path, **params)
+
+    out_file = Path(str(out.file_path))
+    assert out_file.exists()
+    assert out_file.parent == tmp_path
+    assert out_file.stem == out.checksum.removeprefix("sha256:")
+    assert out_file.stat().st_size > 0
+
+
+@pytest.mark.parametrize("op_cls,params", OPS, ids=OP_IDS)
+def test_mutate_without_input_raises(op_cls, params, tmp_path):
+    g = Graph()
+    op = op_cls.new(g, URIRef(f"operation://{uuid4()}"))
+    for name, value in params.items():
+        setattr(op, name, value)
+
+    with pytest.raises(ValueError):
+        op.mutate(tmp_path)
+
+
+# --- Operation-specific behavior --------------------------------------------
 
 
 class TestCompressJPEG:
-    def test_valid_construction(self):
-        op = CompressJPEG(quality_factor=80)
-        assert op.quality_factor == 80
+    def test_output_is_jpeg(self, tmp_path):
+        _, out, _ = _run(CompressJPEG, PNG, tmp_path, quality_factor=80)
+        assert out.media_type == "image/jpeg"
 
-    def test_boundary_zero(self):
-        op = CompressJPEG(quality_factor=0)
-        assert op.quality_factor == 0
+    def test_lower_quality_gives_smaller_file(self, tmp_path):
+        _, low, _ = _run(CompressJPEG, JPG, tmp_path / "low", quality_factor=10)
+        _, high, _ = _run(CompressJPEG, JPG, tmp_path / "high", quality_factor=95)
 
-    def test_boundary_hundred(self):
-        op = CompressJPEG(quality_factor=100)
-        assert op.quality_factor == 100
-
-    def test_quality_below_range_raises(self):
-        with pytest.raises(ValueError, match="quality_factor"):
-            CompressJPEG(quality_factor=-1)
-
-    def test_quality_above_range_raises(self):
-        with pytest.raises(ValueError, match="quality_factor"):
-            CompressJPEG(quality_factor=101)
-
-    def test_subject_uri_is_unique(self):
-        a = CompressJPEG(50)
-        b = CompressJPEG(50)
-        assert a.subject != b.subject
-
-    def test_graph_rdftype(self):
-        op = CompressJPEG(75)
-        g = op.graph()
-        assert (op.subject, RDF.type, TAMPER.CompressJPEG) in g
-
-    def test_graph_quality_factor_literal(self):
-        op = CompressJPEG(75)
-        g = op.graph()
-        val = g.value(op.subject, TAMPER.qualityFactor)
-        assert val is not None
-        assert int(val) == 75
-
-    def test_copy_from_graph_roundtrip(self):
-        original = CompressJPEG(60)
-        g = original.graph()
-        restored = CompressJPEG.copy_from_graph(g, original.subject)
-        assert restored.quality_factor == 60
-
-    def test_copy_from_graph_missing_quality_raises(self):
-        g = Graph()
-        from rdflib import URIRef
-
-        subject = URIRef("operation://test-subject")
-        with pytest.raises(ValueError, match="qualityFactor"):
-            CompressJPEG.copy_from_graph(g, subject)
-
-    def test_transform_produces_jpeg_file(self, tmp_path):
-        op = CompressJPEG(85)
-        out = tmp_path / "out.jpg"
-        op.transform(_JPG, out)
-        assert out.exists()
-        assert out.stat().st_size > 0
-        # verify it is a valid image
-        img = cv2.imread(str(out))
-        assert img is not None
-
-    def test_transform_output_is_valid_jpeg(self, tmp_path):
-        op = CompressJPEG(50)
-        out = tmp_path / "out.jpg"
-        op.transform(_JPG, out)
-        img = cv2.imread(str(out))
-        assert img is not None
-        assert img.ndim == 3
+        low_size = Path(str(low.file_path)).stat().st_size
+        high_size = Path(str(high.file_path)).stat().st_size
+        assert low_size < high_size
 
 
 class TestCompressWebP:
-    def test_valid_construction(self):
-        op = CompressWebP(quality_factor=80)
-        assert op.quality_factor == 80
-
-    def test_boundary_zero(self):
-        op = CompressWebP(quality_factor=0)
-        assert op.quality_factor == 0
-
-    def test_boundary_hundred(self):
-        op = CompressWebP(quality_factor=100)
-        assert op.quality_factor == 100
-
-    def test_quality_below_range_raises(self):
-        with pytest.raises(ValueError, match="quality_factor"):
-            CompressWebP(quality_factor=-1)
-
-    def test_quality_above_range_raises(self):
-        with pytest.raises(ValueError, match="quality_factor"):
-            CompressWebP(quality_factor=101)
-
-    def test_subject_uri_is_unique(self):
-        a = CompressWebP(50)
-        b = CompressWebP(50)
-        assert a.subject != b.subject
-
-    def test_graph_rdftype(self):
-        op = CompressWebP(75)
-        g = op.graph()
-        assert (op.subject, RDF.type, TAMPER.CompressWebP) in g
-
-    def test_graph_quality_factor_literal(self):
-        op = CompressWebP(75)
-        g = op.graph()
-        val = g.value(op.subject, TAMPER.qualityFactor)
-        assert val is not None
-        assert int(val) == 75
-
-    def test_copy_from_graph_roundtrip(self):
-        original = CompressWebP(60)
-        g = original.graph()
-        restored = CompressWebP.copy_from_graph(g, original.subject)
-        assert restored.quality_factor == 60
-
-    def test_copy_from_graph_missing_quality_raises(self):
-        g = Graph()
-        from rdflib import URIRef
-
-        subject = URIRef("operation://test-subject")
-        with pytest.raises(ValueError, match="qualityFactor"):
-            CompressWebP.copy_from_graph(g, subject)
-
-    def test_transform_produces_webp_file(self, tmp_path):
-        op = CompressWebP(85)
-        out = tmp_path / "out.webp"
-        op.transform(_JPG, out)
-        assert out.exists()
-        assert out.stat().st_size > 0
-        # verify it is a valid image
-        img = cv2.imread(str(out))
-        assert img is not None
-
-    def test_transform_output_is_valid_webp(self, tmp_path):
-        op = CompressWebP(50)
-        out = tmp_path / "out.webp"
-        op.transform(_JPG, out)
-        img = cv2.imread(str(out))
-        assert img is not None
-        assert img.ndim == 3
-
-
-# ---------------------------------------------------------------------------
-# Resize
-# ---------------------------------------------------------------------------
-
-
-class TestResize:
-    def test_valid_construction(self):
-        op = Resize(width=320, height=240)
-        assert op.width == 320
-        assert op.height == 240
-        assert op.interpolation == "linear"
-
-    def test_custom_interpolation(self):
-        op = Resize(640, 480, interpolation="cubic")
-        assert op.interpolation == "cubic"
-
-    def test_all_valid_interpolations(self):
-        for method in ("nearest", "linear", "cubic", "area", "lanczos4"):
-            op = Resize(100, 100, interpolation=method)
-            assert op.interpolation == method
-
-    def test_invalid_interpolation_raises(self):
-        with pytest.raises(ValueError, match="interpolation"):
-            Resize(100, 100, interpolation="bicubic")
-
-    def test_graph_rdftype(self):
-        op = Resize(100, 200)
-        g = op.graph()
-        assert (op.subject, RDF.type, TAMPER.Resize) in g
-
-    def test_graph_width_height_literals(self):
-        op = Resize(320, 240)
-        g = op.graph()
-        assert int(g.value(op.subject, TAMPER.targetWidth)) == 320
-        assert int(g.value(op.subject, TAMPER.targetHeight)) == 240
-
-    def test_graph_interpolation_literal(self):
-        op = Resize(100, 100, interpolation="area")
-        g = op.graph()
-        assert str(g.value(op.subject, TAMPER.interpolation)) == "area"
-
-    def test_copy_from_graph_roundtrip(self):
-        original = Resize(128, 64, interpolation="nearest")
-        g = original.graph()
-        restored = Resize.copy_from_graph(g, original.subject)
-        assert restored.width == 128
-        assert restored.height == 64
-        assert restored.interpolation == "nearest"
-
-    def test_copy_from_graph_missing_width_raises(self):
-        g = Graph()
-        from rdflib import URIRef
-
-        subject = URIRef("operation://test")
-        with pytest.raises(ValueError, match="targetWidth"):
-            Resize.copy_from_graph(g, subject)
-
-    def test_copy_from_graph_missing_height_raises(self):
-        from rdflib import URIRef
-
-        subject = URIRef("operation://test")
-        g = Graph()
-        g.add((subject, TAMPER.targetWidth, Literal(100, datatype=XSD.positiveInteger)))
-        with pytest.raises(ValueError, match="targetHeight"):
-            Resize.copy_from_graph(g, subject)
-
-    def test_copy_from_graph_missing_interpolation_raises(self):
-        from rdflib import URIRef
-
-        subject = URIRef("operation://test")
-        g = Graph()
-        g.add((subject, TAMPER.targetWidth, Literal(100, datatype=XSD.positiveInteger)))
-        g.add(
-            (subject, TAMPER.targetHeight, Literal(100, datatype=XSD.positiveInteger))
-        )
-        with pytest.raises(ValueError, match="interpolation"):
-            Resize.copy_from_graph(g, subject)
-
-    def test_transform_produces_correct_dimensions(self, tmp_path):
-        op = Resize(width=50, height=30)
-        out = tmp_path / "out.jpg"
-        op.transform(_JPG, out)
-        img = cv2.imread(str(out))
-        assert img is not None
-        h, w = img.shape[:2]
-        assert w == 50
-        assert h == 30
-
-
-# ---------------------------------------------------------------------------
-# MedianFilter
-# ---------------------------------------------------------------------------
-
-
-class TestMedianFilter:
-    def test_valid_construction(self):
-        op = MedianFilter(kernel_size=3)
-        assert op.kernel_size == 3
-
-    def test_larger_odd_kernel(self):
-        op = MedianFilter(kernel_size=9)
-        assert op.kernel_size == 9
-
-    def test_even_kernel_raises(self):
-        with pytest.raises(ValueError, match="odd"):
-            MedianFilter(kernel_size=4)
-
-    def test_kernel_less_than_3_raises(self):
-        with pytest.raises(ValueError, match="odd"):
-            MedianFilter(kernel_size=1)
-
-    def test_graph_rdftype(self):
-        op = MedianFilter(3)
-        g = op.graph()
-        assert (op.subject, RDF.type, TAMPER.MedianFilter) in g
-
-    def test_graph_kernel_size_literal(self):
-        op = MedianFilter(5)
-        g = op.graph()
-        assert int(g.value(op.subject, TAMPER.kernelSize)) == 5
-
-    def test_copy_from_graph_roundtrip(self):
-        original = MedianFilter(7)
-        g = original.graph()
-        restored = MedianFilter.copy_from_graph(g, original.subject)
-        assert restored.kernel_size == 7
-
-    def test_copy_from_graph_missing_kernel_raises(self):
-        from rdflib import URIRef
-
-        g = Graph()
-        subject = URIRef("operation://test")
-        with pytest.raises(ValueError, match="kernelSize"):
-            MedianFilter.copy_from_graph(g, subject)
-
-    def test_transform_preserves_shape(self, tmp_path):
-        op = MedianFilter(3)
-        out = tmp_path / "out.jpg"
-        op.transform(_JPG, out)
-        original_img = cv2.imread(str(_JPG))
-        result_img = cv2.imread(str(out))
-        assert result_img is not None
-        assert result_img.shape == original_img.shape
-
-
-# ---------------------------------------------------------------------------
-# GaussianBlur
-# ---------------------------------------------------------------------------
-
-
-class TestGaussianBlur:
-    def test_valid_construction(self):
-        op = GaussianBlur(kernel_size=3)
-        assert op.kernel_size == 3
-        assert op.sigma == 0.0
-
-    def test_custom_sigma(self):
-        op = GaussianBlur(kernel_size=5, sigma=1.5)
-        assert op.sigma == 1.5
-
-    def test_even_kernel_raises(self):
-        with pytest.raises(ValueError, match="odd"):
-            GaussianBlur(kernel_size=4)
-
-    def test_zero_kernel_raises(self):
-        with pytest.raises(ValueError, match="odd"):
-            GaussianBlur(kernel_size=0)
-
-    def test_graph_rdftype(self):
-        op = GaussianBlur(3)
-        g = op.graph()
-        assert (op.subject, RDF.type, TAMPER.GaussianBlur) in g
-
-    def test_graph_kernel_and_sigma(self):
-        op = GaussianBlur(kernel_size=5, sigma=2.0)
-        g = op.graph()
-        assert int(g.value(op.subject, TAMPER.kernelSize)) == 5
-        assert abs(float(g.value(op.subject, TAMPER.blurSigma)) - 2.0) < 1e-6
-
-    def test_copy_from_graph_roundtrip(self):
-        original = GaussianBlur(kernel_size=7, sigma=0.5)
-        g = original.graph()
-        restored = GaussianBlur.copy_from_graph(g, original.subject)
-        assert restored.kernel_size == 7
-        assert abs(restored.sigma - 0.5) < 1e-6
-
-    def test_copy_from_graph_missing_kernel_raises(self):
-        from rdflib import URIRef
-
-        g = Graph()
-        subject = URIRef("operation://test")
-        with pytest.raises(ValueError, match="kernelSize"):
-            GaussianBlur.copy_from_graph(g, subject)
-
-    def test_copy_from_graph_missing_sigma_raises(self):
-        from rdflib import URIRef
-
-        subject = URIRef("operation://test")
-        g = Graph()
-        g.add((subject, TAMPER.kernelSize, Literal(3, datatype=XSD.positiveInteger)))
-        with pytest.raises(ValueError, match="blurSigma"):
-            GaussianBlur.copy_from_graph(g, subject)
-
-    def test_transform_preserves_shape(self, tmp_path):
-        op = GaussianBlur(kernel_size=3, sigma=1.0)
-        out = tmp_path / "out.jpg"
-        op.transform(_JPG, out)
-        original_img = cv2.imread(str(_JPG))
-        result_img = cv2.imread(str(out))
-        assert result_img is not None
-        assert result_img.shape == original_img.shape
-
-
-# ---------------------------------------------------------------------------
-# AddGaussianNoise
-# ---------------------------------------------------------------------------
-
-
-class TestAddGaussianNoise:
-    def test_valid_construction(self):
-        op = AddGaussianNoise(mean=0.0, std=1.0)
-        assert op.mean == 0.0
-        assert op.std == 1.0
-
-    def test_zero_std_allowed(self):
-        op = AddGaussianNoise(mean=0.0, std=0.0)
-        assert op.std == 0.0
-
-    def test_negative_mean_allowed(self):
-        op = AddGaussianNoise(mean=-5.0, std=1.0)
-        assert op.mean == -5.0
-
-    def test_negative_std_raises(self):
-        with pytest.raises(ValueError, match="std"):
-            AddGaussianNoise(mean=0.0, std=-0.1)
-
-    def test_graph_rdftype(self):
-        op = AddGaussianNoise(0.0, 1.0)
-        g = op.graph()
-        assert (op.subject, RDF.type, TAMPER.AddGaussianNoise) in g
-
-    def test_graph_mean_and_std(self):
-        op = AddGaussianNoise(mean=1.5, std=3.0)
-        g = op.graph()
-        assert abs(float(g.value(op.subject, TAMPER.gaussianMean)) - 1.5) < 1e-6
-        assert abs(float(g.value(op.subject, TAMPER.gaussianStd)) - 3.0) < 1e-6
-
-    def test_seed_auto_generated_when_omitted(self):
-        op = AddGaussianNoise(mean=0.0, std=1.0)
-        assert isinstance(op.seed, int)
-        assert op.seed >= 0
-
-    def test_explicit_seed_preserved(self):
-        op = AddGaussianNoise(mean=0.0, std=1.0, seed=42)
-        assert op.seed == 42
-
-    def test_graph_records_seed(self):
-        op = AddGaussianNoise(mean=0.0, std=1.0, seed=123)
-        g = op.graph()
-        assert int(g.value(op.subject, TAMPER.gaussianSeed)) == 123
-
-    def test_copy_from_graph_roundtrip(self):
-        original = AddGaussianNoise(mean=2.0, std=0.5, seed=7)
-        g = original.graph()
-        restored = AddGaussianNoise.copy_from_graph(g, original.subject)
-        assert abs(restored.mean - 2.0) < 1e-6
-        assert abs(restored.std - 0.5) < 1e-6
-        assert restored.seed == 7
-
-    def test_transform_deterministic_for_same_seed(self, tmp_path):
-        op = AddGaussianNoise(mean=0.0, std=10.0, seed=99)
-        out_a = tmp_path / "a.png"
-        out_b = tmp_path / "b.png"
-        op.transform(_JPG, out_a)
-        op.transform(_JPG, out_b)
-        assert out_a.read_bytes() == out_b.read_bytes()
-
-    def test_transform_differs_for_different_seed(self, tmp_path):
-        out_a = tmp_path / "a.png"
-        out_b = tmp_path / "b.png"
-        AddGaussianNoise(mean=0.0, std=10.0, seed=1).transform(_JPG, out_a)
-        AddGaussianNoise(mean=0.0, std=10.0, seed=2).transform(_JPG, out_b)
-        assert out_a.read_bytes() != out_b.read_bytes()
-
-    def test_copy_from_graph_missing_mean_raises(self):
-        from rdflib import URIRef
-
-        g = Graph()
-        subject = URIRef("operation://test")
-        with pytest.raises(ValueError, match="gaussianMean"):
-            AddGaussianNoise.copy_from_graph(g, subject)
-
-    def test_copy_from_graph_missing_std_raises(self):
-        from rdflib import URIRef
-
-        subject = URIRef("operation://test")
-        g = Graph()
-        g.add((subject, TAMPER.gaussianMean, Literal(0.0)))
-        with pytest.raises(ValueError, match="gaussianStd"):
-            AddGaussianNoise.copy_from_graph(g, subject)
-
-    def test_copy_from_graph_missing_seed_auto_generates(self):
-        # A hand-authored plan may omit the seed; reconstruction draws one so
-        # the run is still deterministic and self-documenting.
-        from rdflib import URIRef
-
-        subject = URIRef("operation://test")
-        g = Graph()
-        g.add((subject, TAMPER.gaussianMean, Literal(0.0)))
-        g.add((subject, TAMPER.gaussianStd, Literal(1.0)))
-        restored = AddGaussianNoise.copy_from_graph(g, subject)
-        assert isinstance(restored.seed, int)
-        assert restored.seed >= 0
-
-    def test_transform_preserves_shape(self, tmp_path):
-        op = AddGaussianNoise(mean=0.0, std=5.0)
-        out = tmp_path / "out.jpg"
-        op.transform(_JPG, out)
-        original_img = cv2.imread(str(_JPG))
-        result_img = cv2.imread(str(out))
-        assert result_img is not None
-        assert result_img.shape == original_img.shape
-
-
-# ---------------------------------------------------------------------------
-# CropImage
-# ---------------------------------------------------------------------------
+    def test_output_is_webp(self, tmp_path):
+        _, out, _ = _run(CompressWebP, JPG, tmp_path, quality_factor=80)
+        assert out.media_type == "image/webp"
 
 
 class TestCropImage:
-    def test_valid_construction(self):
-        op = CropImage(x=10, y=20, width=100, height=50)
-        assert op.x == 10
-        assert op.y == 20
-        assert op.width == 100
-        assert op.height == 50
+    def test_output_has_crop_dimensions(self, tmp_path):
+        _, out, _ = _run(CropImage, JPG, tmp_path, x=10, y=10, width=50, height=40)
+        assert out.width == 50
+        assert out.height == 40
 
-    def test_zero_origin_allowed(self):
-        op = CropImage(x=0, y=0, width=10, height=10)
-        assert op.x == 0
-        assert op.y == 0
-
-    def test_negative_origin_raises(self):
-        with pytest.raises(ValueError, match="non-negative"):
-            CropImage(x=-1, y=0, width=10, height=10)
-
-    def test_zero_width_raises(self):
-        with pytest.raises(ValueError, match="positive"):
-            CropImage(x=0, y=0, width=0, height=10)
-
-    def test_negative_height_raises(self):
-        with pytest.raises(ValueError, match="positive"):
-            CropImage(x=0, y=0, width=10, height=-5)
-
-    def test_graph_rdftype(self):
-        op = CropImage(0, 0, 10, 10)
-        g = op.graph()
-        assert (op.subject, RDF.type, TAMPER.CropImage) in g
-
-    def test_graph_records_region(self):
-        op = CropImage(x=100, y=50, width=640, height=480)
-        g = op.graph()
-        assert int(g.value(op.subject, TAMPER.cropX)) == 100
-        assert int(g.value(op.subject, TAMPER.cropY)) == 50
-        assert int(g.value(op.subject, TAMPER.cropWidth)) == 640
-        assert int(g.value(op.subject, TAMPER.cropHeight)) == 480
-
-    def test_copy_from_graph_roundtrip(self):
-        original = CropImage(x=5, y=15, width=200, height=100)
-        g = original.graph()
-        restored = CropImage.copy_from_graph(g, original.subject)
-        assert restored.x == 5
-        assert restored.y == 15
-        assert restored.width == 200
-        assert restored.height == 100
-
-    def test_copy_from_graph_missing_x_raises(self):
-        from rdflib import URIRef
-
+    def test_region_exceeding_bounds_raises(self, tmp_path):
         g = Graph()
-        subject = URIRef("operation://test")
-        with pytest.raises(ValueError, match="cropX"):
-            CropImage.copy_from_graph(g, subject)
+        asset = load_asset_from_file(g, JPG)
+        op = CropImage.new(g, URIRef(f"operation://{uuid4()}"))
+        op.x = 0
+        op.y = 0
+        op.width = asset.width + 1
+        op.height = asset.height
+        op.used(asset.identifier)
 
-    def test_transform_produces_correct_dimensions(self, tmp_path):
-        # _JPG is 1050x700 (w x h)
-        op = CropImage(x=50, y=100, width=200, height=150)
-        out = tmp_path / "out.jpg"
-        op.transform(_JPG, out)
-        img = cv2.imread(str(out))
-        assert img is not None
-        h, w = img.shape[:2]
-        assert w == 200
-        assert h == 150
-
-    def test_transform_out_of_bounds_raises(self, tmp_path):
-        # _JPG is 1050 wide; this region overruns the right edge
-        op = CropImage(x=1000, y=0, width=200, height=100)
-        out = tmp_path / "out.jpg"
-        with pytest.raises(ValueError, match="exceeds image bounds"):
-            op.transform(_JPG, out)
+        with pytest.raises(ValueError):
+            op.mutate(tmp_path)
 
 
-@pytest.mark.parametrize(
-    "op",
-    [
-        CompressJPEG(0),
-        CompressJPEG(100),
-        CompressWebP(0),
-        CompressWebP(80),
-        CompressWebP(100),
-        Resize(320, 240, interpolation="cubic"),
-        MedianFilter(3),
-        GaussianBlur(kernel_size=3, sigma=0.0),
-        GaussianBlur(kernel_size=5, sigma=1.5),
-        AddGaussianNoise(mean=0.0, std=0.0),
-        AddGaussianNoise(mean=-2.5, std=3.0),
-        CropImage(x=0, y=0, width=100, height=100),
-        CropImage(x=10, y=20, width=50, height=40),
-    ],
-    ids=lambda op: type(op).__name__,
-)
-def test_operation_graph_is_ontology_consistent(op):
-    """Serialized image operations must pass the same consistency check the kg runs on insert."""
-    check_consistency(op.graph())
+class TestResize:
+    def test_output_has_target_dimensions(self, tmp_path):
+        _, out, _ = _run(
+            Resize, JPG, tmp_path, width=64, height=48, interpolation="linear"
+        )
+        assert out.width == 64
+        assert out.height == 48
+
+
+class TestMedianFilter:
+    def test_preserves_dimensions(self, tmp_path):
+        src, out, _ = _run(MedianFilter, JPG, tmp_path, kernel_size=3)
+        assert out.width == src.width
+        assert out.height == src.height
+
+
+class TestGaussianBlur:
+    def test_preserves_dimensions(self, tmp_path):
+        src, out, _ = _run(GaussianBlur, JPG, tmp_path, kernel_size=3, sigma=2.0)
+        assert out.width == src.width
+        assert out.height == src.height
+
+
+class TestAddGaussianNoise:
+    def test_same_seed_is_reproducible(self, tmp_path):
+        _, a, _ = _run(
+            AddGaussianNoise, JPG, tmp_path / "a", mean=0.0, std=25.0, seed=42
+        )
+        _, b, _ = _run(
+            AddGaussianNoise, JPG, tmp_path / "b", mean=0.0, std=25.0, seed=42
+        )
+        assert a.checksum == b.checksum
+
+    def test_different_seeds_differ(self, tmp_path):
+        _, a, _ = _run(
+            AddGaussianNoise, JPG, tmp_path / "a", mean=0.0, std=25.0, seed=1
+        )
+        _, b, _ = _run(
+            AddGaussianNoise, JPG, tmp_path / "b", mean=0.0, std=25.0, seed=2
+        )
+        assert a.checksum != b.checksum

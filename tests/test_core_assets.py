@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from rdflib import Graph, RDF
 
-from tamper.assets import (
+from tamper.core.assets import (
     AudioAsset,
     AudioStream,
     VideoAsset,

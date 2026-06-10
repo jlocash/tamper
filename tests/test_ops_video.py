@@ -1,106 +1,86 @@
-"""Tests for tamper.ops.video — TranscodeVideo operation."""
+"""Behavioral tests for tamper.ops.video — TranscodeVideo."""
 
 from pathlib import Path
+from uuid import uuid4
 
+import ffmpeg
 import pytest
-from rdflib import Graph, RDF
+from rdflib import PROV, Graph, URIRef
 
-from tamper.app.kg.local import check_consistency
+from tamper.core import VideoAsset, load_asset_from_file
 from tamper.ops.video import TranscodeVideo
-from tamper.vocabularies import TAMPER
 
 TEST_MEDIA = Path(__file__).parent / "test-media"
-VIDEO = TEST_MEDIA / "video"
+MP4 = TEST_MEDIA / "video" / "file_example_MP4_480_1_5MG.mp4"
+MP3 = TEST_MEDIA / "audio" / "file_example_MP3_700KB.mp3"
 
-_MP4 = VIDEO / "file_example_MP4_480_1_5MG.mp4"
+
+def _streams(path: Path) -> list[dict]:
+    return ffmpeg.probe(str(path))["streams"]
+
+
+def _run(src: Path, out_dir: Path, **params):
+    """Run TranscodeVideo over ``src``, returning (input, output, op)."""
+    g = Graph()
+    asset = load_asset_from_file(g, src)
+    op = TranscodeVideo.new(g, URIRef(f"operation://{uuid4()}"))
+    for name, value in params.items():
+        setattr(op, name, value)
+    op.used(asset.identifier)
+    op.mutate(out_dir)
+
+    generated = next(op.get_generated(), None)
+    assert generated is not None, "operation did not record a generated asset"
+    return asset, VideoAsset(g, generated.identifier), op
 
 
 class TestTranscodeVideo:
-    def test_valid_construction(self):
-        op = TranscodeVideo(video_encoder="libx264", crf=23)
-        assert op.video_encoder == "libx264"
-        assert op.crf == 23
+    def test_transcodes_to_requested_encoder(self, tmp_path):
+        _, out, _ = _run(MP4, tmp_path, video_encoder="libx264", crf=35)
 
-    def test_crf_boundary_zero(self):
-        op = TranscodeVideo("libx264", crf=0)
-        assert op.crf == 0
+        out_file = Path(str(out.file_path))
+        assert out_file.suffix == ".mp4"
+        codecs = [
+            s["codec_name"] for s in _streams(out_file) if s["codec_type"] == "video"
+        ]
+        assert codecs == ["h264"]
 
-    def test_crf_boundary_63(self):
-        op = TranscodeVideo("libx264", crf=63)
-        assert op.crf == 63
+    def test_output_registered_as_video_asset(self, tmp_path):
+        _, out, _ = _run(MP4, tmp_path, video_encoder="libx264", crf=35)
 
-    def test_empty_encoder_raises(self):
-        with pytest.raises(ValueError, match="video_encoder"):
-            TranscodeVideo("", crf=23)
+        assert out.media_type.startswith("video/")
+        assert out.has_video()
 
-    def test_crf_below_range_raises(self):
-        with pytest.raises(ValueError, match="crf"):
-            TranscodeVideo("libx264", crf=-1)
+    def test_copies_audio_stream(self, tmp_path):
+        src, out, _ = _run(MP4, tmp_path, video_encoder="libx264", crf=35)
 
-    def test_crf_above_range_raises(self):
-        with pytest.raises(ValueError, match="crf"):
-            TranscodeVideo("libx264", crf=64)
+        assert src.has_audio()
+        assert any(
+            s["codec_type"] == "audio" for s in _streams(Path(str(out.file_path)))
+        )
 
-    def test_subject_uri_is_unique(self):
-        a = TranscodeVideo("libx264", 23)
-        b = TranscodeVideo("libx264", 23)
-        assert a.subject != b.subject
+    def test_records_provenance(self, tmp_path):
+        src, out, op = _run(MP4, tmp_path, video_encoder="libx264", crf=35)
 
-    def test_graph_rdftype(self):
-        op = TranscodeVideo("libx264", 23)
-        g = op.graph()
-        assert (op.subject, RDF.type, TAMPER.TranscodeVideo) in g
+        assert (out.identifier, PROV.wasGeneratedBy, op.identifier) in op.graph
+        assert op.get_used() == [src.identifier]
 
-    def test_graph_video_encoder_literal(self):
-        op = TranscodeVideo("libvpx-vp9", 30)
-        g = op.graph()
-        assert str(g.value(op.subject, TAMPER.videoEncoder)) == "libvpx-vp9"
-
-    def test_graph_crf_literal(self):
-        op = TranscodeVideo("libx264", 18)
-        g = op.graph()
-        assert int(g.value(op.subject, TAMPER.crf)) == 18
-
-    def test_copy_from_graph_roundtrip(self):
-        original = TranscodeVideo("libx265", 28)
-        g = original.graph()
-        restored = TranscodeVideo.copy_from_graph(g, original.subject)
-        assert restored.video_encoder == "libx265"
-        assert restored.crf == 28
-
-    def test_copy_from_graph_missing_encoder_raises(self):
-        from rdflib import URIRef
-
+    def test_input_without_video_stream_raises(self, tmp_path):
         g = Graph()
-        subject = URIRef("operation://test")
-        with pytest.raises(ValueError, match="video encoder"):
-            TranscodeVideo.copy_from_graph(g, subject)
+        asset = load_asset_from_file(g, MP3)
+        op = TranscodeVideo.new(g, URIRef(f"operation://{uuid4()}"))
+        op.video_encoder = "libx264"
+        op.crf = 35
+        op.used(asset.identifier)
 
-    def test_copy_from_graph_missing_crf_raises(self):
-        from rdflib import URIRef, Literal
+        with pytest.raises(ValueError):
+            op.mutate(tmp_path)
 
-        subject = URIRef("operation://test")
+    def test_mutate_without_input_raises(self, tmp_path):
         g = Graph()
-        g.add((subject, TAMPER.videoEncoder, Literal("libx264")))
-        with pytest.raises(ValueError, match="CRF"):
-            TranscodeVideo.copy_from_graph(g, subject)
+        op = TranscodeVideo.new(g, URIRef(f"operation://{uuid4()}"))
+        op.video_encoder = "libx264"
+        op.crf = 35
 
-    def test_transform_produces_output_file(self, tmp_path):
-        op = TranscodeVideo(video_encoder="libx264", crf=40)
-        out = tmp_path / "out.mp4"
-        op.transform(_MP4, out)
-        assert out.exists()
-        assert out.stat().st_size > 0
-
-
-@pytest.mark.parametrize(
-    "op",
-    [
-        TranscodeVideo(video_encoder="libx264", crf=0),
-        TranscodeVideo(video_encoder="libx265", crf=23),
-    ],
-    ids=lambda op: type(op).__name__,
-)
-def test_operation_graph_is_ontology_consistent(op):
-    """Serialized video operations must pass the same consistency check the kg runs on insert."""
-    check_consistency(op.graph())
+        with pytest.raises(ValueError):
+            op.mutate(tmp_path)
