@@ -105,7 +105,7 @@ op.mutate(out_dir="/media")
 ### The data model
 
 Every file is described as an **asset** with a content-addressed identifier
-(`asset://<sha256>`, derived from the file's contents, so identical bytes always
+(`trn:asset:<sha256>`, derived from the file's contents, so identical bytes always
 get the same id, media type, and technical metadata. Here is a PNG image
 and the operation that produced it:
 
@@ -113,18 +113,18 @@ and the operation that produced it:
 @prefix tamper: <https://example.org/tamper/core#> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 
-<asset://aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e> a tamper:ImageAsset ;
+<trn:asset:aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e> a tamper:ImageAsset ;
     tamper:checksum "sha256:aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e" ;
     tamper:height 566 ;
     tamper:mediaType "image/png" ;
     tamper:pixelFormat "PNG" ;
     tamper:width 850 ;
-    prov:wasGeneratedBy <operation://d96bbc20-016c-4fb8-9e84-cb9299646c8b> .
+    prov:wasGeneratedBy <trn:operation:tknRPmvjBrB4sms5> .
 
-<operation://d96bbc20-016c-4fb8-9e84-cb9299646c8b> a tamper:CompressJPEG ;
+<trn:operation:tknRPmvjBrB4sms5> a tamper:CompressJPEG ;
     prov:endedAtTime "2026-05-23T16:51:08.113923"^^xsd:dateTime ;
     prov:startedAtTime "2026-05-23T16:51:08.097677"^^xsd:dateTime ;
-    prov:used "asset://45f0867c530cdb68df8d0a38e49f8d7084b0d2bf1a056570751dcdfca24777d6" ;
+    prov:used trn:asset:45f0867c530cdb68df8d0a38e49f8d7084b0d2bf1a056570751dcdfca24777d6 ;
     tamper:qualityFactor "80"^^xsd:nonNegativeInteger .
 ```
 
@@ -175,35 +175,35 @@ to the result.
 @prefix tamper: <https://example.org/tamper/core#> .
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 
-<plan://example> a plan:OperationPlan .
+<trn:plan:example> a plan:OperationPlan .
 
 # Variables (each bound to a media asset at execution time)
-<plan://v0> a plan:Variable ;
-    plan:isVariableOfPlan <plan://example> ;
+<trn:plan:example:v0> a plan:Variable ;
+    plan:isVariableOfPlan <trn:plan:example> ;
     rdfs:label "The original image" .
 
-<plan://v1> a plan:Variable ;
-    plan:isVariableOfPlan <plan://example> ;
+<trn:plan:example:v1> a plan:Variable ;
+    plan:isVariableOfPlan <trn:plan:example> ;
     rdfs:label "The compressed image" .
 
-<plan://v2> a plan:Variable ;
-    plan:isVariableOfPlan <plan://example> ;
+<trn:plan:example:v2> a plan:Variable ;
+    plan:isVariableOfPlan <trn:plan:example> ;
     rdfs:label "The noisy, compressed image" .
 
 # Steps (media operations)
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://example> ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:example:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:example> ;
+    plan:hasInputVariable <trn:plan:example:v0> ;
+    plan:hasOutputVariable <trn:plan:example:v1> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [        
         tamper:qualityFactor 90
     ] .
 
-<plan://s2> a plan:Step ;
-    plan:isStepOfPlan <plan://example> ;
-    plan:hasInputVariable <plan://v1> ;
-    plan:hasOutputVariable <plan://v2> ;
+<trn:plan:example:s2> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:example> ;
+    plan:hasInputVariable <trn:plan:example:v1> ;
+    plan:hasOutputVariable <trn:plan:example:v2> ;
     plan:operationType tamper:AddGaussianNoise ;
     plan:parameters [        
         tamper:gaussianMean 0.0 ;
@@ -212,13 +212,10 @@ to the result.
 ```
 
 With the MCP server running, hand the plan to your agent and bind its input
-variable (`plan://v0`) to a tracked asset. Every generated asset is linked to
+variable (`trn:plan:example:v0`) to a tracked asset. Every generated asset is linked to
 the operation that produced it via PROV (`prov:wasGeneratedBy`, `prov:used`), so
 the resulting graph records the full derivation history.
 
-> **Prefer Python?** You can also drive a plan directly with
-> `tamper.plans.OperationPlanExecutor` and `validate_plan_graph`. See the
-> [operations reference](docs/operations.md) for the full API.
 
 ### MCP tools
 

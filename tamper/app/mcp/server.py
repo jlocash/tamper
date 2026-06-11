@@ -11,6 +11,7 @@ from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from tamper.app.kg.knowledge_graph import GraphNotFoundError, KnowledgeGraph
 from tamper.core import Catalog, Dataset as TamperDataset, load_asset_from_file
+from tamper.core.dataset import DatasetURI
 from tamper.plans import (
     validate_plan_graph,
     GraphValidationError,
@@ -107,7 +108,7 @@ async def create_dataset(slug: str, title: str, description: str, ctx: Context) 
     :return: An RDF description of the new dataset, in Turtle format
     """
     try:
-        ds_uri = URIRef(f"dataset://{slug}")
+        ds_uri = DatasetURI(slug)
         ds_uri.n3()
     except Exception as e:
         raise ToolError("slug must be URI-compatible") from e
@@ -176,29 +177,29 @@ async def get_dataset_graph(identifier: str, ctx: Context) -> str:
 
 @mcp.tool("LoadMediaAsset")
 async def load_media_asset(
-    dataset_uri: str, file_path: PathLike[str], ctx: Context
+    dataset_trn: str, file_path: PathLike[str], ctx: Context
 ) -> str:
     """
     Loads a media asset into the knowledge graph.
 
-    :param dataset_uri: The identifier of the dataset to load the media asset into
+    :param dataset_trn: The identifier of the dataset to load the media asset into
     :param file_path: The file path of the media asset.
     :return: The serialized media asset graph in Turtle format.
     """
-    dataset_uri = URIRef(dataset_uri)
+    dataset_trn = URIRef(dataset_trn)
     kg = get_kg(ctx)
-    if not kg.any((dataset_uri, RDF.type, DCAT.Dataset)):
-        raise ToolError(f"Identifier {dataset_uri} is not associated a dataset")
+    if not kg.any((dataset_trn, RDF.type, DCAT.Dataset)):
+        raise ToolError(f"Identifier {dataset_trn} is not associated a dataset")
 
     kg = get_kg(ctx)
     subgraph = Graph()
     load_asset_from_file(subgraph, file_path)
 
     with kg.commit_or_rollback():
-        kg.insert_statements(dataset_uri, subgraph)
+        kg.insert_statements(dataset_trn, subgraph)
 
         # update dataset modified time
-        ds = TamperDataset(Graph(), dataset_uri)
+        ds = TamperDataset(Graph(), dataset_trn)
         ds.modified = datetime.now()
 
         kg.replace_statements_default(ds.graph)
@@ -255,54 +256,54 @@ async def create_plan(plan_name: str, plan_graph_ttl: str):
     @prefix tamper: <https://example.org/tamper/core#> .
     @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 
-    <plan://example-plan> a plan:OperationPlan .
+    <trn:plan:example-plan> a plan:OperationPlan .
 
     # ---------
     # Variables (media assets)
     # ---------
-    <plan://v0> a plan:Variable ;
-        plan:isVariableOfPlan <plan://example-plan> ;
+    <trn:plan:example-plan:v0> a plan:Variable ;
+        plan:isVariableOfPlan <trn:plan:example-plan> ;
         rdfs:label "The original image" .
 
-    <plan://v1> a plan:Variable ;
-        plan:isVariableOfPlan <plan://example-plan> ;
+    <trn:plan:example-plan:v1> a plan:Variable ;
+        plan:isVariableOfPlan <trn:plan:example-plan> ;
         rdfs:label "The compressed image" .
 
-    <plan://v2> a plan:Variable ;
-        plan:isVariableOfPlan <plan://example-plan> ;
+    <trn:plan:example-plan:v2> a plan:Variable ;
+        plan:isVariableOfPlan <trn:plan:example-plan> ;
         rdfs:label "The noisy compressed image" .
 
-    <plan://v3> a plan:Variable ;
-        plan:isVariableOfPlan <plan://example-plan> ;
+    <trn:plan:example-plan:v3> a plan:Variable ;
+        plan:isVariableOfPlan <trn:plan:example-plan> ;
         rdfs:label "The re-compressed image" .
 
     # ---------
     # Steps (media operations). Each step points at a plan:parameters
     # bundle that names the operation (plan:operationType) and carries its parameters.
     # ---------
-    <plan://s1> a plan:Step ;
-        plan:isStepOfPlan <plan://example-plan> ;
-        plan:hasInputVariable <plan://v0> ;
-        plan:hasOutputVariable <plan://v1> ;
+    <trn:plan:example-plan:s1> a plan:Step ;
+        plan:isStepOfPlan <trn:plan:example-plan> ;
+        plan:hasInputVariable <trn:plan:example-plan:v0> ;
+        plan:hasOutputVariable <trn:plan:example-plan:v1> ;
         plan:operationType tamper:CompressJPEG ;
         plan:parameters [
             tamper:qualityFactor 90
         ] .
 
-    <plan://s2> a plan:Step ;
-        plan:isStepOfPlan <plan://example-plan> ;
-        plan:hasInputVariable <plan://v1> ;
-        plan:hasOutputVariable <plan://v2> ;
+    <trn:plan:example-plan:s2> a plan:Step ;
+        plan:isStepOfPlan <trn:plan:example-plan> ;
+        plan:hasInputVariable <trn:plan:example-plan:v1> ;
+        plan:hasOutputVariable <trn:plan:example-plan:v2> ;
         plan:operationType tamper:AddGaussianNoise ;
         plan:parameters [
             tamper:gaussianMean 0.0 ;
             tamper:gaussianStd 1.0
         ] .
 
-    <plan://s3> a plan:Step ;
-        plan:isStepOfPlan <plan://example-plan> ;
-        plan:hasInputVariable <plan://v1> ;
-        plan:hasOutputVariable <plan://v3> ;
+    <trn:plan:example-plan:s3> a plan:Step ;
+        plan:isStepOfPlan <trn:plan:example-plan> ;
+        plan:hasInputVariable <trn:plan:example-plan:v1> ;
+        plan:hasOutputVariable <trn:plan:example-plan:v3> ;
         plan:operationType tamper:CompressJPEG ;
         plan:parameters [
             tamper:qualityFactor 50
@@ -369,7 +370,7 @@ async def delete_plan(plan_name: str):
 
 @mcp.tool("SubmitPlan", task=True)
 async def submit_plan(
-    dataset_uri: str,
+    dataset_trn: str,
     plan_name: str,
     initial_variables: dict[str, str],
     ctx: Context,
@@ -382,10 +383,10 @@ async def submit_plan(
     executes asynchronously, freeing the caller to do other work. Poll the task by its ID to
     retrieve the result graph once execution completes.
 
-    Example initial_variables (assumes "asset://myimage" resolves to a
-    valid asset in the knowledge graph): ``{ "plan://v0": "asset://myimage" }``
+    Example initial_variables (assumes "trn:asset:myimage" resolves to a
+    valid asset in the knowledge graph): ``{ "trn:plan:example-plan:v0": "trn:asset:myimage" }``
 
-    :param dataset_uri: The identifier of the dataset to execute the plan on
+    :param dataset_trn: The identifier of the dataset to execute the plan on
     :param plan_name: The name of the operation plan to execute.
     :param initial_variables: A dictionary mapping plan:Variable URIs in the operation plan to asset URIs in the
         knowledge graph. These bindings should provide only the variables not produced by some step in the plan. For
@@ -395,10 +396,10 @@ async def submit_plan(
     kg = get_kg(ctx)
     plan_queue = get_plan_queue(ctx)
 
-    dataset_uri = URIRef(dataset_uri)
-    dataset = TamperDataset(kg.describe(dataset_uri), dataset_uri)
+    dataset_trn = URIRef(dataset_trn)
+    dataset = TamperDataset(kg.describe(dataset_trn), dataset_trn)
     if len(dataset.graph) == 0:
-        raise ToolError(f"Datasest {dataset_uri} does not exist")
+        raise ToolError(f"Datasest {dataset_trn} does not exist")
 
     plan_file = config.TAMPER_PLANS_DIR / (plan_name + ".ttl")
     if not plan_file.exists():
@@ -433,7 +434,7 @@ async def submit_plan(
 
 @mcp.tool("QuerySPARQL")
 async def query_sparql(
-    sparql_query_str: str, dataset_uris: list[str], default_graph: bool, ctx: Context
+    sparql_query_str: str, dataset_trns: list[str], default_graph: bool, ctx: Context
 ):
     """
     Executes a (read-only) SPARQL query against the knowledge graph. The vocabulary should ALWAYS be fetched prior to
@@ -445,13 +446,13 @@ async def query_sparql(
     These parameters control which graphs form the union the query will be run on.
 
     :param sparql_query_str: The SPARQL query to execute. Must be one of the following: SELECT, ASK, CONSTRUCT, DESCRIBE.
-    :param dataset_uris: A list of URIs of datasets to include in the queried union
+    :param dataset_trns: A list of identifiers of datasets to include in the queried union
     :param default_graph: If set to true, will include the default graph in the queried union
     :return: In the case of a CONSTRUCT query, the result is the graph serialized in Turtle format. Otherwise, the result is a JSON object containing the results of the query.
     """
     kg = get_kg(ctx)
-    dataset_uris = list(map(URIRef, dataset_uris))
-    result = kg.query(sparql_query_str, default_graph, dataset_uris)
+    dataset_trns = list(map(URIRef, dataset_trns))
+    result = kg.query(sparql_query_str, default_graph, dataset_trns)
     if result.graph:
         result.graph.bind("tamper", TAMPER)
         return serialize_graph(result.graph)

@@ -22,23 +22,23 @@ PREFIXES = """
 CHAINED_PLAN = (
     PREFIXES
     + """
-<plan://test> a plan:OperationPlan .
+<trn:plan:test> a plan:OperationPlan .
 
-<plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://test> .
-<plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://test> .
-<plan://v2> a plan:Variable ; plan:isVariableOfPlan <plan://test> .
+<trn:plan:test:v0> a plan:Variable ; plan:isVariableOfPlan <trn:plan:test> .
+<trn:plan:test:v1> a plan:Variable ; plan:isVariableOfPlan <trn:plan:test> .
+<trn:plan:test:v2> a plan:Variable ; plan:isVariableOfPlan <trn:plan:test> .
 
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://test> ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:test:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:test> ;
+    plan:hasInputVariable <trn:plan:test:v0> ;
+    plan:hasOutputVariable <trn:plan:test:v1> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [ tamper:qualityFactor 80 ] .
 
-<plan://s2> a plan:Step ;
-    plan:isStepOfPlan <plan://test> ;
-    plan:hasInputVariable <plan://v1> ;
-    plan:hasOutputVariable <plan://v2> ;
+<trn:plan:test:s2> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:test> ;
+    plan:hasInputVariable <trn:plan:test:v1> ;
+    plan:hasOutputVariable <trn:plan:test:v2> ;
     plan:operationType tamper:AddGaussianNoise ;
     plan:parameters [
         tamper:gaussianMean 0.0 ;
@@ -49,7 +49,7 @@ CHAINED_PLAN = (
 )
 
 
-def _plan(ttl: str, uri: str = "plan://test") -> OperationPlan:
+def _plan(ttl: str, uri: str = "trn:plan:test") -> OperationPlan:
     g = Graph()
     g.parse(data=ttl, format="turtle")
     return OperationPlan(g, URIRef(uri))
@@ -60,7 +60,10 @@ class TestMaterializeOperations:
         plan = _plan(CHAINED_PLAN)
         graph, step_to_op = materialize_operations(plan)
 
-        assert set(step_to_op) == {URIRef("plan://s1"), URIRef("plan://s2")}
+        assert set(step_to_op) == {
+            URIRef("trn:plan:test:s1"),
+            URIRef("trn:plan:test:s2"),
+        }
         ops = set(graph.subjects(RDF.type, None))
         assert set(step_to_op.values()) == ops
 
@@ -68,8 +71,8 @@ class TestMaterializeOperations:
         plan = _plan(CHAINED_PLAN)
         graph, step_to_op = materialize_operations(plan)
 
-        s1_op = step_to_op[URIRef("plan://s1")]
-        s2_op = step_to_op[URIRef("plan://s2")]
+        s1_op = step_to_op[URIRef("trn:plan:test:s1")]
+        s2_op = step_to_op[URIRef("trn:plan:test:s2")]
         assert (s1_op, RDF.type, TAMPER.CompressJPEG) in graph
         assert (s2_op, RDF.type, TAMPER.AddGaussianNoise) in graph
 
@@ -77,8 +80,8 @@ class TestMaterializeOperations:
         plan = _plan(CHAINED_PLAN)
         graph, step_to_op = materialize_operations(plan)
 
-        s1_op = step_to_op[URIRef("plan://s1")]
-        s2_op = step_to_op[URIRef("plan://s2")]
+        s1_op = step_to_op[URIRef("trn:plan:test:s1")]
+        s2_op = step_to_op[URIRef("trn:plan:test:s2")]
         assert graph.value(s1_op, TAMPER.qualityFactor).toPython() == 80
         assert graph.value(s2_op, TAMPER.gaussianStd).toPython() == 10.0
         assert graph.value(s2_op, TAMPER.gaussianSeed).toPython() == 7
@@ -87,13 +90,13 @@ class TestMaterializeOperations:
         ttl = (
             PREFIXES
             + """
-<plan://test> a plan:OperationPlan .
-<plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://test> .
-<plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://test> .
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://test> ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:test> a plan:OperationPlan .
+<trn:plan:test:v0> a plan:Variable ; plan:isVariableOfPlan <trn:plan:test> .
+<trn:plan:test:v1> a plan:Variable ; plan:isVariableOfPlan <trn:plan:test> .
+<trn:plan:test:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:test> ;
+    plan:hasInputVariable <trn:plan:test:v0> ;
+    plan:hasOutputVariable <trn:plan:test:v1> ;
     plan:operationType tamper:DoesNotExist ;
     plan:parameters [ tamper:qualityFactor 80 ] .
 """
@@ -116,7 +119,7 @@ class TestThreadPoolPlanExecutor:
         executor = ThreadPoolPlanExecutor(tmp_path, max_workers=2)
 
         result = executor.execute(
-            _plan(CHAINED_PLAN), seed, {URIRef("plan://v0"): asset.identifier}
+            _plan(CHAINED_PLAN), seed, {URIRef("trn:plan:test:v0"): asset.identifier}
         )
 
         compress_op = result.value(predicate=RDF.type, object=TAMPER.CompressJPEG)
@@ -136,7 +139,7 @@ class TestThreadPoolPlanExecutor:
         executor = ThreadPoolPlanExecutor(tmp_path, max_workers=2)
 
         result = executor.execute(
-            _plan(CHAINED_PLAN), seed, {URIRef("plan://v0"): asset.identifier}
+            _plan(CHAINED_PLAN), seed, {URIRef("trn:plan:test:v0"): asset.identifier}
         )
 
         generated = set(result.subjects(PROV.wasGeneratedBy, None))
@@ -152,7 +155,7 @@ class TestThreadPoolPlanExecutor:
         executor = ThreadPoolPlanExecutor(tmp_path)
 
         result = executor.execute(
-            _plan(CHAINED_PLAN), seed, {URIRef("plan://v0"): asset.identifier}
+            _plan(CHAINED_PLAN), seed, {URIRef("trn:plan:test:v0"): asset.identifier}
         )
 
         for op in result.subjects(RDF.type, TAMPER.CompressJPEG):
@@ -166,19 +169,19 @@ class TestThreadPoolPlanExecutor:
         ttl = (
             PREFIXES
             + """
-<plan://test> a plan:OperationPlan .
-<plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://test> .
-<plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://test> .
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://test> ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:test> a plan:OperationPlan .
+<trn:plan:test:v0> a plan:Variable ; plan:isVariableOfPlan <trn:plan:test> .
+<trn:plan:test:v1> a plan:Variable ; plan:isVariableOfPlan <trn:plan:test> .
+<trn:plan:test:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:test> ;
+    plan:hasInputVariable <trn:plan:test:v0> ;
+    plan:hasOutputVariable <trn:plan:test:v1> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [ tamper:qualityFactor 80 ] .
-<plan://s2> a plan:Step ;
-    plan:isStepOfPlan <plan://test> ;
-    plan:hasInputVariable <plan://v1> ;
-    plan:hasOutputVariable <plan://v0> ;
+<trn:plan:test:s2> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:test> ;
+    plan:hasInputVariable <trn:plan:test:v1> ;
+    plan:hasOutputVariable <trn:plan:test:v0> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [ tamper:qualityFactor 80 ] .
 """

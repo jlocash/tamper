@@ -4,6 +4,7 @@ from datetime import datetime
 import mimetypes
 import os
 from pathlib import Path
+import secrets
 import tempfile
 
 from rdflib import PROV, XSD, Node
@@ -11,7 +12,14 @@ from rdflib import PROV, XSD, Node
 from tamper.core.assets import load_asset_from_file
 from tamper.vocabularies import TAMPER
 
-from ._common import Resource, MappedProperty
+from ._common import Resource, MappedProperty, TamperURI
+
+
+class OperationURI(TamperURI):
+    def __new__(cls, value: str | None = None):
+        if value is None:
+            value = secrets.token_urlsafe(12)
+        return super().__new__(cls, "operation", value)
 
 
 class Operation(Resource, abc.ABC):

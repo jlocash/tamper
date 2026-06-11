@@ -7,11 +7,10 @@ xsd:string), and the operation shapes are written against those canonical
 forms.
 """
 
-from uuid import uuid4
-
 import pytest
-from rdflib import RDF, Graph, Literal, URIRef
+from rdflib import RDF, Graph, Literal
 
+from tamper.core.operation import OperationURI
 from tamper.errors import GraphValidationError
 from tamper.ops.audio import ResampleAudio, TranscodeAudio
 from tamper.ops.image import (
@@ -31,7 +30,7 @@ from tamper.vocabularies import TAMPER
 def _op_graph(op_cls, **params) -> Graph:
     """Build a single-operation graph the way the plan executor materializes one."""
     g = Graph(store="Oxigraph")
-    op = op_cls.new(g, URIRef(f"operation://{uuid4()}"))
+    op = op_cls.new(g, OperationURI())
     for name, value in params.items():
         setattr(op, name, value)
     return g
@@ -92,9 +91,9 @@ def test_invalid_operation_raises(op_cls, params):
 def test_multiple_operations_validated_together():
     """All operations in a graph are validated"""
     g = Graph(store="Oxigraph")
-    ok = CompressJPEG.new(g, URIRef(f"operation://{uuid4()}"))
+    ok = CompressJPEG.new(g, OperationURI())
     ok.quality_factor = 80
-    bad = CompressJPEG.new(g, URIRef(f"operation://{uuid4()}"))
+    bad = CompressJPEG.new(g, OperationURI())
     bad.quality_factor = 999
 
     with pytest.raises(GraphValidationError):
@@ -104,7 +103,7 @@ def test_multiple_operations_validated_together():
 def test_plain_literals_conform():
     """Literals with undeclared datatypes should be coerced and validated successfully"""
     g = Graph(store="Oxigraph")
-    op = URIRef("operation://raw")
+    op = OperationURI()
     g.add((op, RDF.type, TAMPER.Resize))
     g.add((op, TAMPER.targetWidth, Literal(256)))
     g.add((op, TAMPER.targetHeight, Literal(256)))
@@ -115,7 +114,7 @@ def test_plain_literals_conform():
 
 def test_non_numeric_parameter_raises():
     g = Graph(store="Oxigraph")
-    op = URIRef("operation://raw")
+    op = OperationURI()
     g.add((op, RDF.type, TAMPER.CompressJPEG))
     g.add((op, TAMPER.qualityFactor, Literal("eighty")))
 

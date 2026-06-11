@@ -9,6 +9,7 @@ from tamper.app.kg.local import (
     LocalKnowledgeGraph,
     check_consistency,
 )
+from tamper.core.assets import AssetURI
 from tamper.utils.make_tarball import get_asset_files, make_tarball
 from tamper.vocabularies import TAMPER
 
@@ -381,7 +382,7 @@ class TestGetAssetFiles:
         dummy.write_text("data")
 
         ds = Dataset()
-        asset_uri = URIRef("asset://abc123")
+        asset_uri = AssetURI("abc123")
         ds.default_graph.add((asset_uri, TAMPER.filePath, Literal(str(dummy))))
         ds.default_graph.add((asset_uri, TAMPER.checksum, Literal("sha256:abc123")))
 
@@ -407,7 +408,7 @@ class TestMakeTarball:
         dummy.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
 
         ds = Dataset()
-        asset_uri = URIRef("asset://deadbeef")
+        asset_uri = AssetURI("deadbeef")
         checksum_str = "sha256:deadbeef"
         ds.default_graph.add((asset_uri, TAMPER.filePath, Literal(str(dummy))))
         ds.default_graph.add((asset_uri, TAMPER.checksum, Literal(checksum_str)))
@@ -424,9 +425,9 @@ class TestMakeTarball:
         dummy.write_bytes(b"\x00" * 50)
 
         ds = Dataset()
-        asset_uri = URIRef("asset://cafebabe")
+        asset_uri = AssetURI("cafebabe")
         ds.default_graph.add((asset_uri, TAMPER.filePath, Literal(str(dummy))))
-        ds.default_graph.add((asset_uri, TAMPER.checksum, Literal("sha256:cafebabe")))
+        ds.default_graph.add((asset_uri, TAMPER.checksum, AssetURI("cafebabe")))
 
         out = tmp_path / "out.tar.gz"
         make_tarball(ds, out)

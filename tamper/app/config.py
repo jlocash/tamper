@@ -3,15 +3,16 @@ import logging
 import os
 from pathlib import Path
 
-from rdflib import Graph, URIRef
+from rdflib import Graph
 
 from tamper.app.kg.knowledge_graph import KnowledgeGraph
 from tamper.app.kg.local import LocalKnowledgeGraph
 from tamper.core import Catalog
+from tamper.core._common import TamperURI
 
 logger = logging.getLogger(__name__)
 
-CATALOG_URI = URIRef("tamper://catalog")
+CATALOG_URI = TamperURI("catalog")
 
 
 class Config:
@@ -25,7 +26,7 @@ class Config:
         self.TAMPER_PLANS_DIR = self.TAMPER_HOME_DIR / "plans"
         self.TAMPER_MEDIA_DIR = self.TAMPER_HOME_DIR / "media"
         self.TAMPER_CATALOG_FILE = self.TAMPER_HOME_DIR / "catalog.trig"
-        self.TAMPER_CATALOG_URI = URIRef("tamper://catalog")
+        self.TAMPER_CATALOG_URI = CATALOG_URI
 
     def ensure_directories_exist(self):
         if not self.TAMPER_HOME_DIR.exists():

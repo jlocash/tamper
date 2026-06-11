@@ -7,12 +7,12 @@ asset recorded in the graph.
 """
 
 from pathlib import Path
-from uuid import uuid4
 
 import pytest
-from rdflib import PROV, Graph, URIRef
+from rdflib import PROV, Graph
 
 from tamper.core import ImageAsset, load_asset_from_file
+from tamper.core.operation import OperationURI
 from tamper.ops.image import (
     AddGaussianNoise,
     CompressJPEG,
@@ -47,7 +47,7 @@ def _run(op_cls, src: Path, out_dir: Path, **params):
     out_dir.mkdir(parents=True, exist_ok=True)
     g = Graph()
     asset = load_asset_from_file(g, src)
-    op = op_cls.new(g, URIRef(f"operation://{uuid4()}"))
+    op = op_cls.new(g, OperationURI())
     for name, value in params.items():
         setattr(op, name, value)
     op.used(asset.identifier)
@@ -84,7 +84,7 @@ def test_writes_content_addressed_file_to_out_dir(op_cls, params, tmp_path):
 @pytest.mark.parametrize("op_cls,params", OPS, ids=OP_IDS)
 def test_mutate_without_input_raises(op_cls, params, tmp_path):
     g = Graph()
-    op = op_cls.new(g, URIRef(f"operation://{uuid4()}"))
+    op = op_cls.new(g, OperationURI())
     for name, value in params.items():
         setattr(op, name, value)
 
@@ -124,7 +124,7 @@ class TestCropImage:
     def test_region_exceeding_bounds_raises(self, tmp_path):
         g = Graph()
         asset = load_asset_from_file(g, JPG)
-        op = CropImage.new(g, URIRef(f"operation://{uuid4()}"))
+        op = CropImage.new(g, OperationURI())
         op.x = 0
         op.y = 0
         op.width = asset.width + 1

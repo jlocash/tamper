@@ -88,11 +88,11 @@ class TestImageAsset:
         return asset
 
     def test_uri_starts_with_asset_scheme(self, jpg):
-        assert jpg.identifier.startswith("asset://")
+        assert jpg.identifier.startswith("trn:asset:")
 
     def test_uri_encodes_sha256(self, jpg):
         checksum = get_file_sha256(IMAGES / "file_example_JPG_100kB.jpg")
-        assert str(jpg.identifier) == f"asset://{checksum}"
+        assert str(jpg.identifier) == f"trn:asset:{checksum}"
 
     def test_rdftype_image_asset(self, jpg):
         assert TAMPER.ImageAsset in _objects(jpg.graph, jpg.identifier, RDF.type)
@@ -181,7 +181,7 @@ class TestVideoAsset:
 
     def test_uri_encodes_sha256(self, mp4: VideoAsset):
         checksum = get_file_sha256(VIDEO / "file_example_MP4_480_1_5MG.mp4")
-        assert str(mp4.identifier) == f"asset://{checksum}"
+        assert str(mp4.identifier) == f"trn:asset:{checksum}"
 
     def test_has_video_stream(self, mp4: VideoAsset):
         assert any(s for s in mp4.streams if isinstance(s, VideoStream))

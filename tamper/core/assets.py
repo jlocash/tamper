@@ -9,10 +9,15 @@ from rdflib import PROV, XSD, BNode, Graph, URIRef, RDF, Literal
 from tamper.core._common import MappedProperty
 from tamper.vocabularies import TAMPER
 from PIL import Image as PILImage
-from ._common import Resource
+from ._common import Resource, TamperURI
 
 
 magic = Magic(mime=True)
+
+
+class AssetURI(TamperURI):
+    def __new__(cls, value: str):
+        return super().__new__(cls, "asset", value)
 
 
 def get_file_sha256(path: PathLike[str]):
@@ -116,9 +121,8 @@ class MediaAsset(Resource):
     def from_file(cls, graph: Graph, file: PathLike[str]):
         media_type = magic.from_file(file)
         checksum = get_file_sha256(file)
-        asset_uri = URIRef(f"asset://{checksum}")
+        asset_uri = AssetURI(checksum)
         asset = cls.new(graph, asset_uri)
-        asset = MediaAsset.new(graph, asset_uri)
         asset.media_type = media_type
         asset.checksum = "sha256:" + checksum
         asset.file_path = str(Path(file).absolute())

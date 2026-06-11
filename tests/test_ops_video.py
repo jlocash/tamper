@@ -1,13 +1,13 @@
 """Behavioral tests for tamper.ops.video — TranscodeVideo."""
 
 from pathlib import Path
-from uuid import uuid4
 
 import ffmpeg
 import pytest
-from rdflib import PROV, Graph, URIRef
+from rdflib import PROV, Graph
 
 from tamper.core import VideoAsset, load_asset_from_file
+from tamper.core.operation import OperationURI
 from tamper.ops.video import TranscodeVideo
 
 TEST_MEDIA = Path(__file__).parent / "test-media"
@@ -23,7 +23,7 @@ def _run(src: Path, out_dir: Path, **params):
     """Run TranscodeVideo over ``src``, returning (input, output, op)."""
     g = Graph()
     asset = load_asset_from_file(g, src)
-    op = TranscodeVideo.new(g, URIRef(f"operation://{uuid4()}"))
+    op = TranscodeVideo.new(g, OperationURI())
     for name, value in params.items():
         setattr(op, name, value)
     op.used(asset.identifier)
@@ -68,7 +68,7 @@ class TestTranscodeVideo:
     def test_input_without_video_stream_raises(self, tmp_path):
         g = Graph()
         asset = load_asset_from_file(g, MP3)
-        op = TranscodeVideo.new(g, URIRef(f"operation://{uuid4()}"))
+        op = TranscodeVideo.new(g, OperationURI())
         op.video_encoder = "libx264"
         op.crf = 35
         op.used(asset.identifier)
@@ -78,7 +78,7 @@ class TestTranscodeVideo:
 
     def test_mutate_without_input_raises(self, tmp_path):
         g = Graph()
-        op = TranscodeVideo.new(g, URIRef(f"operation://{uuid4()}"))
+        op = TranscodeVideo.new(g, OperationURI())
         op.video_encoder = "libx264"
         op.crf = 35
 

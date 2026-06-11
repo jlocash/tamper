@@ -1,6 +1,11 @@
 from datetime import datetime
 from rdflib import DCAT, DCTERMS, XSD, URIRef
-from ._common import MappedProperty, Resource
+from ._common import MappedProperty, Resource, TamperURI
+
+
+class DatasetURI(TamperURI):
+    def __new__(cls, slug: str):
+        return super().__new__(cls, "dataset", slug)
 
 
 class Dataset(Resource):

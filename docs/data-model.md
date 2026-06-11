@@ -4,7 +4,7 @@ See also: [RDF 1.1 Primer](https://www.w3.org/TR/rdf11-primer/)
 
 The underlying data model is an RDF knowledge graph. Every file is described as 
 an **asset** with a content-addressed identifier
-(`asset://<sha256>`), its media type, and technical metadata. The identifier is
+(`trn:asset:<sha256>`), its media type, and technical metadata. The identifier is
 a hash of the file's contents, so identical files always share the same id.
 
 Audio and video files are **containers**: they hold one or more _streams_ (for
@@ -43,7 +43,7 @@ ctx.print(format="turtle")
 ```
 
 ```turtle
-<asset://aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e> a tamper:ImageAsset ;
+<trn:asset:aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e> a tamper:ImageAsset ;
     tamper:checksum "sha256:aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e" ;
     tamper:height 566 ;
     tamper:filePath "/path/to/image.png" ;
@@ -79,7 +79,7 @@ ctx.print(format="turtle")
 ```
 
 ```turtle
-<asset://0362a64f6c0dcb7347b4af8bb22828d765912d58a8becea58ff610460cd8396b> a tamper:AudioAsset ;
+<trn:asset:0362a64f6c0dcb7347b4af8bb22828d765912d58a8becea58ff610460cd8396b> a tamper:AudioAsset ;
     tamper:checksum "sha256:0362a64f6c0dcb7347b4af8bb22828d765912d58a8becea58ff610460cd8396b" ;
     tamper:mediaType "audio/mpeg" ;
     tamper:filePath "/path/to/audio.wav" ;
@@ -131,7 +131,7 @@ A video asset carries one stream per track — here a VP8 video stream and a
 Vorbis audio stream:
 
 ```turtle
-<asset://8ab080c1406dff77f8897955cf977e9ad779e40ab3a07bc2f8694fbd2fc2be21> a tamper:VideoAsset ;
+<trn:asset:8ab080c1406dff77f8897955cf977e9ad779e40ab3a07bc2f8694fbd2fc2be21> a tamper:VideoAsset ;
     tamper:checksum "sha256:8ab080c1406dff77f8897955cf977e9ad779e40ab3a07bc2f8694fbd2fc2be21" ;
     tamper:containerFormat "QuickTime / MOV" ;
     tamper:filePath "/path/to/video.mp4" ;

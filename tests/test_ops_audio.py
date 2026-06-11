@@ -1,13 +1,13 @@
 """Behavioral tests for tamper.ops.audio operations."""
 
 from pathlib import Path
-from uuid import uuid4
 
 import ffmpeg
 import pytest
-from rdflib import PROV, Graph, URIRef
+from rdflib import PROV, Graph
 
 from tamper.core import MediaAsset, load_asset_from_file
+from tamper.core.operation import OperationURI
 from tamper.ops.audio import ResampleAudio, TranscodeAudio
 
 TEST_MEDIA = Path(__file__).parent / "test-media"
@@ -25,7 +25,7 @@ def _run(op_cls, src: Path, out_dir: Path, **params):
     """Run ``op_cls`` over ``src``, returning (input asset, output asset, op)."""
     g = Graph()
     asset = load_asset_from_file(g, src)
-    op = op_cls.new(g, URIRef(f"operation://{uuid4()}"))
+    op = op_cls.new(g, OperationURI())
     for name, value in params.items():
         setattr(op, name, value)
     op.used(asset.identifier)
@@ -53,7 +53,7 @@ class TestResampleAudio:
     def test_input_without_audio_stream_raises(self, tmp_path):
         g = Graph()
         asset = load_asset_from_file(g, PNG)
-        op = ResampleAudio.new(g, URIRef(f"operation://{uuid4()}"))
+        op = ResampleAudio.new(g, OperationURI())
         op.target_sample_rate = 8000
         op.used(asset.identifier)
 
@@ -62,7 +62,7 @@ class TestResampleAudio:
 
     def test_mutate_without_input_raises(self, tmp_path):
         g = Graph()
-        op = ResampleAudio.new(g, URIRef(f"operation://{uuid4()}"))
+        op = ResampleAudio.new(g, OperationURI())
         op.target_sample_rate = 8000
 
         with pytest.raises(ValueError):
@@ -109,7 +109,7 @@ class TestTranscodeAudio:
 
     def test_mutate_without_input_raises(self, tmp_path):
         g = Graph()
-        op = TranscodeAudio.new(g, URIRef(f"operation://{uuid4()}"))
+        op = TranscodeAudio.new(g, OperationURI())
         op.audio_encoder = "libmp3lame"
         op.target_bitrate = 64000
 

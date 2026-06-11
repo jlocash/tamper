@@ -2,10 +2,10 @@ from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from datetime import datetime
 from os import PathLike
 from pathlib import Path
-from uuid import uuid4
 
 from rdflib import Graph, Node, URIRef
 
+from tamper.core.operation import OperationURI
 from tamper.ops.validation import validate_operations
 from tamper.vocabularies._TAMPER import TAMPER
 from tamper.ops.audio import ResampleAudio, TranscodeAudio
@@ -54,7 +54,7 @@ def materialize_operations(plan: OperationPlan) -> tuple[Graph, dict[Node, Node]
         if op_type not in operation_map:
             raise ValueError(f"Unsupported operation type {op_type}")
 
-        op_uri = URIRef(f"operation://{uuid4()}")
+        op_uri = OperationURI()
         op = operation_map[op_type].new(result, op_uri)
         params = step.parameters
         for p, o in params.graph.predicate_objects(params.identifier):

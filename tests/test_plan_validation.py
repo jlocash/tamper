@@ -20,18 +20,18 @@ _PREFIXES = """\
 _MINIMAL_VALID_TTL = (
     _PREFIXES
     + """\
-<plan://p1> a plan:OperationPlan .
+<trn:plan:p1> a plan:OperationPlan .
 
-<plan://v0> a plan:Variable ;
-    plan:isVariableOfPlan <plan://p1> .
+<trn:plan:p1:v0> a plan:Variable ;
+    plan:isVariableOfPlan <trn:plan:p1> .
 
-<plan://v1> a plan:Variable ;
-    plan:isVariableOfPlan <plan://p1> .
+<trn:plan:p1:v1> a plan:Variable ;
+    plan:isVariableOfPlan <trn:plan:p1> .
 
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://p1> ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:p1:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:p1> ;
+    plan:hasInputVariable <trn:plan:p1:v0> ;
+    plan:hasOutputVariable <trn:plan:p1:v1> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [
         tamper:qualityFactor 90
@@ -61,23 +61,23 @@ class TestValidPlanGraph:
         ttl = (
             _PREFIXES
             + """\
-<plan://p1> a plan:OperationPlan .
+<trn:plan:p1> a plan:OperationPlan .
 
-<plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
-<plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
-<plan://v2> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
+<trn:plan:p1:v0> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
+<trn:plan:p1:v1> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
+<trn:plan:p1:v2> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
 
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://p1> ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:p1:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:p1> ;
+    plan:hasInputVariable <trn:plan:p1:v0> ;
+    plan:hasOutputVariable <trn:plan:p1:v1> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [] .
 
-<plan://s2> a plan:Step ;
-    plan:isStepOfPlan <plan://p1> ;
-    plan:hasInputVariable <plan://v1> ;
-    plan:hasOutputVariable <plan://v2> ;
+<trn:plan:p1:s2> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:p1> ;
+    plan:hasInputVariable <trn:plan:p1:v1> ;
+    plan:hasOutputVariable <trn:plan:p1:v2> ;
     plan:operationType tamper:AddGaussianNoise ;
     plan:parameters [] .
 """
@@ -95,13 +95,13 @@ class TestMissingPlanDeclaration:
         ttl = (
             _PREFIXES
             + """\
-<plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
-<plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
+<trn:plan:p1:v0> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
+<trn:plan:p1:v1> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
 
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://p1> ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:p1:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:p1> ;
+    plan:hasInputVariable <trn:plan:p1:v0> ;
+    plan:hasOutputVariable <trn:plan:p1:v1> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [] .
 """
@@ -115,7 +115,7 @@ class TestMissingStep:
         ttl = (
             _PREFIXES
             + """\
-<plan://p1> a plan:OperationPlan .
+<trn:plan:p1> a plan:OperationPlan .
 """
         )
         with pytest.raises(GraphValidationError):
@@ -127,13 +127,13 @@ class TestStepMissingIsStepOfPlan:
         ttl = (
             _PREFIXES
             + """\
-<plan://p1> a plan:OperationPlan .
-<plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
-<plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
+<trn:plan:p1> a plan:OperationPlan .
+<trn:plan:p1:v0> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
+<trn:plan:p1:v1> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
 
-<plan://s1> a plan:Step ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:s1> a plan:Step ;
+    plan:hasInputVariable <trn:plan:p1:v0> ;
+    plan:hasOutputVariable <trn:plan:p1:v1> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [] .
 """
@@ -147,13 +147,13 @@ class TestStepMissingInputVariable:
         ttl = (
             _PREFIXES
             + """\
-<plan://p1> a plan:OperationPlan .
-<plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
-<plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
+<trn:plan:p1> a plan:OperationPlan .
+<trn:plan:p1:v0> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
+<trn:plan:p1:v1> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
 
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://p1> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:p1:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:p1> ;
+    plan:hasOutputVariable <trn:plan:p1:v1> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [] .
 """
@@ -167,12 +167,12 @@ class TestStepMissingOutputVariable:
         ttl = (
             _PREFIXES
             + """\
-<plan://p1> a plan:OperationPlan .
-<plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
+<trn:plan:p1> a plan:OperationPlan .
+<trn:plan:p1:v0> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
 
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://p1> ;
-    plan:hasInputVariable <plan://v0> ;
+<trn:plan:p1:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:p1> ;
+    plan:hasInputVariable <trn:plan:p1:v0> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [] .
 """
@@ -186,14 +186,14 @@ class TestStepMissingOperationParameters:
         ttl = (
             _PREFIXES
             + """\
-<plan://p1> a plan:OperationPlan .
-<plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
-<plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
+<trn:plan:p1> a plan:OperationPlan .
+<trn:plan:p1:v0> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
+<trn:plan:p1:v1> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
 
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://p1> ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> .
+<trn:plan:p1:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:p1> ;
+    plan:hasInputVariable <trn:plan:p1:v0> ;
+    plan:hasOutputVariable <trn:plan:p1:v1> .
 """
         )
         with pytest.raises(GraphValidationError):
@@ -205,14 +205,14 @@ class TestOperationParametersMissingOperationType:
         ttl = (
             _PREFIXES
             + """\
-<plan://p1> a plan:OperationPlan .
-<plan://v0> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
-<plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
+<trn:plan:p1> a plan:OperationPlan .
+<trn:plan:p1:v0> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
+<trn:plan:p1:v1> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
 
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://p1> ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:p1:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:p1> ;
+    plan:hasInputVariable <trn:plan:p1:v0> ;
+    plan:hasOutputVariable <trn:plan:p1:v1> ;
     plan:parameters [] .
 """
         )
@@ -225,14 +225,14 @@ class TestVariableMissingPlanLink:
         ttl = (
             _PREFIXES
             + """\
-<plan://p1> a plan:OperationPlan .
-<plan://v0> a plan:Variable .
-<plan://v1> a plan:Variable ; plan:isVariableOfPlan <plan://p1> .
+<trn:plan:p1> a plan:OperationPlan .
+<trn:plan:p1:v0> a plan:Variable .
+<trn:plan:p1:v1> a plan:Variable ; plan:isVariableOfPlan <trn:plan:p1> .
 
-<plan://s1> a plan:Step ;
-    plan:isStepOfPlan <plan://p1> ;
-    plan:hasInputVariable <plan://v0> ;
-    plan:hasOutputVariable <plan://v1> ;
+<trn:plan:s1> a plan:Step ;
+    plan:isStepOfPlan <trn:plan:p1> ;
+    plan:hasInputVariable <trn:plan:p1:v0> ;
+    plan:hasOutputVariable <trn:plan:p1:v1> ;
     plan:operationType tamper:CompressJPEG ;
     plan:parameters [] .
 """
@@ -246,7 +246,7 @@ class TestGraphValidationError:
         ttl = (
             _PREFIXES
             + """\
-<plan://p1> a plan:OperationPlan .
+<trn:plan:p1> a plan:OperationPlan .
 """
         )
         g = _parse(ttl)
