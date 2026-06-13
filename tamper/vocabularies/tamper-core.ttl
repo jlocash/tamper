@@ -65,65 +65,50 @@ tamper:Operation a owl:Class ;
     rdfs:comment "An operation is a process that results in the creation of a new media asset."@en ;
     rdfs:subClassOf prov:Activity .
 
-tamper:ImageOperation a owl:Class ;
-    rdfs:label "Image Operation"@en ;
-    rdfs:comment "An operation that results in the creation of an image."@en ;
-    rdfs:subClassOf tamper:Operation .
-
 tamper:Compress a owl:Class ;
     rdfs:label "Compress"@en ;
     rdfs:comment "Applies compression to an image using a format and quality level"@en ;
-    rdfs:subClassOf tamper:ImageOperation .
+    rdfs:subClassOf tamper:Operation .
 
 tamper:AddGaussianNoise a owl:Class ;
     rdfs:label "Add Gaussian Noise"@en ;
     rdfs:comment "Adds gaussian noise to an image."@en ;
-    rdfs:subClassOf tamper:ImageOperation .
+    rdfs:subClassOf tamper:Operation .
 
 tamper:Resize a owl:Class ;
     rdfs:label "Resize"@en ;
     rdfs:comment "Resamples an image to a target width and height using a specified interpolation method."@en ;
-    rdfs:subClassOf tamper:ImageOperation .
+    rdfs:subClassOf tamper:Operation .
 
 tamper:MedianFilter a owl:Class ;
     rdfs:label "Median Filter"@en ;
     rdfs:comment "Applies a median filter over a square neighbourhood, commonly used to suppress noise residuals."@en ;
-    rdfs:subClassOf tamper:ImageOperation .
+    rdfs:subClassOf tamper:Operation .
 
 tamper:GaussianBlur a owl:Class ;
     rdfs:label "Gaussian Blur"@en ;
     rdfs:comment "Convolves an image with a Gaussian kernel of a given size and standard deviation."@en ;
-    rdfs:subClassOf tamper:ImageOperation .
+    rdfs:subClassOf tamper:Operation .
 
 tamper:CropImage a owl:Class ;
     rdfs:label "Crop Image"@en ;
     rdfs:comment "Extracts a rectangular region from an image, given a top-left origin and a width and height."@en ;
-    rdfs:subClassOf tamper:ImageOperation .
-
-tamper:VideoOperation a owl:Class ;
-    rdfs:label "Video Operation"@en ;
-    rdfs:comment "An operation that results in the creation of a video."@en ;
     rdfs:subClassOf tamper:Operation .
 
 tamper:TranscodeVideo a owl:Class ;
     rdfs:label "Transcode Video"@en ;
     rdfs:comment "Re-encodes a video's video stream using a specified encoder and quality (CRF). The audio stream is copied without re-encoding."@en ;
-    rdfs:subClassOf tamper:VideoOperation .
-
-tamper:AudioOperation a owl:Class ;
-    rdfs:label "Audio Operation"@en ;
-    rdfs:comment "An operation that results in the creation of an audio asset."@en ;
     rdfs:subClassOf tamper:Operation .
 
 tamper:TranscodeAudio a owl:Class ;
     rdfs:label "Transcode Audio"@en ;
     rdfs:comment "Re-encodes an audio stream using a specified encoder and target bit rate."@en ;
-    rdfs:subClassOf tamper:AudioOperation .
+    rdfs:subClassOf tamper:Operation .
 
 tamper:ResampleAudio a owl:Class ;
     rdfs:label "Resample Audio"@en ;
     rdfs:comment "Resamples an audio stream to a target sample rate."@en ;
-    rdfs:subClassOf tamper:AudioOperation .
+    rdfs:subClassOf tamper:Operation .
 
 #################################################################
 # Object Properties

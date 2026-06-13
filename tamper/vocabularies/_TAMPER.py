@@ -7,22 +7,18 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-06-13 18:36:20.274398
+    Date: 2026-06-13 18:37:51.060729
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
 
     AddGaussianNoise: URIRef  # Adds gaussian noise to an image.
     AudioAsset: URIRef  # A digital audio file containing one or more audio streams.
-    AudioOperation: (
-        URIRef  # An operation that results in the creation of an audio asset.
-    )
     AudioStream: URIRef  # A stream containing audio sample data.
     Compress: URIRef  # Applies compression to an image using a format and quality level
     CropImage: URIRef  # Extracts a rectangular region from an image, given a top-left origin and a width and height.
     GaussianBlur: URIRef  # Convolves an image with a Gaussian kernel of a given size and standard deviation.
     ImageAsset: URIRef  # A digital image file.
-    ImageOperation: URIRef  # An operation that results in the creation of an image.
     MediaAsset: URIRef  # A digital media file such as an image, audio, or video.
     MedianFilter: URIRef  # Applies a median filter over a square neighbourhood, commonly used to suppress noise residuals.
     Operation: URIRef  # An operation is a process that results in the creation of a new media asset.
@@ -36,7 +32,6 @@ class TAMPER(DefinedNamespace):
     VideoAsset: (
         URIRef  # A digital video file containing video and potentially audio streams.
     )
-    VideoOperation: URIRef  # An operation that results in the creation of a video.
     VideoStream: URIRef  # A stream containing video frame data.
     audioEncoder: URIRef  # The name of the audio encoder used for transcoding (e.g., 'libmp3lame', 'aac', 'libopus').
     bitDepth: URIRef  # The number of bits per pixel channel.
