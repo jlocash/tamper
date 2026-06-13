@@ -8,7 +8,8 @@ from rdflib import Graph, Node, URIRef
 from tamper.core.operation import OperationURI
 from tamper.ops.validation import validate_operations
 from tamper.vocabularies._TAMPER import TAMPER
-from tamper.ops.audio import ResampleAudio, TranscodeAudio
+from tamper.ops.transcode import Transcode
+from tamper.ops.audio import ResampleAudio
 from tamper.ops.compress import Compress
 from tamper.ops.image import (
     AddGaussianNoise,
@@ -17,20 +18,18 @@ from tamper.ops.image import (
     GaussianBlur,
     CropImage,
 )
-from tamper.ops.video import TranscodeVideo
 
 from .operation_plan import OperationPlanExecutor
 from tamper.core import Operation, OperationPlan, PlanStep, MediaAsset
 
 operation_map: dict[URIRef, type[Operation]] = {
     TAMPER.Compress: Compress,
-    TAMPER.TranscodeVideo: TranscodeVideo,
+    TAMPER.Transcode: Transcode,
     TAMPER.AddGaussianNoise: AddGaussianNoise,
     TAMPER.Resize: Resize,
     TAMPER.MedianFilter: MedianFilter,
     TAMPER.GaussianBlur: GaussianBlur,
     TAMPER.ResampleAudio: ResampleAudio,
-    TAMPER.TranscodeAudio: TranscodeAudio,
     TAMPER.CropImage: CropImage,
 }
 

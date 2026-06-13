@@ -12,7 +12,7 @@ from rdflib import RDF, Graph, Literal
 
 from tamper.core.operation import OperationURI
 from tamper.errors import GraphValidationError
-from tamper.ops.audio import ResampleAudio, TranscodeAudio
+from tamper.ops.audio import ResampleAudio
 from tamper.ops.compress import Compress
 from tamper.ops.image import (
     AddGaussianNoise,
@@ -21,7 +21,7 @@ from tamper.ops.image import (
     MedianFilter,
     Resize,
 )
-from tamper.ops.video import TranscodeVideo
+from tamper.ops.transcode import Transcode
 from tamper.ops.validation import validate_operations
 from tamper.vocabularies import TAMPER
 
@@ -44,8 +44,8 @@ VALID_OPS = [
     (GaussianBlur, {"kernel_size": 5, "sigma": 1.0}),
     (AddGaussianNoise, {"mean": 0.0, "std": 10.0, "seed": 42}),
     (ResampleAudio, {"target_sample_rate": 22050}),
-    (TranscodeAudio, {"audio_encoder": "libmp3lame", "target_bitrate": 128000}),
-    (TranscodeVideo, {"video_encoder": "libx264", "crf": 23}),
+    (Transcode, {"audio_encoder": "libmp3lame", "target_bitrate": 128000}),
+    (Transcode, {"video_encoder": "libx264", "crf": 23}),
 ]
 
 INVALID_OPS = [
@@ -76,7 +76,7 @@ INVALID_OPS = [
         GaussianBlur, {"kernel_size": 0, "sigma": 1.0}, id="kernel-not-positive"
     ),
     pytest.param(
-        TranscodeVideo, {"video_encoder": "libx264", "crf": -1}, id="crf-negative"
+        Transcode, {"video_encoder": "libx264", "crf": -1}, id="crf-negative"
     ),
 ]
 

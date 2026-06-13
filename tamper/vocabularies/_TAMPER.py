@@ -7,7 +7,7 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-06-13 18:37:51.060729
+    Date: 2026-06-13 20:53:18.245005
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
@@ -27,8 +27,7 @@ class TAMPER(DefinedNamespace):
     Stream: URIRef  # A component stream within a media container.
     StreamContainer: URIRef  # A media asset that contains one or more streams (e.g., video or audio files).
     SubtitleStream: URIRef  # A stream containing subtitle or caption data.
-    TranscodeAudio: URIRef  # Re-encodes an audio stream using a specified encoder and target bit rate.
-    TranscodeVideo: URIRef  # Re-encodes a video's video stream using a specified encoder and quality (CRF). The audio stream is copied without re-encoding.
+    Transcode: URIRef  # Re-encodes a video or audio stream using the specified encoder(s) and quality (CRF). Streams are copied by default if an encoder is not given.
     VideoAsset: (
         URIRef  # A digital video file containing video and potentially audio streams.
     )

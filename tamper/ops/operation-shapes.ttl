@@ -132,38 +132,30 @@ tamper:TargetSampleRateShape a sh:PropertyShape ;
 tamper:AudioEncoderShape a sh:PropertyShape ;
     sh:path tamper:audioEncoder ;
     sh:datatype xsd:string ;
-    sh:minCount 1 ;
     sh:maxCount 1 ;
     sh:message "Audio encoder must be a string" .
 
 tamper:TargetBitRateShape a sh:PropertyShape ;
     sh:path tamper:targetBitRate ;
     sh:datatype xsd:integer ;
-    sh:minCount 1 ;
     sh:maxCount 1 ;
     sh:minInclusive 1 ;
     sh:message "Target bit rate must be a positive integer" .
 
-# Video-related Property Shapes
-
 tamper:VideoEncoderShape a sh:PropertyShape ;
     sh:path tamper:videoEncoder ;
     sh:datatype xsd:string ;
-    sh:minCount 1 ;
     sh:maxCount 1 ;
     sh:message "Video encoder must be a string" .
 
 tamper:CRFShape a sh:PropertyShape ;
     sh:path tamper:crf ;
     sh:datatype xsd:integer ;
-    sh:minCount 1 ;
     sh:maxCount 1 ;
     sh:minInclusive 0 ;
     sh:message "CRF must be a non-negative integer" .
 
 # Node Shapes
-
-# Image Operations
 
 tamper:CompressShape a sh:NodeShape ;
     sh:targetClass tamper:Compress ;
@@ -198,20 +190,31 @@ tamper:AddGaussianNoiseShape a sh:NodeShape ;
     sh:property tamper:GaussianStdShape ;
     sh:property tamper:GaussianSeedShape .
 
-# Audio Operations
-
 tamper:ResampleAudioShape a sh:NodeShape ;
     sh:targetClass tamper:ResampleAudio ;
     sh:property tamper:TargetSampleRateShape .
 
-tamper:TranscodeAudioShape a sh:NodeShape ;
-    sh:targetClass tamper:TranscodeAudio ;
+tamper:TranscodeShape a sh:NodeShape ;
+    sh:targetClass tamper:Transcode ;
     sh:property tamper:AudioEncoderShape ;
-    sh:property tamper:TargetBitRateShape .
-
-# Video Operations
-
-tamper:TranscodeVideoShape a sh:NodeShape ;
-    sh:targetClass tamper:TranscodeVideo ;
+    sh:property tamper:TargetBitRateShape ;
     sh:property tamper:VideoEncoderShape ;
-    sh:property tamper:CRFShape .
+    sh:property tamper:CRFShape ;
+    
+    # need *something* to transcode
+    sh:or (
+        [ sh:path tamper:audioEncoder ; sh:minCount 1 ]
+        [ sh:path tamper:videoEncoder ; sh:minCount 1 ]
+    ) ;
+
+    # crf can only be used with a video encoder
+    sh:or (
+        [ sh:path tamper:crf ; sh:maxCount 0 ]
+        [ sh:path tamper:videoEncoder ; sh:minCount 1 ]
+    ) ;
+
+    # target bit rate can only be used with an audio encoder
+    sh:or (
+        [ sh:path tamper:targetBitRate ; sh:maxCount 0 ]
+        [ sh:path tamper:audioEncoder ; sh:minCount 1 ]
+    ) .

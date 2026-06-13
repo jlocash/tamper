@@ -8,11 +8,10 @@ from rdflib import PROV, Graph
 
 from tamper.core import MediaAsset, load_asset_from_file
 from tamper.core.operation import OperationURI
-from tamper.ops.audio import ResampleAudio, TranscodeAudio
+from tamper.ops.audio import ResampleAudio
 
 TEST_MEDIA = Path(__file__).parent / "test-media"
 WAV = TEST_MEDIA / "audio" / "file_example_WAV_1MG.wav"
-MP3 = TEST_MEDIA / "audio" / "file_example_MP3_700KB.mp3"
 PNG = TEST_MEDIA / "images" / "file_example_PNG_500kB.png"
 
 
@@ -64,54 +63,6 @@ class TestResampleAudio:
         g = Graph()
         op = ResampleAudio.new(g, OperationURI())
         op.target_sample_rate = 8000
-
-        with pytest.raises(ValueError):
-            op.mutate(tmp_path)
-
-
-class TestTranscodeAudio:
-    def test_transcodes_to_requested_encoder(self, tmp_path):
-        _, out, _ = _run(
-            TranscodeAudio,
-            WAV,
-            tmp_path,
-            audio_encoder="libmp3lame",
-            target_bitrate=64000,
-        )
-
-        out_file = Path(str(out.file_path))
-        assert out_file.suffix == ".mp3"
-        assert _audio_stream(out_file)["codec_name"] == "mp3"
-
-    def test_applies_target_bitrate(self, tmp_path):
-        _, out, _ = _run(
-            TranscodeAudio,
-            WAV,
-            tmp_path,
-            audio_encoder="libmp3lame",
-            target_bitrate=64000,
-        )
-
-        bit_rate = int(_audio_stream(Path(str(out.file_path)))["bit_rate"])
-        assert abs(bit_rate - 64000) / 64000 < 0.2
-
-    def test_records_provenance(self, tmp_path):
-        src, out, op = _run(
-            TranscodeAudio,
-            MP3,
-            tmp_path,
-            audio_encoder="libmp3lame",
-            target_bitrate=64000,
-        )
-
-        assert (out.identifier, PROV.wasGeneratedBy, op.identifier) in op.graph
-        assert op.get_used() == [src.identifier]
-
-    def test_mutate_without_input_raises(self, tmp_path):
-        g = Graph()
-        op = TranscodeAudio.new(g, OperationURI())
-        op.audio_encoder = "libmp3lame"
-        op.target_bitrate = 64000
 
         with pytest.raises(ValueError):
             op.mutate(tmp_path)

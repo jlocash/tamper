@@ -95,14 +95,9 @@ tamper:CropImage a owl:Class ;
     rdfs:comment "Extracts a rectangular region from an image, given a top-left origin and a width and height."@en ;
     rdfs:subClassOf tamper:Operation .
 
-tamper:TranscodeVideo a owl:Class ;
-    rdfs:label "Transcode Video"@en ;
-    rdfs:comment "Re-encodes a video's video stream using a specified encoder and quality (CRF). The audio stream is copied without re-encoding."@en ;
-    rdfs:subClassOf tamper:Operation .
-
-tamper:TranscodeAudio a owl:Class ;
-    rdfs:label "Transcode Audio"@en ;
-    rdfs:comment "Re-encodes an audio stream using a specified encoder and target bit rate."@en ;
+tamper:Transcode a owl:Class ;
+    rdfs:label "Transcode"@en ;
+    rdfs:comment "Re-encodes a video or audio stream using the specified encoder(s) and quality (CRF). Streams are copied by default if an encoder is not given."@en ;
     rdfs:subClassOf tamper:Operation .
 
 tamper:ResampleAudio a owl:Class ;
@@ -390,25 +385,25 @@ tamper:cropHeight a owl:DatatypeProperty, owl:FunctionalProperty ;
 tamper:videoEncoder a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "video encoder"@en ;
     rdfs:comment "The name of the video encoder used for transcoding (e.g., 'libx264', 'libx265', 'libvpx-vp9')."@en ;
-    rdfs:domain tamper:TranscodeVideo ;
+    rdfs:domain tamper:Transcode ;
     rdfs:range xsd:string .
 
 tamper:crf a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "CRF"@en ;
     rdfs:comment "Constant Rate Factor — a perceptual-quality target for the encoder. Lower values mean higher quality and larger file size; 0 is lossless on x264."@en ;
-    rdfs:domain tamper:TranscodeVideo ;
+    rdfs:domain tamper:Transcode ;
     rdfs:range xsd:integer .
 
 tamper:audioEncoder a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "audio encoder"@en ;
     rdfs:comment "The name of the audio encoder used for transcoding (e.g., 'libmp3lame', 'aac', 'libopus')."@en ;
-    rdfs:domain tamper:TranscodeAudio ;
+    rdfs:domain tamper:Transcode ;
     rdfs:range xsd:string .
 
 tamper:targetBitRate a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "target bit rate"@en ;
     rdfs:comment "The target bit rate in bits per second for an audio transcode operation."@en ;
-    rdfs:domain tamper:TranscodeAudio ;
+    rdfs:domain tamper:Transcode ;
     rdfs:range xsd:integer .
 
 tamper:targetSampleRate a owl:DatatypeProperty, owl:FunctionalProperty ;

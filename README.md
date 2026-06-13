@@ -24,7 +24,7 @@ flowchart BT
     a3[("thumbnail.png")] -- wasGeneratedBy --> op3["Resize"] -- used --> a0
     a4[("blurred.png")] -- wasGeneratedBy --> op4["GaussianBlur"] -- used --> a3
     b0[("original.mp4")]
-    b1[("transcoded.webm")] -- wasGeneratedBy --> op5["TranscodeVideo"] -- used --> b0
+    b1[("transcoded.webm")] -- wasGeneratedBy --> op5["Transcode"] -- used --> b0
     classDef asset fill:#e8f0fe,stroke:#4285f4,color:#1a1a1a;
     classDef op fill:#fef7e0,stroke:#f9ab00,color:#1a1a1a;
     class a0,a1,a2,a3,a4,b0,b1 asset;

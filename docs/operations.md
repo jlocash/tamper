@@ -158,45 +158,47 @@ lie within the image bounds, or the step fails when it runs.
     tamper:cropHeight 480 .
 ```
 
-## Video operations
+## Audio and video operations
 
-### TranscodeVideo — `tamper:TranscodeVideo`
+These operations act on audio or video assets (stream containers).
 
-Re-encodes the video's stream(s) with ffmpeg. Audio streams are copied
-through unchanged; the container format is preserved.
+### Transcode — `tamper:Transcode`
 
-| Parameter     | Property              | Type                 | Constraint                                    | Required |
-| ------------- | --------------------- | -------------------- | --------------------------------------------- | -------- |
-| video encoder | `tamper:videoEncoder` | string               | non-empty (an ffmpeg encoder, e.g. `libx264`) | yes      |
-| CRF           | `tamper:crf`          | non-negative integer | `0`–`63`                                      | yes      |
+Re-encodes the audio stream, the video stream, or both, of an audio or video
+asset with ffmpeg. By default, the streams are copied unless an encoder is given, and the source container format is preserved (unless the output
+is audio-only). At least one of `tamper:audioEncoder` or `tamper:videoEncoder`
+must be given.
+
+| Parameter       | Property               | Type                 | Constraint                                                       | Required |
+| --------------- | ---------------------- | -------------------- | --------------------------------------------------------------- | -------- |
+| video encoder   | `tamper:videoEncoder`  | string               | an ffmpeg encoder, e.g. `libx264`                               | one of † |
+| CRF             | `tamper:crf`           | non-negative integer | `>= 0`; only meaningful alongside a video encoder               | no       |
+| audio encoder   | `tamper:audioEncoder`  | string               | an ffmpeg encoder, e.g. `libmp3lame`                            | one of † |
+| target bit rate | `tamper:targetBitRate` | positive integer     | bits per second, `> 0`; only meaningful alongside an audio encoder | no       |
+
+† At least one of `tamper:videoEncoder` or `tamper:audioEncoder` is required.
+Supplying `tamper:crf` without a video encoder, or `tamper:targetBitRate`
+without an audio encoder, is rejected.
 
 ```turtle
 @prefix tamper: <https://example.org/tamper/core#> .
 
-[] a tamper:TranscodeVideo ;
+# Re-encode the video stream to H.264; copy the audio stream through unchanged.
+[] a tamper:Transcode ;
     tamper:videoEncoder "libx264" ;
     tamper:crf 23 .
-```
 
-## Audio operations
-
-### TranscodeAudio — `tamper:TranscodeAudio`
-
-Re-encodes the audio stream with ffmpeg using a given encoder and target bit
-rate. Any video stream (e.g. cover art) is copied through unchanged; the
-container format is preserved.
-
-| Parameter       | Property               | Type             | Constraint                                       | Required |
-| --------------- | ---------------------- | ---------------- | ------------------------------------------------ | -------- |
-| audio encoder   | `tamper:audioEncoder`  | string           | non-empty (an ffmpeg encoder, e.g. `libmp3lame`) | yes      |
-| target bit rate | `tamper:targetBitRate` | positive integer | bits per second, `> 0`                           | yes      |
-
-```turtle
-@prefix tamper: <https://example.org/tamper/core#> .
-
-[] a tamper:TranscodeAudio ;
+# Re-encode the audio stream to MP3; copy any video stream through unchanged.
+[] a tamper:Transcode ;
     tamper:audioEncoder "libmp3lame" ;
     tamper:targetBitRate 64000 .
+
+# Re-encode both streams.
+[] a tamper:Transcode ;
+    tamper:videoEncoder "libx264" ;
+    tamper:crf 23 ;
+    tamper:audioEncoder "aac" ;
+    tamper:targetBitRate 128000 .
 ```
 
 ### ResampleAudio — `tamper:ResampleAudio`
