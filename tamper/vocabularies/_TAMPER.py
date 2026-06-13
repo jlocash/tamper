@@ -7,7 +7,7 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-06-13 20:53:18.245005
+    Date: 2026-06-13 23:55:01.269989
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
@@ -22,7 +22,7 @@ class TAMPER(DefinedNamespace):
     MediaAsset: URIRef  # A digital media file such as an image, audio, or video.
     MedianFilter: URIRef  # Applies a median filter over a square neighbourhood, commonly used to suppress noise residuals.
     Operation: URIRef  # An operation is a process that results in the creation of a new media asset.
-    ResampleAudio: URIRef  # Resamples an audio stream to a target sample rate.
+    Resample: URIRef  # Resamples the audio stream of an asset to a target sample rate.
     Resize: URIRef  # Resamples an image to a target width and height using a specified interpolation method.
     Stream: URIRef  # A component stream within a media container.
     StreamContainer: URIRef  # A media asset that contains one or more streams (e.g., video or audio files).

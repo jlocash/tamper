@@ -3,7 +3,7 @@ from pathlib import Path
 
 from rdflib import XSD
 
-from tamper.core.assets import AudioAsset, AudioStream, VideoStream
+from tamper.core.assets import AudioStream, StreamContainer, VideoStream
 from tamper.vocabularies import TAMPER
 from tamper.core import Operation, MappedProperty
 import ffmpeg
@@ -18,8 +18,8 @@ _CODEC_TO_ENCODER = {
 }
 
 
-class ResampleAudio(Operation):
-    __rdf_type__ = TAMPER.ResampleAudio
+class Resample(Operation):
+    __rdf_type__ = TAMPER.Resample
 
     target_sample_rate: MappedProperty[int] = MappedProperty(
         TAMPER.targetSampleRate, XSD.integer
@@ -30,11 +30,11 @@ class ResampleAudio(Operation):
         if len(used) != 1:
             raise ValueError("Operation requires exactly one audio asset")
 
-        audio_asset = AudioAsset(self.graph, used[0])
+        asset = StreamContainer(self.graph, used[0])
 
         output_kwargs = {}
         has_audio = False
-        for s in audio_asset.streams:
+        for s in asset.streams:
             if isinstance(s, VideoStream):
                 output_kwargs["vcodec"] = "copy"
             elif isinstance(s, AudioStream):
@@ -42,14 +42,15 @@ class ResampleAudio(Operation):
                 output_kwargs["acodec"] = _CODEC_TO_ENCODER.get(s.codec, s.codec)
                 output_kwargs["ar"] = self.target_sample_rate
         if not has_audio:
-            raise ValueError("Input asset has no audio stream to resample")
+            raise ValueError(
+                f"Asset {asset.identifier} has no audio stream to resample"
+            )
 
-        suffix = Path(audio_asset.file_path).suffix
+        suffix = Path(asset.file_path).suffix
         try:
             with self._generates_file(dir=out_dir, suffix=suffix) as output_asset_file:
                 (
-                    ffmpeg
-                    .input(str(audio_asset.file_path))
+                    ffmpeg.input(str(asset.file_path))
                     .output(str(output_asset_file), **output_kwargs)
                     .run(
                         capture_stdout=False, capture_stderr=True, overwrite_output=True

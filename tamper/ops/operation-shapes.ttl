@@ -190,8 +190,8 @@ tamper:AddGaussianNoiseShape a sh:NodeShape ;
     sh:property tamper:GaussianStdShape ;
     sh:property tamper:GaussianSeedShape .
 
-tamper:ResampleAudioShape a sh:NodeShape ;
-    sh:targetClass tamper:ResampleAudio ;
+tamper:ResampleShape a sh:NodeShape ;
+    sh:targetClass tamper:Resample ;
     sh:property tamper:TargetSampleRateShape .
 
 tamper:TranscodeShape a sh:NodeShape ;

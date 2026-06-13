@@ -201,7 +201,7 @@ without an audio encoder, is rejected.
     tamper:targetBitRate 128000 .
 ```
 
-### ResampleAudio — `tamper:ResampleAudio`
+### Resample — `tamper:Resample`
 
 Resamples the audio stream to a target sample rate with ffmpeg. The audio
 codec and container format are preserved.
@@ -213,6 +213,6 @@ codec and container format are preserved.
 ```turtle
 @prefix tamper: <https://example.org/tamper/core#> .
 
-[] a tamper:ResampleAudio ;
+[] a tamper:Resample ;
     tamper:targetSampleRate 8000 .
 ```

@@ -94,8 +94,7 @@ class Transcode(Operation):
         try:
             with self._generates_file(dir=out_dir, suffix=suffix) as output_asset_file:
                 (
-                    ffmpeg
-                    .input(str(asset.file_path))
+                    ffmpeg.input(str(asset.file_path))
                     .output(str(output_asset_file), **output_kwargs)
                     .run(
                         capture_stdout=False, capture_stderr=True, overwrite_output=True

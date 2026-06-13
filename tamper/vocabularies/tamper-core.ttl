@@ -100,9 +100,9 @@ tamper:Transcode a owl:Class ;
     rdfs:comment "Re-encodes a video or audio stream using the specified encoder(s) and quality (CRF). Streams are copied by default if an encoder is not given."@en ;
     rdfs:subClassOf tamper:Operation .
 
-tamper:ResampleAudio a owl:Class ;
-    rdfs:label "Resample Audio"@en ;
-    rdfs:comment "Resamples an audio stream to a target sample rate."@en ;
+tamper:Resample a owl:Class ;
+    rdfs:label "Resample"@en ;
+    rdfs:comment "Resamples the audio stream of an asset to a target sample rate."@en ;
     rdfs:subClassOf tamper:Operation .
 
 #################################################################
@@ -409,7 +409,7 @@ tamper:targetBitRate a owl:DatatypeProperty, owl:FunctionalProperty ;
 tamper:targetSampleRate a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "target sample rate"@en ;
     rdfs:comment "The target sample rate in Hertz for an audio resample operation."@en ;
-    rdfs:domain tamper:ResampleAudio ;
+    rdfs:domain tamper:Resample ;
     rdfs:range xsd:integer .
 
 

@@ -8,7 +8,7 @@ from rdflib import PROV, Graph
 
 from tamper.core import MediaAsset, load_asset_from_file
 from tamper.core.operation import OperationURI
-from tamper.ops.audio import ResampleAudio
+from tamper.ops.resample import Resample
 
 TEST_MEDIA = Path(__file__).parent / "test-media"
 WAV = TEST_MEDIA / "audio" / "file_example_WAV_1MG.wav"
@@ -35,15 +35,15 @@ def _run(op_cls, src: Path, out_dir: Path, **params):
     return asset, MediaAsset(g, generated.identifier), op
 
 
-class TestResampleAudio:
+class TestResample:
     def test_changes_sample_rate(self, tmp_path):
         assert int(_audio_stream(WAV)["sample_rate"]) == 44100
 
-        _, out, _ = _run(ResampleAudio, WAV, tmp_path, target_sample_rate=8000)
+        _, out, _ = _run(Resample, WAV, tmp_path, target_sample_rate=8000)
         assert int(_audio_stream(Path(str(out.file_path)))["sample_rate"]) == 8000
 
     def test_records_provenance(self, tmp_path):
-        src, out, op = _run(ResampleAudio, WAV, tmp_path, target_sample_rate=8000)
+        src, out, op = _run(Resample, WAV, tmp_path, target_sample_rate=8000)
 
         assert (out.identifier, PROV.wasGeneratedBy, op.identifier) in op.graph
         assert op.get_used() == [src.identifier]
@@ -52,7 +52,7 @@ class TestResampleAudio:
     def test_input_without_audio_stream_raises(self, tmp_path):
         g = Graph()
         asset = load_asset_from_file(g, PNG)
-        op = ResampleAudio.new(g, OperationURI())
+        op = Resample.new(g, OperationURI())
         op.target_sample_rate = 8000
         op.used(asset.identifier)
 
@@ -61,7 +61,7 @@ class TestResampleAudio:
 
     def test_mutate_without_input_raises(self, tmp_path):
         g = Graph()
-        op = ResampleAudio.new(g, OperationURI())
+        op = Resample.new(g, OperationURI())
         op.target_sample_rate = 8000
 
         with pytest.raises(ValueError):

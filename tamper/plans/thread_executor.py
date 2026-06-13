@@ -9,7 +9,7 @@ from tamper.core.operation import OperationURI
 from tamper.ops.validation import validate_operations
 from tamper.vocabularies._TAMPER import TAMPER
 from tamper.ops.transcode import Transcode
-from tamper.ops.audio import ResampleAudio
+from tamper.ops.resample import Resample
 from tamper.ops.compress import Compress
 from tamper.ops.image import (
     AddGaussianNoise,
@@ -29,7 +29,7 @@ operation_map: dict[URIRef, type[Operation]] = {
     TAMPER.Resize: Resize,
     TAMPER.MedianFilter: MedianFilter,
     TAMPER.GaussianBlur: GaussianBlur,
-    TAMPER.ResampleAudio: ResampleAudio,
+    TAMPER.Resample: Resample,
     TAMPER.CropImage: CropImage,
 }
 
