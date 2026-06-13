@@ -3,11 +3,12 @@
 import tarfile
 
 import pytest
-from rdflib import Graph, URIRef, Literal, Dataset, XSD
+from rdflib import Graph, URIRef, Literal, Dataset, XSD, RDF
 
 from tamper.app.kg.local import (
     LocalKnowledgeGraph,
-    check_consistency,
+    InconsistencyError,
+    _check_consistency,
 )
 from tamper.core.assets import AssetURI
 from tamper.utils.make_tarball import get_asset_files, make_tarball
@@ -26,7 +27,7 @@ _OBJECT2 = Literal("world", datatype=XSD.string)
 
 
 def _make_local_kg(tmp_path):
-    return LocalKnowledgeGraph(tmp_path / "dataset.trig")
+    return LocalKnowledgeGraph(tmp_path)
 
 
 _KG_IMPLS = [_make_local_kg]
@@ -302,19 +303,20 @@ class TestReplace:
 
 
 class TestLocalKnowledgeGraphInit:
-    def test_opens_without_existing_file(self, tmp_path):
-        path = tmp_path / "new.trig"
+    def test_opens_without_existing_dir(self, tmp_path):
+        path = tmp_path / "new_kg"
         assert not path.exists()
         kg = LocalKnowledgeGraph(path)
         assert kg is not None
 
-    def test_opens_existing_file(self, tmp_path):
-        path = tmp_path / "dataset.trig"
+    def test_opens_existing_dir(self, tmp_path):
+        path = tmp_path / "kg"
         kg1 = LocalKnowledgeGraph(path)
         g = Graph()
         g.add((_SUBJECT, _PREDICATE, _OBJECT))
         kg1.insert_statements_default(g)
         kg1.commit()
+        kg1.dataset.close()
 
         kg2 = LocalKnowledgeGraph(path)
         result = list(kg2.query(f"ASK {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}"))
@@ -328,23 +330,28 @@ class TestLocalKnowledgeGraphInit:
 
 class TestCommitAndRollback:
     def test_commit_persists_data(self, tmp_path, simple_graph):
-        path = tmp_path / "dataset.trig"
+        path = tmp_path / "kg"
         kg = LocalKnowledgeGraph(path)
         kg.insert_statements_default(simple_graph)
         kg.commit()
-        assert path.exists()
+        assert path.is_dir()
+        kg.dataset.close()
 
         kg2 = LocalKnowledgeGraph(path)
         result = list(kg2.query(f"ASK {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}"))
         assert result[0]
 
-    def test_rollback_undoes_uncommitted_insert(self, tmp_path, simple_graph):
-        path = tmp_path / "dataset.trig"
+    def test_tx_rolls_back_on_error(self, tmp_path, simple_graph):
+        path = tmp_path / "kg"
         kg = LocalKnowledgeGraph(path)
-        kg.commit()
 
-        kg.insert_statements_default(simple_graph)
-        kg.rollback()
+        class Boom(Exception):
+            pass
+
+        with pytest.raises(Boom):
+            with kg.tx():
+                kg.insert_statements_default(simple_graph)
+                raise Boom
 
         result = list(kg.query(f"ASK {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}"))
         assert not result[0]
@@ -359,12 +366,14 @@ class TestCheckConsistency:
     def test_consistent_graph_does_not_raise(self):
         g = Graph()
         g.add((_SUBJECT, _PREDICATE, _OBJECT))
-        check_consistency(g)
+        _check_consistency(g)
 
-    def test_consistent_dataset_does_not_raise(self):
-        ds = Dataset()
-        ds.default_graph.add((_SUBJECT, _PREDICATE, _OBJECT))
-        check_consistency(ds)
+    def test_disjoint_class_violation_raises(self):
+        g = Graph()
+        g.add((_SUBJECT, RDF.type, TAMPER.ImageAsset))
+        g.add((_SUBJECT, RDF.type, TAMPER.AudioAsset))
+        with pytest.raises(InconsistencyError):
+            _check_consistency(g)
 
 
 # ---------------------------------------------------------------------------
