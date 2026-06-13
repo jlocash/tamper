@@ -10,53 +10,6 @@ from tamper.vocabularies import TAMPER
 from tamper.core import ImageAsset, Operation, MappedProperty
 
 
-class CompressJPEG(Operation):
-    __rdf_type__ = TAMPER.CompressJPEG
-
-    quality_factor: MappedProperty[int] = MappedProperty(
-        TAMPER.qualityFactor, datatype=XSD.integer
-    )
-
-    def mutate(self, out_dir: PathLike[str] | None = None):
-        used = self.get_used()
-        if len(used) != 1:
-            raise ValueError("Operation requires exactly one image asset")
-
-        img_asset = ImageAsset(self.graph, used[0])
-        img_asset.graph.print()
-        img = cv2.imread(img_asset.file_path)
-        ok, buf = cv2.imencode(
-            ".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, self.quality_factor]
-        )
-        if not ok:
-            raise RuntimeError("JPEG encoding failed")
-        with self._generates_file(dir=out_dir, suffix=".jpg") as f:
-            Path(f).write_bytes(buf.tobytes())
-
-
-class CompressWebP(Operation):
-    __rdf_type__ = TAMPER.CompressWebP
-
-    quality_factor: MappedProperty[int] = MappedProperty(
-        TAMPER.qualityFactor, datatype=XSD.integer
-    )
-
-    def mutate(self, out_dir: PathLike[str] | None = None):
-        used = self.get_used()
-        if len(used) != 1:
-            raise ValueError("Operation requires exactly one image asset")
-        img_asset = ImageAsset(self.graph, used[0])
-
-        img = cv2.imread(img_asset.file_path)
-        ok, buf = cv2.imencode(
-            ".webp", img, [cv2.IMWRITE_WEBP_QUALITY, self.quality_factor]
-        )
-        if not ok:
-            raise RuntimeError("WebP encoding failed")
-        with self._generates_file(dir=out_dir, suffix=".webp") as f:
-            Path(f).write_bytes(buf.tobytes())
-
-
 class CropImage(Operation):
     __rdf_type__ = TAMPER.CropImage
 

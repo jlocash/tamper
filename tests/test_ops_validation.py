@@ -13,10 +13,9 @@ from rdflib import RDF, Graph, Literal
 from tamper.core.operation import OperationURI
 from tamper.errors import GraphValidationError
 from tamper.ops.audio import ResampleAudio, TranscodeAudio
+from tamper.ops.compress import Compress
 from tamper.ops.image import (
     AddGaussianNoise,
-    CompressJPEG,
-    CompressWebP,
     CropImage,
     GaussianBlur,
     MedianFilter,
@@ -37,8 +36,8 @@ def _op_graph(op_cls, **params) -> Graph:
 
 
 VALID_OPS = [
-    (CompressJPEG, {"quality_factor": 80}),
-    (CompressWebP, {"quality_factor": 80}),
+    (Compress, {"quality_factor": 80, "format": "jpeg"}),
+    (Compress, {"quality_factor": 80, "format": "webp"}),
     (CropImage, {"x": 0, "y": 0, "width": 512, "height": 512}),
     (Resize, {"width": 256, "height": 256, "interpolation": "lanczos4"}),
     (MedianFilter, {"kernel_size": 5}),
@@ -50,9 +49,16 @@ VALID_OPS = [
 ]
 
 INVALID_OPS = [
-    pytest.param(CompressJPEG, {"quality_factor": 101}, id="quality-above-max"),
-    pytest.param(CompressJPEG, {"quality_factor": -1}, id="quality-negative"),
-    pytest.param(CompressJPEG, {}, id="quality-missing"),
+    pytest.param(
+        Compress, {"quality_factor": 101, "format": "jpeg"}, id="quality-above-max"
+    ),
+    pytest.param(
+        Compress, {"quality_factor": -1, "format": "jpeg"}, id="quality-negative"
+    ),
+    pytest.param(
+        Compress, {"quality_factor": 90, "format": "asdfasdf"}, id="invalid-format"
+    ),
+    pytest.param(Compress, {}, id="quality-missing"),
     pytest.param(
         Resize,
         {"width": 256, "height": 256, "interpolation": "bicubic"},
@@ -91,10 +97,12 @@ def test_invalid_operation_raises(op_cls, params):
 def test_multiple_operations_validated_together():
     """All operations in a graph are validated"""
     g = Graph(store="Oxigraph")
-    ok = CompressJPEG.new(g, OperationURI())
+    ok = Compress.new(g, OperationURI())
     ok.quality_factor = 80
-    bad = CompressJPEG.new(g, OperationURI())
+    ok.format = "jpeg"
+    bad = Compress.new(g, OperationURI())
     bad.quality_factor = 999
+    bad.format = "jpeg"
 
     with pytest.raises(GraphValidationError):
         validate_operations(g)
@@ -115,7 +123,8 @@ def test_plain_literals_conform():
 def test_non_numeric_parameter_raises():
     g = Graph(store="Oxigraph")
     op = OperationURI()
-    g.add((op, RDF.type, TAMPER.CompressJPEG))
+    g.add((op, RDF.type, TAMPER.Compress))
+    g.add((op, TAMPER.format, Literal("jpeg")))
     g.add((op, TAMPER.qualityFactor, Literal("eighty")))
 
     with pytest.raises(GraphValidationError):
@@ -124,7 +133,7 @@ def test_non_numeric_parameter_raises():
 
 def test_error_carries_validation_report():
     try:
-        validate_operations(_op_graph(CompressJPEG, quality_factor=999))
+        validate_operations(_op_graph(Compress, quality_factor=999, format="jpeg"))
     except GraphValidationError as e:
         assert e.results_graph is not None
         assert "qualityFactor" in str(e) or "Quality factor" in str(e)

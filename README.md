@@ -19,7 +19,7 @@ semantically queryable. These chains form the basis of Tamper datasets.
 ```mermaid
 flowchart BT
     a0[("original.png")]
-    a1[("compressed.jpg")] -- wasGeneratedBy --> op1["CompressJPEG"] -- used --> a0
+    a1[("compressed.jpg")] -- wasGeneratedBy --> op1["Compress"] -- used --> a0
     a2[("noisy.jpg")] -- wasGeneratedBy --> op2["AddGaussianNoise"] -- used --> a1
     a3[("thumbnail.png")] -- wasGeneratedBy --> op3["Resize"] -- used --> a0
     a4[("blurred.png")] -- wasGeneratedBy --> op4["GaussianBlur"] -- used --> a3
@@ -77,7 +77,7 @@ Each class instance is mapped to a resource in the graph:
 
 ```python
 from tamper.core import ImageAsset, load_asset_from_file
-from tamper.ops.image import CompressJPEG
+from tamper.ops.image import Compress
 from rdflib import Graph, BNode
 
 # All of our data lives in a graph
@@ -93,7 +93,8 @@ audio_asset = AudioAsset.from_file(ctx, "some-audio.wav")
 video_asset = VideoAsset.from_file(ctx, "some-video.mp4")
 
 # Run an operation on the image
-op = CompressJPEG.new(ctx, BNode())
+op = Compress.new(ctx, BNode())
+op.format = "jpeg"
 op.quality_factor = 90          # compress with quality 90
 op.used(img)                    # uses the image asset
 
@@ -121,10 +122,11 @@ and the operation that produced it:
     tamper:width 850 ;
     prov:wasGeneratedBy <trn:operation:tknRPmvjBrB4sms5> .
 
-<trn:operation:tknRPmvjBrB4sms5> a tamper:CompressJPEG ;
+<trn:operation:tknRPmvjBrB4sms5> a tamper:Compress ;
     prov:endedAtTime "2026-05-23T16:51:08.113923"^^xsd:dateTime ;
     prov:startedAtTime "2026-05-23T16:51:08.097677"^^xsd:dateTime ;
     prov:used trn:asset:45f0867c530cdb68df8d0a38e49f8d7084b0d2bf1a056570751dcdfca24777d6 ;
+    tamper:format "jpeg" ;
     tamper:qualityFactor "80"^^xsd:nonNegativeInteger .
 ```
 
@@ -154,7 +156,7 @@ flowchart RL
     a0[("Variable<br>(The original image)")]
     a1[("Variable<br>(The compressed image)")]
     a2[("Variable<br>(The noisy, compressed image)")]
-    op1["Step<br>CompressJPEG"] -- hasInputVariable --> a0
+    op1["Step<br>Compres"] -- hasInputVariable --> a0
     op1 -- hasOutputVariable --> a1
     op2["Step<br>AddGaussianNoise"] -- hasInputVariable --> a1
     op2 -- hasOutputVariable --> a2
@@ -195,8 +197,9 @@ to the result.
     plan:isStepOfPlan <trn:plan:example> ;
     plan:hasInputVariable <trn:plan:example:v0> ;
     plan:hasOutputVariable <trn:plan:example:v1> ;
-    plan:operationType tamper:CompressJPEG ;
+    plan:operationType tamper:Compress ;
     plan:parameters [        
+        tamper:format "jpeg" ;
         tamper:qualityFactor 90
     ] .
 

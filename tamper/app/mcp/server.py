@@ -285,8 +285,9 @@ async def create_plan(plan_name: str, plan_graph_ttl: str):
         plan:isStepOfPlan <trn:plan:example-plan> ;
         plan:hasInputVariable <trn:plan:example-plan:v0> ;
         plan:hasOutputVariable <trn:plan:example-plan:v1> ;
-        plan:operationType tamper:CompressJPEG ;
+        plan:operationType tamper:Compress ;
         plan:parameters [
+            tamper:format "jpeg" ;
             tamper:qualityFactor 90
         ] .
 
@@ -304,8 +305,9 @@ async def create_plan(plan_name: str, plan_graph_ttl: str):
         plan:isStepOfPlan <trn:plan:example-plan> ;
         plan:hasInputVariable <trn:plan:example-plan:v1> ;
         plan:hasOutputVariable <trn:plan:example-plan:v3> ;
-        plan:operationType tamper:CompressJPEG ;
+        plan:operationType tamper:Compress ;
         plan:parameters [
+            tamper:format "jpeg" ;
             tamper:qualityFactor 50
         ] .
     ```

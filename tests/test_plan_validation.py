@@ -16,7 +16,7 @@ _PREFIXES = """\
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 """
 
-# A plan with one step: v0 -> s1 -> v1 (CompressJPEG)
+# A plan with one step: v0 -> s1 -> v1 (Compress)
 _MINIMAL_VALID_TTL = (
     _PREFIXES
     + """\
@@ -32,8 +32,9 @@ _MINIMAL_VALID_TTL = (
     plan:isStepOfPlan <trn:plan:p1> ;
     plan:hasInputVariable <trn:plan:p1:v0> ;
     plan:hasOutputVariable <trn:plan:p1:v1> ;
-    plan:operationType tamper:CompressJPEG ;
+    plan:operationType tamper:Compress ;
     plan:parameters [
+        tamper:format "jpeg" ;
         tamper:qualityFactor 90
     ] .
 """
@@ -71,7 +72,7 @@ class TestValidPlanGraph:
     plan:isStepOfPlan <trn:plan:p1> ;
     plan:hasInputVariable <trn:plan:p1:v0> ;
     plan:hasOutputVariable <trn:plan:p1:v1> ;
-    plan:operationType tamper:CompressJPEG ;
+    plan:operationType tamper:Compress ;
     plan:parameters [] .
 
 <trn:plan:p1:s2> a plan:Step ;
@@ -102,7 +103,7 @@ class TestMissingPlanDeclaration:
     plan:isStepOfPlan <trn:plan:p1> ;
     plan:hasInputVariable <trn:plan:p1:v0> ;
     plan:hasOutputVariable <trn:plan:p1:v1> ;
-    plan:operationType tamper:CompressJPEG ;
+    plan:operationType tamper:Compress ;
     plan:parameters [] .
 """
         )
@@ -134,7 +135,7 @@ class TestStepMissingIsStepOfPlan:
 <trn:plan:s1> a plan:Step ;
     plan:hasInputVariable <trn:plan:p1:v0> ;
     plan:hasOutputVariable <trn:plan:p1:v1> ;
-    plan:operationType tamper:CompressJPEG ;
+    plan:operationType tamper:Compress ;
     plan:parameters [] .
 """
         )
@@ -154,7 +155,7 @@ class TestStepMissingInputVariable:
 <trn:plan:p1:s1> a plan:Step ;
     plan:isStepOfPlan <trn:plan:p1> ;
     plan:hasOutputVariable <trn:plan:p1:v1> ;
-    plan:operationType tamper:CompressJPEG ;
+    plan:operationType tamper:Compress ;
     plan:parameters [] .
 """
         )
@@ -173,7 +174,7 @@ class TestStepMissingOutputVariable:
 <trn:plan:p1:s1> a plan:Step ;
     plan:isStepOfPlan <trn:plan:p1> ;
     plan:hasInputVariable <trn:plan:p1:v0> ;
-    plan:operationType tamper:CompressJPEG ;
+    plan:operationType tamper:Compress ;
     plan:parameters [] .
 """
         )
@@ -233,7 +234,7 @@ class TestVariableMissingPlanLink:
     plan:isStepOfPlan <trn:plan:p1> ;
     plan:hasInputVariable <trn:plan:p1:v0> ;
     plan:hasOutputVariable <trn:plan:p1:v1> ;
-    plan:operationType tamper:CompressJPEG ;
+    plan:operationType tamper:Compress ;
     plan:parameters [] .
 """
         )

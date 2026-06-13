@@ -8,6 +8,13 @@
 # Property Shapes
 
 # Image-related Property Shapes
+tamper:FormatShape a sh:PropertyShape ;
+    sh:path tamper:format ;
+    sh:datatype xsd:string ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:in ( "jpeg" "webp" ) ;
+    sh:message "Format must be one of (jpeg webp)" .
 
 tamper:QualityFactorShape a sh:PropertyShape ;
     sh:path tamper:qualityFactor ;
@@ -158,13 +165,10 @@ tamper:CRFShape a sh:PropertyShape ;
 
 # Image Operations
 
-tamper:CompressJPEGShape a sh:NodeShape ;
-    sh:targetClass tamper:CompressJPEG ;
-    sh:property tamper:QualityFactorShape .
-
-tamper:CompressWebPShape a sh:NodeShape ;
-    sh:targetClass tamper:CompressWebP ;
-    sh:property tamper:QualityFactorShape .
+tamper:CompressShape a sh:NodeShape ;
+    sh:targetClass tamper:Compress ;
+    sh:property tamper:QualityFactorShape ;
+    sh:property tamper:FormatShape .
 
 tamper:CropImageShape a sh:NodeShape ;
     sh:targetClass tamper:CropImage ;

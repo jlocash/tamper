@@ -9,9 +9,8 @@ from tamper.core.operation import OperationURI
 from tamper.ops.validation import validate_operations
 from tamper.vocabularies._TAMPER import TAMPER
 from tamper.ops.audio import ResampleAudio, TranscodeAudio
+from tamper.ops.compress import Compress
 from tamper.ops.image import (
-    CompressJPEG,
-    CompressWebP,
     AddGaussianNoise,
     Resize,
     MedianFilter,
@@ -24,8 +23,7 @@ from .operation_plan import OperationPlanExecutor
 from tamper.core import Operation, OperationPlan, PlanStep, MediaAsset
 
 operation_map: dict[URIRef, type[Operation]] = {
-    TAMPER.CompressJPEG: CompressJPEG,
-    TAMPER.CompressWebP: CompressWebP,
+    TAMPER.Compress: Compress,
     TAMPER.TranscodeVideo: TranscodeVideo,
     TAMPER.AddGaussianNoise: AddGaussianNoise,
     TAMPER.Resize: Resize,

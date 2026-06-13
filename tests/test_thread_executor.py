@@ -18,7 +18,7 @@ PREFIXES = """
 @prefix tamper: <https://example.org/tamper/core#> .
 """
 
-# v0 --CompressJPEG--> v1 --AddGaussianNoise--> v2
+# v0 --Compress--> v1 --AddGaussianNoise--> v2
 CHAINED_PLAN = (
     PREFIXES
     + """
@@ -32,8 +32,11 @@ CHAINED_PLAN = (
     plan:isStepOfPlan <trn:plan:test> ;
     plan:hasInputVariable <trn:plan:test:v0> ;
     plan:hasOutputVariable <trn:plan:test:v1> ;
-    plan:operationType tamper:CompressJPEG ;
-    plan:parameters [ tamper:qualityFactor 80 ] .
+    plan:operationType tamper:Compress ;
+    plan:parameters [
+        tamper:format "jpeg" ;
+        tamper:qualityFactor 80
+    ] .
 
 <trn:plan:test:s2> a plan:Step ;
     plan:isStepOfPlan <trn:plan:test> ;
@@ -73,7 +76,7 @@ class TestMaterializeOperations:
 
         s1_op = step_to_op[URIRef("trn:plan:test:s1")]
         s2_op = step_to_op[URIRef("trn:plan:test:s2")]
-        assert (s1_op, RDF.type, TAMPER.CompressJPEG) in graph
+        assert (s1_op, RDF.type, TAMPER.Compress) in graph
         assert (s2_op, RDF.type, TAMPER.AddGaussianNoise) in graph
 
     def test_parameters_copied_to_operation(self):
@@ -122,7 +125,7 @@ class TestThreadPoolPlanExecutor:
             _plan(CHAINED_PLAN), seed, {URIRef("trn:plan:test:v0"): asset.identifier}
         )
 
-        compress_op = result.value(predicate=RDF.type, object=TAMPER.CompressJPEG)
+        compress_op = result.value(predicate=RDF.type, object=TAMPER.Compress)
         noise_op = result.value(predicate=RDF.type, object=TAMPER.AddGaussianNoise)
         compressed = result.value(predicate=PROV.wasGeneratedBy, object=compress_op)
         noisy = result.value(predicate=PROV.wasGeneratedBy, object=noise_op)
@@ -158,7 +161,7 @@ class TestThreadPoolPlanExecutor:
             _plan(CHAINED_PLAN), seed, {URIRef("trn:plan:test:v0"): asset.identifier}
         )
 
-        for op in result.subjects(RDF.type, TAMPER.CompressJPEG):
+        for op in result.subjects(RDF.type, TAMPER.Compress):
             started = result.value(op, PROV.startedAtTime)
             ended = result.value(op, PROV.endedAtTime)
             assert started is not None
@@ -176,14 +179,20 @@ class TestThreadPoolPlanExecutor:
     plan:isStepOfPlan <trn:plan:test> ;
     plan:hasInputVariable <trn:plan:test:v0> ;
     plan:hasOutputVariable <trn:plan:test:v1> ;
-    plan:operationType tamper:CompressJPEG ;
-    plan:parameters [ tamper:qualityFactor 80 ] .
+    plan:operationType tamper:Compress ;
+    plan:parameters [
+        tamper:format "jpeg" ;
+        tamper:qualityFactor 80
+    ] .
 <trn:plan:test:s2> a plan:Step ;
     plan:isStepOfPlan <trn:plan:test> ;
     plan:hasInputVariable <trn:plan:test:v1> ;
     plan:hasOutputVariable <trn:plan:test:v0> ;
-    plan:operationType tamper:CompressJPEG ;
-    plan:parameters [ tamper:qualityFactor 80 ] .
+    plan:operationType tamper:Compress ;
+    plan:parameters [
+        tamper:format "jpeg" ;
+        tamper:qualityFactor 80
+    ] .
 """
         )
         executor = ThreadPoolPlanExecutor(tmp_path)

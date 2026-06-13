@@ -7,7 +7,7 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-06-02 02:57:26.458150
+    Date: 2026-06-13 18:36:20.274398
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
@@ -18,8 +18,7 @@ class TAMPER(DefinedNamespace):
         URIRef  # An operation that results in the creation of an audio asset.
     )
     AudioStream: URIRef  # A stream containing audio sample data.
-    CompressJPEG: URIRef  # Applies JPEG compression to an image.
-    CompressWebP: URIRef  # Applies WebP compression to an image.
+    Compress: URIRef  # Applies compression to an image using a format and quality level
     CropImage: URIRef  # Extracts a rectangular region from an image, given a top-left origin and a width and height.
     GaussianBlur: URIRef  # Convolves an image with a Gaussian kernel of a given size and standard deviation.
     ImageAsset: URIRef  # A digital image file.
@@ -61,6 +60,7 @@ class TAMPER(DefinedNamespace):
     duration: URIRef  # The temporal duration of the media.
     filePath: URIRef  # The relative path to the media file.
     fileSize: URIRef  # The size of the media file in bytes.
+    format: URIRef  # compression format (e.g 'webp', 'jpeg')
     frameRate: URIRef  # The frame rate in frames per second.
     gaussianMean: URIRef  #
     gaussianSeed: URIRef  # The seed for the random number generator used to draw the noise, recorded so the operation is exactly reproducible.
@@ -74,7 +74,7 @@ class TAMPER(DefinedNamespace):
         URIRef  # The MIME type of the media asset (e.g., 'image/jpeg', 'video/mp4').
     )
     pixelFormat: URIRef  # The pixel format (e.g., 'yuv420p', 'rgb24').
-    qualityFactor: URIRef  # JPEG compression quality factor (0 - 100)
+    qualityFactor: URIRef  # Image compression quality factor (0 - 100)
     sampleRate: URIRef  # The audio sample rate in Hertz.
     streamIndex: URIRef  # The zero-based index of the stream within its container.
     targetBitRate: URIRef  # The target bit rate in bits per second for an audio transcode operation.

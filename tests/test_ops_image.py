@@ -13,10 +13,9 @@ from rdflib import PROV, Graph
 
 from tamper.core import ImageAsset, load_asset_from_file
 from tamper.core.operation import OperationURI
+from tamper.ops.compress import Compress
 from tamper.ops.image import (
     AddGaussianNoise,
-    CompressJPEG,
-    CompressWebP,
     CropImage,
     GaussianBlur,
     MedianFilter,
@@ -30,8 +29,8 @@ PNG = IMAGES / "file_example_PNG_500kB.png"
 # One representative parameterization per operation, shared by the
 # interface-contract tests below.
 OPS = [
-    (CompressJPEG, {"quality_factor": 80}),
-    (CompressWebP, {"quality_factor": 80}),
+    (Compress, {"quality_factor": 80, "format": "jpeg"}),
+    (Compress, {"quality_factor": 80, "format": "webp"}),
     (CropImage, {"x": 0, "y": 0, "width": 50, "height": 40}),
     (Resize, {"width": 64, "height": 48, "interpolation": "linear"}),
     (MedianFilter, {"kernel_size": 3}),
@@ -95,24 +94,26 @@ def test_mutate_without_input_raises(op_cls, params, tmp_path):
 # --- Operation-specific behavior --------------------------------------------
 
 
-class TestCompressJPEG:
+class TestCompress:
     def test_output_is_jpeg(self, tmp_path):
-        _, out, _ = _run(CompressJPEG, PNG, tmp_path, quality_factor=80)
+        _, out, _ = _run(Compress, PNG, tmp_path, quality_factor=80, format="jpeg")
         assert out.media_type == "image/jpeg"
 
+    def test_output_is_webp(self, tmp_path):
+        _, out, _ = _run(Compress, JPG, tmp_path, quality_factor=80, format="webp")
+        assert out.media_type == "image/webp"
+
     def test_lower_quality_gives_smaller_file(self, tmp_path):
-        _, low, _ = _run(CompressJPEG, JPG, tmp_path / "low", quality_factor=10)
-        _, high, _ = _run(CompressJPEG, JPG, tmp_path / "high", quality_factor=95)
+        _, low, _ = _run(
+            Compress, JPG, tmp_path / "low", quality_factor=10, format="jpeg"
+        )
+        _, high, _ = _run(
+            Compress, JPG, tmp_path / "high", quality_factor=95, format="jpeg"
+        )
 
         low_size = Path(str(low.file_path)).stat().st_size
         high_size = Path(str(high.file_path)).stat().st_size
         assert low_size < high_size
-
-
-class TestCompressWebP:
-    def test_output_is_webp(self, tmp_path):
-        _, out, _ = _run(CompressWebP, JPG, tmp_path, quality_factor=80)
-        assert out.media_type == "image/webp"
 
 
 class TestCropImage:
