@@ -25,7 +25,7 @@ class Config:
 
         self.TAMPER_PLANS_DIR = self.TAMPER_HOME_DIR / "plans"
         self.TAMPER_MEDIA_DIR = self.TAMPER_HOME_DIR / "media"
-        self.TAMPER_CATALOG_FILE = self.TAMPER_HOME_DIR / "catalog.trig"
+        self.TAMPER_GRAPH_DIR = self.TAMPER_HOME_DIR / "graph"
         self.TAMPER_CATALOG_URI = CATALOG_URI
 
     def ensure_directories_exist(self):
@@ -38,8 +38,8 @@ class Config:
         if not self.TAMPER_MEDIA_DIR.exists():
             logger.info("initializing media directory at %s", self.TAMPER_MEDIA_DIR)
             self.TAMPER_MEDIA_DIR.mkdir(parents=True)
-        if not self.TAMPER_CATALOG_FILE.exists():
-            logger.info("Initializing catalog at %s", self.TAMPER_CATALOG_FILE)
+        if not self.TAMPER_GRAPH_DIR.exists():
+            logger.info("Initializing graph directory at %s", self.TAMPER_GRAPH_DIR)
             self.init_catalog()
 
     def init_catalog(self):
@@ -52,7 +52,7 @@ class Config:
         kg.commit()
 
     def get_kg(self) -> KnowledgeGraph:
-        return LocalKnowledgeGraph(self.TAMPER_CATALOG_FILE)
+        return LocalKnowledgeGraph(self.TAMPER_GRAPH_DIR)
 
 
 config = Config()

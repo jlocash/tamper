@@ -23,7 +23,6 @@ class CompressJPEG(Operation):
             raise ValueError("Operation requires exactly one image asset")
 
         img_asset = ImageAsset(self.graph, used[0])
-        print(f"img_asset: {img_asset.identifier}")
         img_asset.graph.print()
         img = cv2.imread(img_asset.file_path)
         ok, buf = cv2.imencode(

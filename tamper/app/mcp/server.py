@@ -126,7 +126,7 @@ async def create_dataset(slug: str, title: str, description: str, ctx: Context) 
 
     catalog = Catalog(subgraph, config.TAMPER_CATALOG_URI)
     catalog.add_dataset(dataset.identifier)
-    with kg.commit_or_rollback():
+    with kg.tx():
         kg.insert_statements_default(subgraph)
 
     return serialize_graph(subgraph)
@@ -195,7 +195,7 @@ async def load_media_asset(
     subgraph = Graph()
     load_asset_from_file(subgraph, file_path)
 
-    with kg.commit_or_rollback():
+    with kg.tx():
         kg.insert_statements(dataset_trn, subgraph)
 
         # update dataset modified time
@@ -420,7 +420,7 @@ async def submit_plan(
     seed_graph = result.graph
 
     try:
-        with kg.commit_or_rollback():
+        with kg.tx():
             result_graph = await plan_queue.put_plan(
                 plan, seed_graph, initial_variables
             )
