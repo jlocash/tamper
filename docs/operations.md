@@ -135,11 +135,11 @@ reproducible and self-documenting.
     tamper:gaussianStd 12.0 .
 ```
 
-### CropImage — `tamper:CropImage`
+### Crop — `tamper:Crop`
 
-Extracts a rectangular region from the image, given a top-left origin
-(`cropX`, `cropY`) and a size (`cropWidth`, `cropHeight`). The crop region must
-lie within the image bounds, or the step fails when it runs.
+Extracts a rectangular region from an image (via OpenCV) or a video (via FFmpeg), given a top-left
+origin (`cropX`, `cropY`) and a size (`cropWidth`, `cropHeight`). The operation will fail
+if the crop region is not within valid bounds.
 
 | Parameter | Property            | Type                 | Constraint | Required |
 | --------- | ------------------- | -------------------- | ---------- | -------- |
@@ -151,7 +151,7 @@ lie within the image bounds, or the step fails when it runs.
 ```turtle
 @prefix tamper: <https://example.org/tamper/core#> .
 
-[] a tamper:CropImage ;
+[] a tamper:Crop ;
     tamper:cropX 100 ;
     tamper:cropY 50 ;
     tamper:cropWidth 640 ;

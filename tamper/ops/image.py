@@ -10,44 +10,6 @@ from tamper.vocabularies import TAMPER
 from tamper.core import ImageAsset, Operation, MappedProperty
 
 
-class CropImage(Operation):
-    __rdf_type__ = TAMPER.CropImage
-
-    x: MappedProperty[int] = MappedProperty(TAMPER.cropX, datatype=XSD.integer)
-    y: MappedProperty[int] = MappedProperty(TAMPER.cropY, datatype=XSD.integer)
-    width: MappedProperty[int] = MappedProperty(TAMPER.cropWidth, datatype=XSD.integer)
-    height: MappedProperty[int] = MappedProperty(
-        TAMPER.cropHeight, datatype=XSD.integer
-    )
-
-    def mutate(self, out_dir: PathLike[str] | None = None):
-        used = self.get_used()
-        if len(used) != 1:
-            raise ValueError("Operation requires exactly one image asset")
-
-        img_asset = ImageAsset(self.graph, used[0])
-
-        img = cv2.imread(img_asset.file_path)
-        if img is None:
-            raise RuntimeError(f"Could not read image: {img_asset.file_path}")
-
-        h, w = img.shape[:2]
-        if self.x + self.width > w or self.y + self.height > h:
-            raise ValueError(
-                f"Crop region (x={self.x}, y={self.y}, width={self.width}, height={self.height}) "
-                f"exceeds image bounds ({w}x{h})"
-            )
-
-        cropped = img[self.y : self.y + self.height, self.x : self.x + self.width]
-        ext = Path(img_asset.file_path).suffix or ".png"
-        ok, buf = cv2.imencode(ext, cropped)
-        if not ok:
-            raise RuntimeError(f"Encoding to {ext} failed")
-
-        with self._generates_file(dir=out_dir, suffix=ext) as f:
-            Path(f).write_bytes(buf.tobytes())
-
-
 _INTERPOLATIONS = {
     "nearest": cv2.INTER_NEAREST,
     "linear": cv2.INTER_LINEAR,

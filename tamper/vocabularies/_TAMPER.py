@@ -7,7 +7,7 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-06-13 23:55:01.269989
+    Date: 2026-06-14 02:07:58.350639
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
@@ -16,7 +16,7 @@ class TAMPER(DefinedNamespace):
     AudioAsset: URIRef  # A digital audio file containing one or more audio streams.
     AudioStream: URIRef  # A stream containing audio sample data.
     Compress: URIRef  # Applies compression to an image using a format and quality level
-    CropImage: URIRef  # Extracts a rectangular region from an image, given a top-left origin and a width and height.
+    Crop: URIRef  # Extracts a rectangular region from a media asset, given a top-left origin and a width and height.
     GaussianBlur: URIRef  # Convolves an image with a Gaussian kernel of a given size and standard deviation.
     ImageAsset: URIRef  # A digital image file.
     MediaAsset: URIRef  # A digital media file such as an image, audio, or video.

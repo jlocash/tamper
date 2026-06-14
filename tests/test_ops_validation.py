@@ -14,9 +14,9 @@ from tamper.core.operation import OperationURI
 from tamper.errors import GraphValidationError
 from tamper.ops.resample import Resample
 from tamper.ops.compress import Compress
+from tamper.ops.crop import Crop
 from tamper.ops.image import (
     AddGaussianNoise,
-    CropImage,
     GaussianBlur,
     MedianFilter,
     Resize,
@@ -38,7 +38,7 @@ def _op_graph(op_cls, **params) -> Graph:
 VALID_OPS = [
     (Compress, {"quality_factor": 80, "format": "jpeg"}),
     (Compress, {"quality_factor": 80, "format": "webp"}),
-    (CropImage, {"x": 0, "y": 0, "width": 512, "height": 512}),
+    (Crop, {"x": 0, "y": 0, "width": 512, "height": 512}),
     (Resize, {"width": 256, "height": 256, "interpolation": "lanczos4"}),
     (MedianFilter, {"kernel_size": 5}),
     (GaussianBlur, {"kernel_size": 5, "sigma": 1.0}),
@@ -70,7 +70,7 @@ INVALID_OPS = [
         id="width-not-positive",
     ),
     pytest.param(
-        CropImage, {"x": -1, "y": 0, "width": 10, "height": 10}, id="crop-x-negative"
+        Crop, {"x": -1, "y": 0, "width": 10, "height": 10}, id="crop-x-negative"
     ),
     pytest.param(
         GaussianBlur, {"kernel_size": 0, "sigma": 1.0}, id="kernel-not-positive"

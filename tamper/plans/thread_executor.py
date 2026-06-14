@@ -11,12 +11,12 @@ from tamper.vocabularies._TAMPER import TAMPER
 from tamper.ops.transcode import Transcode
 from tamper.ops.resample import Resample
 from tamper.ops.compress import Compress
+from tamper.ops.crop import Crop
 from tamper.ops.image import (
     AddGaussianNoise,
     Resize,
     MedianFilter,
     GaussianBlur,
-    CropImage,
 )
 
 from .operation_plan import OperationPlanExecutor
@@ -30,7 +30,7 @@ operation_map: dict[URIRef, type[Operation]] = {
     TAMPER.MedianFilter: MedianFilter,
     TAMPER.GaussianBlur: GaussianBlur,
     TAMPER.Resample: Resample,
-    TAMPER.CropImage: CropImage,
+    TAMPER.Crop: Crop,
 }
 
 

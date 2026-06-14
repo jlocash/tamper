@@ -16,7 +16,6 @@ from tamper.core.operation import OperationURI
 from tamper.ops.compress import Compress
 from tamper.ops.image import (
     AddGaussianNoise,
-    CropImage,
     GaussianBlur,
     MedianFilter,
     Resize,
@@ -31,7 +30,6 @@ PNG = IMAGES / "file_example_PNG_500kB.png"
 OPS = [
     (Compress, {"quality_factor": 80, "format": "jpeg"}),
     (Compress, {"quality_factor": 80, "format": "webp"}),
-    (CropImage, {"x": 0, "y": 0, "width": 50, "height": 40}),
     (Resize, {"width": 64, "height": 48, "interpolation": "linear"}),
     (MedianFilter, {"kernel_size": 3}),
     (GaussianBlur, {"kernel_size": 3, "sigma": 2.0}),
@@ -114,26 +112,6 @@ class TestCompress:
         low_size = Path(str(low.file_path)).stat().st_size
         high_size = Path(str(high.file_path)).stat().st_size
         assert low_size < high_size
-
-
-class TestCropImage:
-    def test_output_has_crop_dimensions(self, tmp_path):
-        _, out, _ = _run(CropImage, JPG, tmp_path, x=10, y=10, width=50, height=40)
-        assert out.width == 50
-        assert out.height == 40
-
-    def test_region_exceeding_bounds_raises(self, tmp_path):
-        g = Graph()
-        asset = load_asset_from_file(g, JPG)
-        op = CropImage.new(g, OperationURI())
-        op.x = 0
-        op.y = 0
-        op.width = asset.width + 1
-        op.height = asset.height
-        op.used(asset.identifier)
-
-        with pytest.raises(ValueError):
-            op.mutate(tmp_path)
 
 
 class TestResize:

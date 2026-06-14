@@ -162,8 +162,8 @@ tamper:CompressShape a sh:NodeShape ;
     sh:property tamper:QualityFactorShape ;
     sh:property tamper:FormatShape .
 
-tamper:CropImageShape a sh:NodeShape ;
-    sh:targetClass tamper:CropImage ;
+tamper:CropShape a sh:NodeShape ;
+    sh:targetClass tamper:Crop ;
     sh:property tamper:CropXShape ;
     sh:property tamper:CropYShape ;
     sh:property tamper:CropWidthShape ;
