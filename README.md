@@ -77,7 +77,7 @@ Each class instance is mapped to a resource in the graph:
 
 ```python
 from tamper.core import ImageAsset, load_asset_from_file
-from tamper.ops.image import Compress
+from tamper.ops import Compress
 from rdflib import Graph, BNode
 
 # All of our data lives in a graph

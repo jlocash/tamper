@@ -6,18 +6,20 @@ from pathlib import Path
 from rdflib import Graph, Node, URIRef
 
 from tamper.core.operation import OperationURI
-from tamper.ops.validation import validate_operations
-from tamper.vocabularies._TAMPER import TAMPER
-from tamper.ops.transcode import Transcode
-from tamper.ops.resample import Resample
-from tamper.ops.compress import Compress
-from tamper.ops.crop import Crop
-from tamper.ops.add_noise import AddGaussianNoise, AddSaltPepperNoise
-from tamper.ops.image import (
+from tamper.ops import (
+    Transcode,
+    Resample,
+    Compress,
+    Crop,
+    AddSaltPepperNoise,
+    AddGaussianNoise,
     Resize,
     MedianFilter,
     GaussianBlur,
+    validate_operations,
 )
+
+from tamper.vocabularies._TAMPER import TAMPER
 
 from .operation_plan import OperationPlanExecutor
 from tamper.core import Operation, OperationPlan, PlanStep, MediaAsset

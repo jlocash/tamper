@@ -13,7 +13,7 @@ from rdflib import PROV, Graph
 
 from tamper.core import ImageAsset, VideoAsset, load_asset_from_file
 from tamper.core.operation import OperationURI
-from tamper.ops.crop import Crop
+from tamper.ops import Crop
 
 TEST_MEDIA = Path(__file__).parent / "test-media"
 JPG = TEST_MEDIA / "images" / "file_example_JPG_100kB.jpg"

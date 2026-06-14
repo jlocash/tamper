@@ -5,8 +5,8 @@ from rdflib import PROV, Graph
 
 from tamper.core import ImageAsset, load_asset_from_file
 from tamper.core.operation import OperationURI
-from tamper.ops.compress import Compress
-from tamper.ops.image import (
+from tamper.ops import (
+    Compress,
     GaussianBlur,
     MedianFilter,
     Resize,

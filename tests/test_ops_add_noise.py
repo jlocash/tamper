@@ -4,10 +4,7 @@ from rdflib import Graph
 
 from tamper.core import ImageAsset, load_asset_from_file
 from tamper.core.operation import OperationURI
-from tamper.ops.add_noise import (
-    AddGaussianNoise,
-    AddSaltPepperNoise,
-)
+from tamper.ops import AddGaussianNoise, AddSaltPepperNoise
 
 IMAGES = Path(__file__).parent / "test-media" / "images"
 JPG = IMAGES / "file_example_JPG_100kB.jpg"

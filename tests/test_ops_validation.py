@@ -12,17 +12,18 @@ from rdflib import RDF, Graph, Literal
 
 from tamper.core.operation import OperationURI
 from tamper.errors import GraphValidationError
-from tamper.ops.resample import Resample
-from tamper.ops.compress import Compress
-from tamper.ops.crop import Crop
-from tamper.ops.add_noise import AddGaussianNoise, AddSaltPepperNoise
-from tamper.ops.image import (
+from tamper.ops import (
+    Resample,
+    Compress,
+    Crop,
+    AddGaussianNoise,
+    AddSaltPepperNoise,
     GaussianBlur,
     MedianFilter,
     Resize,
+    Transcode,
+    validate_operations,
 )
-from tamper.ops.transcode import Transcode
-from tamper.ops.validation import validate_operations
 from tamper.vocabularies import TAMPER
 
 

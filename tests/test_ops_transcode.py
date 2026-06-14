@@ -14,7 +14,7 @@ from rdflib import PROV, Graph
 from tamper.core import load_asset_from_file
 from tamper.core.assets import StreamContainer
 from tamper.core.operation import OperationURI
-from tamper.ops.transcode import Transcode
+from tamper.ops import Transcode
 
 TEST_MEDIA = Path(__file__).parent / "test-media"
 MP4 = TEST_MEDIA / "video" / "file_example_MP4_480_1_5MG.mp4"

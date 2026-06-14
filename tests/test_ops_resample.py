@@ -8,7 +8,7 @@ from rdflib import PROV, Graph
 
 from tamper.core import MediaAsset, load_asset_from_file
 from tamper.core.operation import OperationURI
-from tamper.ops.resample import Resample
+from tamper.ops import Resample
 
 TEST_MEDIA = Path(__file__).parent / "test-media"
 WAV = TEST_MEDIA / "audio" / "file_example_WAV_1MG.wav"
