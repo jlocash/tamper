@@ -7,7 +7,7 @@ from tamper.core import ImageAsset, load_asset_from_file
 from tamper.core.operation import OperationURI
 from tamper.ops import (
     Compress,
-    GaussianBlur,
+    AddGaussianBlur,
     MedianFilter,
     Resize,
 )
@@ -23,7 +23,7 @@ OPS = [
     (Compress, {"quality_factor": 80, "format": "webp"}),
     (Resize, {"width": 64, "height": 48, "interpolation": "linear"}),
     (MedianFilter, {"kernel_size": 3}),
-    (GaussianBlur, {"kernel_size": 3, "sigma": 2.0}),
+    (AddGaussianBlur, {"kernel_size": 3, "sigma": 2.0}),
 ]
 
 OP_IDS = [cls.__name__ for cls, _ in OPS]
@@ -122,6 +122,6 @@ class TestMedianFilter:
 
 class TestGaussianBlur:
     def test_preserves_dimensions(self, tmp_path):
-        src, out, _ = _run(GaussianBlur, JPG, tmp_path, kernel_size=3, sigma=2.0)
+        src, out, _ = _run(AddGaussianBlur, JPG, tmp_path, kernel_size=3, sigma=2.0)
         assert out.width == src.width
         assert out.height == src.height

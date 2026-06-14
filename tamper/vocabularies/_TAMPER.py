@@ -7,11 +7,13 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-06-14 03:27:32.161201
+    Date: 2026-06-14 15:55:55.624992
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
 
+    AddBlur: URIRef  # Adds blur to an image
+    AddGaussianBlur: URIRef  # Convolves an image with a Gaussian kernel of a given size and standard deviation.
     AddGaussianNoise: URIRef  # Adds gaussian noise to an image.
     AddNoise: URIRef  # Adds noise to an image. An abstract grouping of the noise-type-specific operations.
     AddSaltPepperNoise: URIRef  # Adds salt and pepper noise to an image
@@ -19,7 +21,6 @@ class TAMPER(DefinedNamespace):
     AudioStream: URIRef  # A stream containing audio sample data.
     Compress: URIRef  # Applies compression to an image using a format and quality level
     Crop: URIRef  # Extracts a rectangular region from a media asset, given a top-left origin and a width and height.
-    GaussianBlur: URIRef  # Convolves an image with a Gaussian kernel of a given size and standard deviation.
     ImageAsset: URIRef  # A digital image file.
     MediaAsset: URIRef  # A digital media file such as an image, audio, or video.
     MedianFilter: URIRef  # Applies a median filter over a square neighbourhood, commonly used to suppress noise residuals.

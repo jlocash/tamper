@@ -197,8 +197,8 @@ tamper:MedianFilterShape a sh:NodeShape ;
     sh:targetClass tamper:MedianFilter ;
     sh:property tamper:KernelSizeShape .
 
-tamper:GaussianBlurShape a sh:NodeShape ;
-    sh:targetClass tamper:GaussianBlur ;
+tamper:AddGaussianBlurShape a sh:NodeShape ;
+    sh:targetClass tamper:AddGaussianBlur ;
     sh:property tamper:KernelSizeShape ;
     sh:property tamper:BlurSigmaShape .
 

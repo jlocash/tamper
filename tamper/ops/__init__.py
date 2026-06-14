@@ -1,11 +1,9 @@
 from .add_noise import AddGaussianNoise, AddSaltPepperNoise
 from .compress import Compress
 from .crop import Crop
-from .image import (
-    Resize,
-    MedianFilter,
-    GaussianBlur,
-)
+from .resize import Resize
+from .filtering import MedianFilter
+from .add_blur import AddGaussianBlur
 from .resample import Resample
 from .transcode import Transcode
 from .validation import validate_operations
@@ -18,7 +16,7 @@ __all__ = [
     "Crop",
     "Resize",
     "MedianFilter",
-    "GaussianBlur",
+    "AddGaussianBlur",
     "AddGaussianNoise",
     "AddSaltPepperNoise",
     "Resample",

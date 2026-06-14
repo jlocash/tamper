@@ -15,7 +15,7 @@ from tamper.ops import (
     AddGaussianNoise,
     Resize,
     MedianFilter,
-    GaussianBlur,
+    AddGaussianBlur,
     validate_operations,
 )
 
@@ -31,7 +31,7 @@ operation_map: dict[URIRef, type[Operation]] = {
     TAMPER.AddSaltPepperNoise: AddSaltPepperNoise,
     TAMPER.Resize: Resize,
     TAMPER.MedianFilter: MedianFilter,
-    TAMPER.GaussianBlur: GaussianBlur,
+    TAMPER.AddGaussianBlur: AddGaussianBlur,
     TAMPER.Resample: Resample,
     TAMPER.Crop: Crop,
 }

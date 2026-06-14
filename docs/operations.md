@@ -95,7 +95,7 @@ Applies a median blur over a square neighbourhood.
     tamper:kernelSize 3 .
 ```
 
-### GaussianBlur — `tamper:GaussianBlur`
+### AddGaussianBlur — `tamper:AddGaussianBlur`
 
 Applies a Gaussian blur over a square kernel.
 
@@ -107,7 +107,7 @@ Applies a Gaussian blur over a square kernel.
 ```turtle
 @prefix tamper: <https://example.org/tamper/core#> .
 
-[] a tamper:GaussianBlur ;
+[] a tamper:AddGaussianBlur ;
     tamper:kernelSize 5 ;
     tamper:blurSigma 0.0 .
 ```

@@ -18,7 +18,7 @@ from tamper.ops import (
     Crop,
     AddGaussianNoise,
     AddSaltPepperNoise,
-    GaussianBlur,
+    AddGaussianBlur,
     MedianFilter,
     Resize,
     Transcode,
@@ -42,7 +42,7 @@ VALID_OPS = [
     (Crop, {"x": 0, "y": 0, "width": 512, "height": 512}),
     (Resize, {"width": 256, "height": 256, "interpolation": "lanczos4"}),
     (MedianFilter, {"kernel_size": 5}),
-    (GaussianBlur, {"kernel_size": 5, "sigma": 1.0}),
+    (AddGaussianBlur, {"kernel_size": 5, "sigma": 1.0}),
     (AddGaussianNoise, {"mean": 0.0, "std": 10.0, "seed": 42}),
     (AddSaltPepperNoise, {"amount": 0.05, "salt_ratio": 0.5, "seed": 42}),
     (Resample, {"target_sample_rate": 22050}),
@@ -75,7 +75,7 @@ INVALID_OPS = [
         Crop, {"x": -1, "y": 0, "width": 10, "height": 10}, id="crop-x-negative"
     ),
     pytest.param(
-        GaussianBlur, {"kernel_size": 0, "sigma": 1.0}, id="kernel-not-positive"
+        AddGaussianBlur, {"kernel_size": 0, "sigma": 1.0}, id="kernel-not-positive"
     ),
     pytest.param(
         AddSaltPepperNoise,
