@@ -114,25 +114,47 @@ Applies a Gaussian blur over a square kernel.
 
 ### AddGaussianNoise — `tamper:AddGaussianNoise`
 
-Adds per-pixel Gaussian noise (values are clipped to `0`–`255`).
+Adds Gaussian noise (values are clipped to `0`–`255`). A subtype of
+`tamper:AddNoise`.
 
 | Parameter          | Property              | Type  | Constraint | Required |
 | ------------------ | --------------------- | ----- | ---------- | -------- |
 | mean               | `tamper:gaussianMean` | float | —          | yes      |
 | standard deviation | `tamper:gaussianStd`  | float | `>= 0`     | yes      |
-| seed               | `tamper:gaussianSeed` | int   | `>= 0`     | no       |
+| seed               | `tamper:noiseSeed`    | int   | `>= 0`     | yes      |
 
-The noise is drawn from a seeded random number generator, so a given seed
-always produces identical output. If `tamper:gaussianSeed` is omitted, a seed
-is generated automatically and recorded into the result graph, keeping the run
-reproducible and self-documenting.
+`tamper:noiseSeed` is used to seed the random noise generator, so that the operation is deterministic/reproducable.
 
 ```turtle
 @prefix tamper: <https://example.org/tamper/core#> .
 
 [] a tamper:AddGaussianNoise ;
     tamper:gaussianMean 0.0 ;
-    tamper:gaussianStd 12.0 .
+    tamper:gaussianStd 12.0 ;
+    tamper:noiseSeed 42 .
+```
+
+### AddSaltPepperNoise — `tamper:AddSaltPepperNoise`
+
+Replaces a fraction of pixels with pure white ("salt") or pure black ("pepper").
+A subtype of `tamper:AddNoise`.
+
+| Parameter  | Property                  | Type  | Constraint  | Required |
+| ---------- | ------------------------- | ----- | ----------- | -------- |
+| amount     | `tamper:saltPepperAmount` | float | `0.0`–`1.0` | yes      |
+| salt ratio | `tamper:saltPepperRatio`  | float | `0.0`–`1.0` | yes      |
+| seed       | `tamper:noiseSeed`        | int   | `>= 0`      | yes      |
+
+`amount` is the fraction of pixels corrupted; `salt ratio` is the fraction of
+those set to white (salt) rather than black (pepper). The seed makes the operation deterministic/reproducable.
+
+```turtle
+@prefix tamper: <https://example.org/tamper/core#> .
+
+[] a tamper:AddSaltPepperNoise ;
+    tamper:saltPepperAmount 0.05 ;
+    tamper:saltPepperRatio 0.5 ;
+    tamper:noiseSeed 42 .
 ```
 
 ### Crop — `tamper:Crop`

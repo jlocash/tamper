@@ -15,8 +15,8 @@ from tamper.errors import GraphValidationError
 from tamper.ops.resample import Resample
 from tamper.ops.compress import Compress
 from tamper.ops.crop import Crop
+from tamper.ops.add_noise import AddGaussianNoise, AddSaltPepperNoise
 from tamper.ops.image import (
-    AddGaussianNoise,
     GaussianBlur,
     MedianFilter,
     Resize,
@@ -43,6 +43,7 @@ VALID_OPS = [
     (MedianFilter, {"kernel_size": 5}),
     (GaussianBlur, {"kernel_size": 5, "sigma": 1.0}),
     (AddGaussianNoise, {"mean": 0.0, "std": 10.0, "seed": 42}),
+    (AddSaltPepperNoise, {"amount": 0.05, "salt_ratio": 0.5, "seed": 42}),
     (Resample, {"target_sample_rate": 22050}),
     (Transcode, {"audio_encoder": "libmp3lame", "target_bitrate": 128000}),
     (Transcode, {"video_encoder": "libx264", "crf": 23}),
@@ -74,6 +75,11 @@ INVALID_OPS = [
     ),
     pytest.param(
         GaussianBlur, {"kernel_size": 0, "sigma": 1.0}, id="kernel-not-positive"
+    ),
+    pytest.param(
+        AddSaltPepperNoise,
+        {"amount": 1.5, "salt_ratio": 0.5, "seed": 42},
+        id="salt-pepper-amount-above-one",
     ),
     pytest.param(Transcode, {"video_encoder": "libx264", "crf": -1}, id="crf-negative"),
 ]

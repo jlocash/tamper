@@ -46,7 +46,7 @@ CHAINED_PLAN = (
     plan:parameters [
         tamper:gaussianMean 0.0 ;
         tamper:gaussianStd 10.0 ;
-        tamper:gaussianSeed 7
+        tamper:noiseSeed 7
     ] .
 """
 )
@@ -87,7 +87,7 @@ class TestMaterializeOperations:
         s2_op = step_to_op[URIRef("trn:plan:test:s2")]
         assert graph.value(s1_op, TAMPER.qualityFactor).toPython() == 80
         assert graph.value(s2_op, TAMPER.gaussianStd).toPython() == 10.0
-        assert graph.value(s2_op, TAMPER.gaussianSeed).toPython() == 7
+        assert graph.value(s2_op, TAMPER.noiseSeed).toPython() == 7
 
     def test_unknown_operation_type_raises(self):
         ttl = (

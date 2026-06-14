@@ -12,8 +12,8 @@ from tamper.ops.transcode import Transcode
 from tamper.ops.resample import Resample
 from tamper.ops.compress import Compress
 from tamper.ops.crop import Crop
+from tamper.ops.add_noise import AddGaussianNoise, AddSaltPepperNoise
 from tamper.ops.image import (
-    AddGaussianNoise,
     Resize,
     MedianFilter,
     GaussianBlur,
@@ -26,6 +26,7 @@ operation_map: dict[URIRef, type[Operation]] = {
     TAMPER.Compress: Compress,
     TAMPER.Transcode: Transcode,
     TAMPER.AddGaussianNoise: AddGaussianNoise,
+    TAMPER.AddSaltPepperNoise: AddSaltPepperNoise,
     TAMPER.Resize: Resize,
     TAMPER.MedianFilter: MedianFilter,
     TAMPER.GaussianBlur: GaussianBlur,

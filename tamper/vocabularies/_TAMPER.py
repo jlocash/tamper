@@ -7,12 +7,14 @@ class TAMPER(DefinedNamespace):
     DESCRIPTION_EDIT_ME_!
 
     Generated from: SOURCE_RDF_FILE_EDIT_ME_!
-    Date: 2026-06-14 02:07:58.350639
+    Date: 2026-06-14 03:27:32.161201
     """
 
     _NS = Namespace("https://example.org/tamper/core#")
 
     AddGaussianNoise: URIRef  # Adds gaussian noise to an image.
+    AddNoise: URIRef  # Adds noise to an image. An abstract grouping of the noise-type-specific operations.
+    AddSaltPepperNoise: URIRef  # Adds salt and pepper noise to an image
     AudioAsset: URIRef  # A digital audio file containing one or more audio streams.
     AudioStream: URIRef  # A stream containing audio sample data.
     Compress: URIRef  # Applies compression to an image using a format and quality level
@@ -57,7 +59,6 @@ class TAMPER(DefinedNamespace):
     format: URIRef  # compression format (e.g 'webp', 'jpeg')
     frameRate: URIRef  # The frame rate in frames per second.
     gaussianMean: URIRef  #
-    gaussianSeed: URIRef  # The seed for the random number generator used to draw the noise, recorded so the operation is exactly reproducible.
     gaussianStd: URIRef  #
     hasStream: URIRef  # Relates a stream container to its constituent streams.
     height: URIRef  # The height in pixels.
@@ -67,8 +68,13 @@ class TAMPER(DefinedNamespace):
     mediaType: (
         URIRef  # The MIME type of the media asset (e.g., 'image/jpeg', 'video/mp4').
     )
+    noiseSeed: URIRef  # The seed for the random number generator used to draw the noise, recorded so the operation is exactly reproducible.
     pixelFormat: URIRef  # The pixel format (e.g., 'yuv420p', 'rgb24').
     qualityFactor: URIRef  # Image compression quality factor (0 - 100)
+    saltPepperAmount: (
+        URIRef  # The fraction of pixels (0.0 - 1.0) replaced with salt or pepper noise.
+    )
+    saltPepperRatio: URIRef  # Of the corrupted pixels, the fraction (0.0 - 1.0) set to salt (white) rather than pepper (black).
     sampleRate: URIRef  # The audio sample rate in Hertz.
     streamIndex: URIRef  # The zero-based index of the stream within its container.
     targetBitRate: URIRef  # The target bit rate in bits per second for an audio transcode operation.

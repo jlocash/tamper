@@ -111,13 +111,31 @@ tamper:GaussianStdShape a sh:PropertyShape ;
     sh:maxCount 1 ;
     sh:message "Gaussian std must be a double" .
 
-tamper:GaussianSeedShape a sh:PropertyShape ;
-    sh:path tamper:gaussianSeed ;
+tamper:NoiseSeedShape a sh:PropertyShape ;
+    sh:path tamper:noiseSeed ;
     sh:datatype xsd:integer ;
     sh:minCount 1 ;
     sh:maxCount 1 ;
     sh:minInclusive 0 ;
-    sh:message "Gaussian seed must be a non-negative integer" .
+    sh:message "Noise seed must be a non-negative integer" .
+
+tamper:SaltPepperAmountShape a sh:PropertyShape ;
+    sh:path tamper:saltPepperAmount ;
+    sh:datatype xsd:double ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 0 ;
+    sh:maxInclusive 1 ;
+    sh:message "Salt-and-pepper amount must be a fraction between 0 and 1" .
+
+tamper:SaltPepperRatioShape a sh:PropertyShape ;
+    sh:path tamper:saltPepperRatio ;
+    sh:datatype xsd:double ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:minInclusive 0 ;
+    sh:maxInclusive 1 ;
+    sh:message "Salt-vs-pepper ratio must be a fraction between 0 and 1" .
 
 # Audio-related Property Shapes
 
@@ -188,7 +206,13 @@ tamper:AddGaussianNoiseShape a sh:NodeShape ;
     sh:targetClass tamper:AddGaussianNoise ;
     sh:property tamper:GaussianMeanShape ;
     sh:property tamper:GaussianStdShape ;
-    sh:property tamper:GaussianSeedShape .
+    sh:property tamper:NoiseSeedShape .
+
+tamper:AddSaltPepperNoiseShape a sh:NodeShape ;
+    sh:targetClass tamper:AddSaltPepperNoise ;
+    sh:property tamper:SaltPepperAmountShape ;
+    sh:property tamper:SaltPepperRatioShape ;
+    sh:property tamper:NoiseSeedShape .
 
 tamper:ResampleShape a sh:NodeShape ;
     sh:targetClass tamper:Resample ;

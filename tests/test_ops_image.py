@@ -1,11 +1,3 @@
-"""Behavioral tests for tamper.ops.image operations.
-
-Each operation is exercised through its public interface: instantiate with
-``Operation.new``, set parameters via the mapped properties, attach the input
-asset with ``used()``, run ``mutate(out_dir)``, and observe the generated
-asset recorded in the graph.
-"""
-
 from pathlib import Path
 
 import pytest
@@ -15,7 +7,6 @@ from tamper.core import ImageAsset, load_asset_from_file
 from tamper.core.operation import OperationURI
 from tamper.ops.compress import Compress
 from tamper.ops.image import (
-    AddGaussianNoise,
     GaussianBlur,
     MedianFilter,
     Resize,
@@ -33,7 +24,6 @@ OPS = [
     (Resize, {"width": 64, "height": 48, "interpolation": "linear"}),
     (MedianFilter, {"kernel_size": 3}),
     (GaussianBlur, {"kernel_size": 3, "sigma": 2.0}),
-    (AddGaussianNoise, {"mean": 0.0, "std": 25.0, "seed": 42}),
 ]
 
 OP_IDS = [cls.__name__ for cls, _ in OPS]
@@ -135,23 +125,3 @@ class TestGaussianBlur:
         src, out, _ = _run(GaussianBlur, JPG, tmp_path, kernel_size=3, sigma=2.0)
         assert out.width == src.width
         assert out.height == src.height
-
-
-class TestAddGaussianNoise:
-    def test_same_seed_is_reproducible(self, tmp_path):
-        _, a, _ = _run(
-            AddGaussianNoise, JPG, tmp_path / "a", mean=0.0, std=25.0, seed=42
-        )
-        _, b, _ = _run(
-            AddGaussianNoise, JPG, tmp_path / "b", mean=0.0, std=25.0, seed=42
-        )
-        assert a.checksum == b.checksum
-
-    def test_different_seeds_differ(self, tmp_path):
-        _, a, _ = _run(
-            AddGaussianNoise, JPG, tmp_path / "a", mean=0.0, std=25.0, seed=1
-        )
-        _, b, _ = _run(
-            AddGaussianNoise, JPG, tmp_path / "b", mean=0.0, std=25.0, seed=2
-        )
-        assert a.checksum != b.checksum

@@ -70,10 +70,20 @@ tamper:Compress a owl:Class ;
     rdfs:comment "Applies compression to an image using a format and quality level"@en ;
     rdfs:subClassOf tamper:Operation .
 
+tamper:AddNoise a owl:Class ;
+    rdfs:label "Add Noise"@en ;
+    rdfs:comment "Adds noise to an image. An abstract grouping of the noise-type-specific operations."@en ;
+    rdfs:subClassOf tamper:Operation .
+
 tamper:AddGaussianNoise a owl:Class ;
     rdfs:label "Add Gaussian Noise"@en ;
     rdfs:comment "Adds gaussian noise to an image."@en ;
-    rdfs:subClassOf tamper:Operation .
+    rdfs:subClassOf tamper:AddNoise .
+
+tamper:AddSaltPepperNoise a owl:Class ;
+    rdfs:label "Add Salt Pepper Noise"@en ;
+    rdfs:comment "Adds salt and pepper noise to an image"@en ;
+    rdfs:subClassOf tamper:AddNoise .
 
 tamper:Resize a owl:Class ;
     rdfs:label "Resize"@en ;
@@ -316,11 +326,23 @@ tamper:gaussianStd a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:domain tamper:AddGaussianNoise ;
     rdfs:range xsd:double .
 
-tamper:gaussianSeed a owl:DatatypeProperty, owl:FunctionalProperty ;
-    rdfs:label "gaussian seed"@en ;
+tamper:noiseSeed a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "noise seed"@en ;
     rdfs:comment "The seed for the random number generator used to draw the noise, recorded so the operation is exactly reproducible."@en ;
-    rdfs:domain tamper:AddGaussianNoise ;
+    rdfs:domain tamper:AddNoise ;
     rdfs:range xsd:integer .
+
+tamper:saltPepperAmount a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "salt and pepper amount"@en ;
+    rdfs:comment "The fraction of pixels (0.0 - 1.0) replaced with salt or pepper noise."@en ;
+    rdfs:domain tamper:AddSaltPepperNoise ;
+    rdfs:range xsd:double .
+
+tamper:saltPepperRatio a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "salt and pepper ratio"@en ;
+    rdfs:comment "Of the corrupted pixels, the fraction (0.0 - 1.0) set to salt (white) rather than pepper (black)."@en ;
+    rdfs:domain tamper:AddSaltPepperNoise ;
+    rdfs:range xsd:double .
 
 tamper:targetWidth a owl:DatatypeProperty, owl:FunctionalProperty ;
     rdfs:label "target width"@en ;

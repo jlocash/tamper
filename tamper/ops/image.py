@@ -2,7 +2,6 @@ from os import PathLike
 from pathlib import Path
 
 import cv2
-import numpy as np
 from rdflib import XSD
 
 from tamper.vocabularies import TAMPER
@@ -92,33 +91,6 @@ class GaussianBlur(Operation):
         )
         ext = Path(img_asset.file_path).suffix or ".png"
         ok, buf = cv2.imencode(ext, blurred)
-        if not ok:
-            raise RuntimeError(f"Encoding to {ext} failed")
-
-        with self._generates_file(dir=out_dir, suffix=ext) as f:
-            Path(f).write_bytes(buf.tobytes())
-
-
-class AddGaussianNoise(Operation):
-    __rdf_type__ = TAMPER.AddGaussianNoise
-
-    mean: MappedProperty[float] = MappedProperty(TAMPER.gaussianMean, XSD.double)
-    std: MappedProperty[float] = MappedProperty(TAMPER.gaussianStd, XSD.double)
-    seed: MappedProperty[int] = MappedProperty(TAMPER.gaussianSeed, XSD.integer)
-
-    def mutate(self, out_dir: PathLike[str] | None = None):
-        used = self.get_used()
-        if len(used) != 1:
-            raise ValueError("Operation requires exactly one image asset")
-
-        img_asset = ImageAsset(self.graph, used[0])
-
-        img = cv2.imread(img_asset.file_path)
-        rng = np.random.default_rng(self.seed)
-        noise = rng.normal(self.mean, self.std, img.shape)
-        noisy_img = np.clip(img + noise, 0, 255).astype(np.uint8)
-        ext = Path(img_asset.file_path).suffix or ".png"
-        ok, buf = cv2.imencode(ext, noisy_img)
         if not ok:
             raise RuntimeError(f"Encoding to {ext} failed")
 
