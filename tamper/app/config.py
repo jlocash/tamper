@@ -1,45 +1,67 @@
 from datetime import datetime
-import logging
-import os
+from functools import lru_cache
 from pathlib import Path
 
+from pydantic import Field, computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from rdflib import Graph
 
-from tamper.app.kg.knowledge_graph import KnowledgeGraph
-from tamper.app.kg.local import LocalKnowledgeGraph
+from tamper.app.kg import KnowledgeGraph, LocalKnowledgeGraph
 from tamper.core import Catalog
 from tamper.core._common import TamperURI
-
-logger = logging.getLogger(__name__)
+from tamper.storage import AssetStorage, ObjectStorage
 
 CATALOG_URI = TamperURI("catalog")
 
 
-class Config:
-    def __init__(self):
-        if "TAMPER_HOME" in os.environ:
-            self.TAMPER_HOME_DIR = Path(os.environ["TAMPER_HOME"])
-        else:
-            self.TAMPER_HOME_DIR = Path.home() / ".tamper"
-            logger.info("TAMPER_HOME not set, defaulting to %s", self.TAMPER_HOME_DIR)
+class Settings(BaseSettings):
+    """
+    Tamper's runtime configuration, read from the environment and ``.env``.
 
-        self.TAMPER_PLANS_DIR = self.TAMPER_HOME_DIR / "plans"
-        self.TAMPER_MEDIA_DIR = self.TAMPER_HOME_DIR / "media"
-        self.TAMPER_GRAPH_DIR = self.TAMPER_HOME_DIR / "graph"
-        self.TAMPER_CATALOG_URI = CATALOG_URI
+    Field names map to upper-case environment variables, so ``tamper_home``
+    is set with ``TAMPER_HOME``.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    tamper_home: Path = Field(
+        default_factory=lambda: Path.home() / ".tamper",
+        description="Directory holding operation plans, the RDF graph, and scratch files",
+    )
+
+    s3_endpoint_url: str
+    s3_region_name: str
+    tamper_assets_bucket: str = "tamper-assets"
+    tamper_ingest_bucket: str = "tamper-ingest"
+
+    @computed_field
+    @property
+    def plans_dir(self) -> Path:
+        return self.tamper_home / "plans"
+
+    @computed_field
+    @property
+    def graph_dir(self) -> Path:
+        return self.tamper_home / "graph"
+
+    @computed_field
+    @property
+    def work_dir(self) -> Path:
+        """Scratch space where operations materialize assets while they run"""
+        return self.tamper_home / "work"
+
+    @property
+    def catalog_uri(self) -> TamperURI:
+        return CATALOG_URI
 
     def ensure_directories_exist(self):
-        if not self.TAMPER_HOME_DIR.exists():
-            logger.info("Initializing home directory at %s", self.TAMPER_HOME_DIR)
-            self.TAMPER_HOME_DIR.mkdir(parents=True)
-        if not self.TAMPER_PLANS_DIR.exists():
-            logger.info("Initializing plans directory at %s", self.TAMPER_PLANS_DIR)
-            self.TAMPER_PLANS_DIR.mkdir(parents=True)
-        if not self.TAMPER_MEDIA_DIR.exists():
-            logger.info("initializing media directory at %s", self.TAMPER_MEDIA_DIR)
-            self.TAMPER_MEDIA_DIR.mkdir(parents=True)
-        if not self.TAMPER_GRAPH_DIR.exists():
-            logger.info("Initializing graph directory at %s", self.TAMPER_GRAPH_DIR)
+        for directory in (self.tamper_home, self.plans_dir, self.work_dir):
+            directory.mkdir(parents=True, exist_ok=True)
+        if not self.graph_dir.exists():
             self.init_catalog()
 
     def init_catalog(self):
@@ -52,7 +74,22 @@ class Config:
         kg.commit()
 
     def get_kg(self) -> KnowledgeGraph:
-        return LocalKnowledgeGraph(self.TAMPER_GRAPH_DIR)
+        return LocalKnowledgeGraph(self.graph_dir)
+
+    def get_object_storage(self) -> ObjectStorage:
+        return ObjectStorage(
+            endpoint_url=self.s3_endpoint_url,
+            region_name=self.s3_region_name,
+        )
+
+    def get_asset_storage(self) -> AssetStorage:
+        return AssetStorage(self.get_object_storage(), self.tamper_assets_bucket)
 
 
-config = Config()
+@lru_cache
+def get_settings() -> Settings:
+    """
+    The process-wide settings. Cached so the environment is read once, and
+    overridable in tests via FastAPI's dependency_overrides.
+    """
+    return Settings()

@@ -26,7 +26,7 @@ from tamper.vocabularies import (
     load_core_ontology,
     load_plan_ontology,
 )
-from tamper.app.config import config
+from tamper.app.config import get_settings
 
 
 def serialize_graph(g: Graph):
@@ -58,9 +58,10 @@ def serialize_graph(g: Graph):
 
 @lifespan
 async def app_lifespan(server: FastMCP):
-    kg = config.get_kg()
+    settings = get_settings()
+    kg = settings.get_kg()
     executor = ThreadPoolPlanExecutor(
-        config.TAMPER_MEDIA_DIR, max_workers=4, max_in_flight=32
+        settings.work_dir, max_workers=4, max_in_flight=32
     )
     plan_queue = AsyncPlanQueue(executor)
     await plan_queue.start()
@@ -123,7 +124,7 @@ async def create_dataset(slug: str, title: str, description: str, ctx: Context) 
     dataset.description = description
     dataset.created = datetime.now()
 
-    catalog = Catalog(subgraph, config.TAMPER_CATALOG_URI)
+    catalog = Catalog(subgraph, get_settings().catalog_uri)
     catalog.add_dataset(dataset.identifier)
     with kg.tx():
         kg.insert_statements_default(subgraph)
@@ -215,7 +216,7 @@ async def list_plans():
     """
 
     plans = []
-    for plan_file in config.TAMPER_PLANS_DIR.glob("*.ttl"):
+    for plan_file in get_settings().plans_dir.glob("*.ttl"):
         plan_graph = Graph()
         plan_graph.parse(plan_file, format="turtle")
 
@@ -332,7 +333,7 @@ async def create_plan(plan_name: str, plan_graph_ttl: str):
         validate_plan_graph(plan_graph)
 
         # Create plan file
-        plan_file = config.TAMPER_PLANS_DIR / (plan_name + ".ttl")
+        plan_file = get_settings().plans_dir / (plan_name + ".ttl")
         plan_graph.serialize(plan_file, format="turtle")
     except BadSyntax as e:
         raise ToolError(f"Graph contains syntax errors: {str(e)}") from e
@@ -348,7 +349,7 @@ async def get_plan(plan_name: str):
     :param plan_name: The name of the plan.
     :return: The graph associated with the given plan name, in RDF Turtle format.
     """
-    plan_file = config.TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    plan_file = get_settings().plans_dir / (plan_name + ".ttl")
     if not plan_file.exists():
         raise ToolError(f"Plan with name {plan_file} does not exist")
 
@@ -363,7 +364,7 @@ async def delete_plan(plan_name: str):
 
     :param plan_name: The name of the plan.
     """
-    plan_file = config.TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    plan_file = get_settings().plans_dir / (plan_name + ".ttl")
     if not plan_file.exists():
         raise ToolError(f"Plan with name {plan_file} does not exist")
     plan_file.unlink()
@@ -402,7 +403,7 @@ async def submit_plan(
     if len(dataset.graph) == 0:
         raise ToolError(f"Datasest {dataset_trn} does not exist")
 
-    plan_file = config.TAMPER_PLANS_DIR / (plan_name + ".ttl")
+    plan_file = get_settings().plans_dir / (plan_name + ".ttl")
     if not plan_file.exists():
         raise ToolError(f"Plan with name {plan_file} does not exist")
 
