@@ -1,4 +1,3 @@
-from os import PathLike
 from pathlib import Path
 
 import cv2
@@ -7,7 +6,7 @@ from rdflib import XSD
 
 from tamper.vocabularies import TAMPER
 
-from tamper.core import ImageAsset, Operation, MappedProperty
+from tamper.core import AssetWorkspace, ImageAsset, Operation, MappedProperty
 
 
 class AddGaussianNoise(Operation):
@@ -17,23 +16,24 @@ class AddGaussianNoise(Operation):
     std: MappedProperty[float] = MappedProperty(TAMPER.gaussianStd, XSD.double)
     seed: MappedProperty[int] = MappedProperty(TAMPER.noiseSeed, XSD.integer)
 
-    def mutate(self, out_dir: PathLike[str] | None = None):
+    def mutate(self, workspace: AssetWorkspace):
         used = self.get_used()
         if len(used) != 1:
             raise ValueError("Operation requires exactly one image asset")
 
         img_asset = ImageAsset(self.graph, used[0])
+        img_file = workspace.resolve(img_asset)
 
-        img = cv2.imread(img_asset.file_path)
+        img = cv2.imread(str(img_file))
         rng = np.random.default_rng(self.seed)
         noise = rng.normal(self.mean, self.std, img.shape)
         noisy_img = np.clip(img + noise, 0, 255).astype(np.uint8)
-        ext = Path(img_asset.file_path).suffix or ".png"
+        ext = img_file.suffix or ".png"
         ok, buf = cv2.imencode(ext, noisy_img)
         if not ok:
             raise RuntimeError(f"Encoding to {ext} failed")
 
-        with self._generates_file(dir=out_dir, suffix=ext) as f:
+        with self._generates_file(workspace, suffix=ext) as f:
             Path(f).write_bytes(buf.tobytes())
 
 
@@ -46,16 +46,17 @@ class AddSaltPepperNoise(Operation):
     )
     seed: MappedProperty[int] = MappedProperty(TAMPER.noiseSeed, XSD.integer)
 
-    def mutate(self, out_dir: PathLike[str] | None = None):
+    def mutate(self, workspace: AssetWorkspace):
         used = self.get_used()
         if len(used) != 1:
             raise ValueError("Operation requires exactly one image asset")
 
         img_asset = ImageAsset(self.graph, used[0])
+        img_file = workspace.resolve(img_asset)
 
-        img = cv2.imread(img_asset.file_path)
+        img = cv2.imread(str(img_file))
         if img is None:
-            raise RuntimeError(f"Could not read image: {img_asset.file_path}")
+            raise RuntimeError(f"Could not read image: {img_file}")
 
         rng = np.random.default_rng(self.seed)
         out = img.copy()
@@ -68,10 +69,10 @@ class AddSaltPepperNoise(Operation):
         out[ys[:n_salt], xs[:n_salt]] = 255
         out[ys[n_salt:], xs[n_salt:]] = 0
 
-        ext = Path(img_asset.file_path).suffix or ".png"
+        ext = img_file.suffix or ".png"
         ok, buf = cv2.imencode(ext, out)
         if not ok:
             raise RuntimeError(f"Encoding to {ext} failed")
 
-        with self._generates_file(dir=out_dir, suffix=ext) as f:
+        with self._generates_file(workspace, suffix=ext) as f:
             Path(f).write_bytes(buf.tobytes())

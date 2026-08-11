@@ -1,10 +1,7 @@
-from os import PathLike
-from pathlib import Path
-
 import ffmpeg
 from rdflib import XSD
 
-from tamper.core import MappedProperty, Operation
+from tamper.core import AssetWorkspace, MappedProperty, Operation
 from tamper.core.assets import StreamContainer
 from tamper.vocabularies import TAMPER
 
@@ -46,7 +43,7 @@ class Transcode(Operation):
         TAMPER.targetBitRate, XSD.integer
     )
 
-    def mutate(self, out_dir: PathLike[str] | None = None):
+    def mutate(self, workspace: AssetWorkspace):
         used = self.get_used()
         if len(used) != 1:
             raise ValueError("Operation requires exactly one audio or video asset")
@@ -84,17 +81,19 @@ class Transcode(Operation):
                 f"Asset {asset.identifier} has no video stream to transcode"
             )
 
+        asset_file = workspace.resolve(asset)
+
         # keep the source container unless we are producing a single-stream output.
-        suffix = Path(asset.file_path).suffix
+        suffix = asset_file.suffix
         if has_video and self.video_encoder:
             suffix = _VIDEO_ENCODER_TO_SUFFIX.get(self.video_encoder, suffix)
         elif not has_video and has_audio and self.audio_encoder:
             suffix = _AUDIO_ENCODER_TO_SUFFIX.get(self.audio_encoder, suffix)
 
         try:
-            with self._generates_file(dir=out_dir, suffix=suffix) as output_asset_file:
+            with self._generates_file(workspace, suffix=suffix) as output_asset_file:
                 (
-                    ffmpeg.input(str(asset.file_path))
+                    ffmpeg.input(str(asset_file))
                     .output(str(output_asset_file), **output_kwargs)
                     .run(
                         capture_stdout=False, capture_stderr=True, overwrite_output=True

@@ -5,10 +5,12 @@ from ray.types import ObjectRef
 
 from tamper.core import OperationPlan, PlanStep
 
+from tamper.core import AssetWorkspace
+from tamper.storage import AssetStorage
+
 from .operation_plan import OperationPlanExecutor
 from .thread_executor import StepExecutor, materialize_operations
 from rdflib import Graph, Node, URIRef
-from tamper.vocabularies import TAMPER
 from pathlib import Path
 import ray
 
@@ -20,12 +22,6 @@ class RemoteGraph:
 
     def add_statements(self, statements: Graph):
         self.graph += statements
-
-    def get_asset_file_path(self, asset_uri: Node) -> Path | None:
-        file_path = self.graph.value(asset_uri, TAMPER.filePath)
-        if file_path is None:
-            return None
-        return Path(str(file_path))
 
     def get_graph(self) -> Graph:
         return self.graph
@@ -39,9 +35,15 @@ class RemoteGraph:
 
 @ray.remote
 class RemoteStepExecutor(StepExecutor):
-    def __init__(self, plan_graph: Graph, step_uri: URIRef, out_dir: os.PathLike[str]):
+    def __init__(
+        self,
+        plan_graph: Graph,
+        step_uri: URIRef,
+        asset_storage: AssetStorage,
+        work_dir: os.PathLike[str],
+    ):
         step = PlanStep(plan_graph, step_uri)
-        super().__init__(step, out_dir)
+        super().__init__(step, AssetWorkspace(asset_storage, work_dir))
 
     def execute(
         self, result_graph: ActorHandle[RemoteGraph], mapping: dict[Node, Node]
@@ -53,8 +55,14 @@ class RemoteStepExecutor(StepExecutor):
 
 
 class RayExecutor(OperationPlanExecutor):
-    def __init__(self, out_dir: os.PathLike[str], max_in_flight: int = 32):
-        self.out_dir = Path(out_dir)
+    def __init__(
+        self,
+        asset_storage: AssetStorage,
+        work_dir: os.PathLike[str],
+        max_in_flight: int = 32,
+    ):
+        self.asset_storage = asset_storage
+        self.work_dir = Path(work_dir)
         self.max_in_flight = max_in_flight
 
     def execute(
@@ -105,7 +113,7 @@ class RayExecutor(OperationPlanExecutor):
                     mapping[step_input.identifier] = asset_uri
 
                 step_actor = RemoteStepExecutor.remote(
-                    plan_graph_ref, step.identifier, self.out_dir
+                    plan_graph_ref, step.identifier, self.asset_storage, self.work_dir
                 )
                 print(f"Executing step {step.identifier.n3()}")
                 ref = step_actor.execute.remote(result_graph, mapping)

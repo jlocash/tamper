@@ -1,11 +1,9 @@
 import hashlib
-import shutil
 from os import PathLike
-from pathlib import Path
 
 import ffmpeg
 from magic import Magic
-from rdflib import PROV, XSD, BNode, Graph, URIRef, RDF, Literal
+from rdflib import PROV, XSD, BNode, Graph, URIRef, RDF
 from tamper.core._common import MappedProperty
 from tamper.vocabularies import TAMPER
 from PIL import Image as PILImage
@@ -41,8 +39,8 @@ def _get_frame_rate(stream_data: dict) -> float | None:
     return None
 
 
-def _extract_container_metadata(asset: StreamContainer):
-    probe_result = ffmpeg.probe(asset.file_path)
+def _extract_container_metadata(asset: StreamContainer, file: PathLike[str]):
+    probe_result = ffmpeg.probe(file)
 
     format_long_name = probe_result.get("format", {}).get("format_long_name")
     if format_long_name is not None:
@@ -89,8 +87,8 @@ def _extract_container_metadata(asset: StreamContainer):
         asset.add(TAMPER.hasStream, stream)
 
 
-def _extract_image_metadata(asset: ImageAsset):
-    with PILImage.open(asset.file_path) as img:
+def _extract_image_metadata(asset: ImageAsset, file: PathLike[str]):
+    with PILImage.open(file) as img:
         asset.width = img.width
         asset.height = img.height
         asset.pixel_format = img.mode
@@ -100,22 +98,7 @@ class MediaAsset(Resource):
     __rdf_type__ = TAMPER.MediaAsset
     media_type: MappedProperty[str] = MappedProperty(TAMPER.mediaType, XSD.string)
     checksum: MappedProperty[str] = MappedProperty(TAMPER.checksum, XSD.string)
-    file_path: MappedProperty[PathLike[str]] = MappedProperty(
-        TAMPER.filePath, XSD.string
-    )
     was_generated_by: MappedProperty[URIRef] = MappedProperty(PROV.wasGeneratedBy)
-
-    def move_file(self, new_path: PathLike[str]):
-        new_path = Path(new_path)
-        current_path = Path(self.file_path)
-        if current_path is None:
-            raise ValueError("Asset does not have a local file path")
-        if not current_path.exists():
-            raise ValueError(f"Asset file {current_path} does not exist")
-        if current_path == new_path:
-            return
-        shutil.move(current_path, new_path)
-        self.set(TAMPER.filePath, Literal(str(new_path.absolute())))
 
     @classmethod
     def from_file(cls, graph: Graph, file: PathLike[str]):
@@ -125,7 +108,6 @@ class MediaAsset(Resource):
         asset = cls.new(graph, asset_uri)
         asset.media_type = media_type
         asset.checksum = "sha256:" + checksum
-        asset.file_path = str(Path(file).absolute())
         return asset
 
 
@@ -141,7 +123,7 @@ class ImageAsset(MediaAsset):
         if not asset.media_type.startswith("image/"):
             raise ValueError(f"Expected iamge file, got {asset.media_type}")
         asset = cls.new(asset.graph, asset.identifier)
-        _extract_image_metadata(asset)
+        _extract_image_metadata(asset, file)
         return asset
 
 
@@ -206,7 +188,7 @@ class VideoAsset(StreamContainer):
             raise ValueError(f"Expected video file, got {asset.media_type}")
 
         asset = cls.new(asset.graph, asset.identifier)
-        _extract_container_metadata(asset)
+        _extract_container_metadata(asset, file)
         return asset
 
 
@@ -220,7 +202,7 @@ class AudioAsset(StreamContainer):
             raise ValueError(f"Expected audio file, got {asset.media_type}")
 
         asset = cls.new(asset.graph, asset.identifier)
-        _extract_container_metadata(asset)
+        _extract_container_metadata(asset, file)
         return asset
 
 

@@ -1,11 +1,11 @@
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from datetime import datetime
 from os import PathLike
-from pathlib import Path
 
 from rdflib import Graph, Node, URIRef
 
 from tamper.core.operation import OperationURI
+from tamper.storage import AssetStorage
 from tamper.ops import (
     Transcode,
     Resample,
@@ -22,7 +22,7 @@ from tamper.ops import (
 from tamper.vocabularies._TAMPER import TAMPER
 
 from .operation_plan import OperationPlanExecutor
-from tamper.core import Operation, OperationPlan, PlanStep, MediaAsset
+from tamper.core import AssetWorkspace, Operation, OperationPlan, PlanStep
 
 operation_map: dict[URIRef, type[Operation]] = {
     TAMPER.Compress: Compress,
@@ -69,9 +69,9 @@ def materialize_operations(plan: OperationPlan) -> tuple[Graph, dict[Node, Node]
 
 
 class StepExecutor:
-    def __init__(self, step: PlanStep, out_dir: Path):
+    def __init__(self, step: PlanStep, workspace: AssetWorkspace):
         self.step = step
-        self.out_dir = out_dir
+        self.workspace = workspace
 
     def execute(self, subgraph: Graph, mapping: dict[Node, Node]) -> tuple[Node, Graph]:
         print(f"Executing step {self.step}")
@@ -89,7 +89,7 @@ class StepExecutor:
 
         # mutate subgraph
         op.started_at_time = datetime.now()
-        op.mutate(self.out_dir)
+        op.mutate(self.workspace)
         op.ended_at_time = datetime.now()
 
         result = next(op.get_generated(), None)
@@ -101,17 +101,19 @@ class ThreadPoolPlanExecutor(OperationPlanExecutor):
 
     def __init__(
         self,
-        out_dir: PathLike[str],
+        asset_storage: AssetStorage,
+        work_dir: PathLike[str],
         max_workers: int = 1,
         max_in_flight: int = 10,
     ):
         """
-        :param out_dir: The directory where new assets are written
+        :param asset_storage: The storage that assets are read from and written to
+        :param work_dir: A scratch directory where assets are materialized while steps run
         :param max_workers: Used when initializing the ThreadPoolExecutor
         :param max_in_flight: The max number of steps to submit to the executor before block
         """
 
-        self.out_dir = Path(out_dir)
+        self.workspace = AssetWorkspace(asset_storage, work_dir)
         self.max_workers = max_workers
         self.max_in_flight = max_in_flight
 
@@ -163,15 +165,9 @@ class ThreadPoolPlanExecutor(OperationPlanExecutor):
                         mapping[step_input.identifier] = asset_uri
                         result_graph.cbd(asset_uri, target_graph=subgraph)
 
-                        # Ensure asset has a local file
-                        asset = MediaAsset(subgraph, asset_uri)
-                        asset_file = Path(asset.file_path)
-                        if asset_file is None or not asset_file.exists():
-                            raise ValueError(
-                                f"Asset {asset} does not have a local file"
-                            )
-
-                    step_executor = StepExecutor(step, self.out_dir)
+                    # the workspace pulls each input from asset storage the
+                    # first time a step resolves it
+                    step_executor = StepExecutor(step, self.workspace)
                     future = thread_pool.submit(
                         step_executor.execute, subgraph, mapping
                     )

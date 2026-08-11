@@ -1,10 +1,9 @@
 import cv2
 
-from os import PathLike
 from rdflib import XSD
 from pathlib import Path
 
-from tamper.core import Operation, MappedProperty, ImageAsset
+from tamper.core import AssetWorkspace, Operation, MappedProperty, ImageAsset
 from tamper.vocabularies import TAMPER
 
 
@@ -21,7 +20,7 @@ class Compress(Operation):
         TAMPER.qualityFactor, datatype=XSD.integer
     )
 
-    def mutate(self, out_dir: PathLike[str] | None = None):
+    def mutate(self, workspace: AssetWorkspace):
         used = self.get_used()
         if len(used) != 1:
             raise ValueError("Operation requires exactly one image asset")
@@ -33,9 +32,9 @@ class Compress(Operation):
             raise ValueError(f"Unexpected image format '{self.format}'")
         ext = "." + self.format
 
-        img = cv2.imread(img_asset.file_path)
+        img = cv2.imread(str(workspace.resolve(img_asset)))
         ok, buf = cv2.imencode(ext, img, [img_format, self.quality_factor])
         if not ok:
             raise RuntimeError("JPEG encoding failed")
-        with self._generates_file(dir=out_dir, suffix=".jpg") as f:
+        with self._generates_file(workspace, suffix=".jpg") as f:
             Path(f).write_bytes(buf.tobytes())

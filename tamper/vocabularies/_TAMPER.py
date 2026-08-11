@@ -55,7 +55,6 @@ class TAMPER(DefinedNamespace):
     cropX: URIRef  # The x coordinate, in pixels, of the top-left corner of the crop region.
     cropY: URIRef  # The y coordinate, in pixels, of the top-left corner of the crop region.
     duration: URIRef  # The temporal duration of the media.
-    filePath: URIRef  # The relative path to the media file.
     fileSize: URIRef  # The size of the media file in bytes.
     format: URIRef  # compression format (e.g 'webp', 'jpeg')
     frameRate: URIRef  # The frame rate in frames per second.

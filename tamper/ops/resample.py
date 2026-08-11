@@ -1,11 +1,8 @@
-from os import PathLike
-from pathlib import Path
-
 from rdflib import XSD
 
 from tamper.core.assets import AudioStream, StreamContainer, VideoStream
 from tamper.vocabularies import TAMPER
-from tamper.core import Operation, MappedProperty
+from tamper.core import AssetWorkspace, Operation, MappedProperty
 import ffmpeg
 
 
@@ -25,7 +22,7 @@ class Resample(Operation):
         TAMPER.targetSampleRate, XSD.integer
     )
 
-    def mutate(self, out_dir: PathLike[str] | None = None):
+    def mutate(self, workspace: AssetWorkspace):
         used = self.get_used()
         if len(used) != 1:
             raise ValueError("Operation requires exactly one audio asset")
@@ -46,11 +43,13 @@ class Resample(Operation):
                 f"Asset {asset.identifier} has no audio stream to resample"
             )
 
-        suffix = Path(asset.file_path).suffix
+        asset_file = workspace.resolve(asset)
         try:
-            with self._generates_file(dir=out_dir, suffix=suffix) as output_asset_file:
+            with self._generates_file(
+                workspace, suffix=asset_file.suffix
+            ) as output_asset_file:
                 (
-                    ffmpeg.input(str(asset.file_path))
+                    ffmpeg.input(str(asset_file))
                     .output(str(output_asset_file), **output_kwargs)
                     .run(
                         capture_stdout=False, capture_stderr=True, overwrite_output=True

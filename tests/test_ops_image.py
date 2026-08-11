@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from rdflib import PROV, Graph
 
-from tamper.core import ImageAsset, load_asset_from_file
+from tamper.core import ImageAsset
 from tamper.core.operation import OperationURI
 from tamper.ops import (
     Compress,
@@ -29,16 +29,15 @@ OPS = [
 OP_IDS = [cls.__name__ for cls, _ in OPS]
 
 
-def _run(op_cls, src: Path, out_dir: Path, **params):
+def _run(op_cls, src: Path, workspace, load_asset, **params):
     """Run ``op_cls`` over ``src``, returning (input asset, output asset, op)."""
-    out_dir.mkdir(parents=True, exist_ok=True)
     g = Graph()
-    asset = load_asset_from_file(g, src)
+    asset = load_asset(g, src)
     op = op_cls.new(g, OperationURI())
     for name, value in params.items():
         setattr(op, name, value)
     op.used(asset.identifier)
-    op.mutate(out_dir)
+    op.mutate(workspace)
 
     generated = next(op.get_generated(), None)
     assert generated is not None, "operation did not record a generated asset"
@@ -49,8 +48,8 @@ def _run(op_cls, src: Path, out_dir: Path, **params):
 
 
 @pytest.mark.parametrize("op_cls,params", OPS, ids=OP_IDS)
-def test_records_provenance(op_cls, params, tmp_path):
-    src, out, op = _run(op_cls, JPG, tmp_path, **params)
+def test_records_provenance(op_cls, params, workspace, load_asset):
+    src, out, op = _run(op_cls, JPG, workspace, load_asset, **params)
 
     assert (out.identifier, PROV.wasGeneratedBy, op.identifier) in op.graph
     assert op.get_used() == [src.identifier]
@@ -58,70 +57,84 @@ def test_records_provenance(op_cls, params, tmp_path):
 
 
 @pytest.mark.parametrize("op_cls,params", OPS, ids=OP_IDS)
-def test_writes_content_addressed_file_to_out_dir(op_cls, params, tmp_path):
-    _, out, _ = _run(op_cls, JPG, tmp_path, **params)
+def test_writes_content_addressed_file_to_out_dir(
+    op_cls, params, workspace, load_asset
+):
+    _, out, _ = _run(op_cls, JPG, workspace, load_asset, **params)
 
-    out_file = Path(str(out.file_path))
+    out_file = workspace.cache_path(out)
     assert out_file.exists()
-    assert out_file.parent == tmp_path
+    assert out_file.parent == workspace.work_dir
     assert out_file.stem == out.checksum.removeprefix("sha256:")
     assert out_file.stat().st_size > 0
 
 
 @pytest.mark.parametrize("op_cls,params", OPS, ids=OP_IDS)
-def test_mutate_without_input_raises(op_cls, params, tmp_path):
+def test_mutate_without_input_raises(op_cls, params, workspace, load_asset):
     g = Graph()
     op = op_cls.new(g, OperationURI())
     for name, value in params.items():
         setattr(op, name, value)
 
     with pytest.raises(ValueError):
-        op.mutate(tmp_path)
+        op.mutate(workspace)
 
 
 # --- Operation-specific behavior --------------------------------------------
 
 
 class TestCompress:
-    def test_output_is_jpeg(self, tmp_path):
-        _, out, _ = _run(Compress, PNG, tmp_path, quality_factor=80, format="jpeg")
+    def test_output_is_jpeg(self, workspace, load_asset):
+        _, out, _ = _run(
+            Compress, PNG, workspace, load_asset, quality_factor=80, format="jpeg"
+        )
         assert out.media_type == "image/jpeg"
 
-    def test_output_is_webp(self, tmp_path):
-        _, out, _ = _run(Compress, JPG, tmp_path, quality_factor=80, format="webp")
+    def test_output_is_webp(self, workspace, load_asset):
+        _, out, _ = _run(
+            Compress, JPG, workspace, load_asset, quality_factor=80, format="webp"
+        )
         assert out.media_type == "image/webp"
 
-    def test_lower_quality_gives_smaller_file(self, tmp_path):
+    def test_lower_quality_gives_smaller_file(self, workspace, load_asset):
         _, low, _ = _run(
-            Compress, JPG, tmp_path / "low", quality_factor=10, format="jpeg"
+            Compress, JPG, workspace, load_asset, quality_factor=10, format="jpeg"
         )
         _, high, _ = _run(
-            Compress, JPG, tmp_path / "high", quality_factor=95, format="jpeg"
+            Compress, JPG, workspace, load_asset, quality_factor=95, format="jpeg"
         )
 
-        low_size = Path(str(low.file_path)).stat().st_size
-        high_size = Path(str(high.file_path)).stat().st_size
+        low_size = workspace.cache_path(low).stat().st_size
+        high_size = workspace.cache_path(high).stat().st_size
         assert low_size < high_size
 
 
 class TestResize:
-    def test_output_has_target_dimensions(self, tmp_path):
+    def test_output_has_target_dimensions(self, workspace, load_asset):
         _, out, _ = _run(
-            Resize, JPG, tmp_path, width=64, height=48, interpolation="linear"
+            Resize,
+            JPG,
+            workspace,
+            load_asset,
+            width=64,
+            height=48,
+            interpolation="linear",
         )
         assert out.width == 64
         assert out.height == 48
 
 
 class TestMedianFilter:
-    def test_preserves_dimensions(self, tmp_path):
-        src, out, _ = _run(MedianFilter, JPG, tmp_path, kernel_size=3)
+    def test_preserves_dimensions(self, workspace, load_asset):
+        src, out, _ = _run(MedianFilter, JPG, workspace, load_asset, kernel_size=3)
         assert out.width == src.width
         assert out.height == src.height
 
 
 class TestGaussianBlur:
-    def test_preserves_dimensions(self, tmp_path):
-        src, out, _ = _run(AddGaussianBlur, JPG, tmp_path, kernel_size=3, sigma=2.0)
+    def test_preserves_dimensions(self, workspace, load_asset):
+        src, out, _ = _run(
+            AddGaussianBlur, JPG, workspace, load_asset, kernel_size=3, sigma=2.0
+        )
         assert out.width == src.width
         assert out.height == src.height

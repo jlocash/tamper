@@ -12,6 +12,7 @@ from rdflib.plugins.parsers.notation3 import BadSyntax
 from tamper.app.kg.knowledge_graph import GraphNotFoundError, KnowledgeGraph
 from tamper.core import Catalog, Dataset as TamperDataset, load_asset_from_file
 from tamper.core.dataset import DatasetURI
+from tamper.core.workspace import hex_digest
 from tamper.plans import (
     validate_plan_graph,
     GraphValidationError,
@@ -27,6 +28,7 @@ from tamper.vocabularies import (
     load_plan_ontology,
 )
 from tamper.app.config import get_settings
+from tamper.storage import AssetStorage
 
 
 def serialize_graph(g: Graph):
@@ -60,13 +62,15 @@ def serialize_graph(g: Graph):
 async def app_lifespan(server: FastMCP):
     settings = get_settings()
     kg = settings.get_kg()
+    asset_storage = settings.get_asset_storage()
     executor = ThreadPoolPlanExecutor(
-        settings.work_dir, max_workers=4, max_in_flight=32
+        asset_storage, settings.work_dir, max_workers=4, max_in_flight=32
     )
     plan_queue = AsyncPlanQueue(executor)
     await plan_queue.start()
     yield {
         "kg": kg,
+        "asset_storage": asset_storage,
         "plan_queue": plan_queue,
     }
 
@@ -79,6 +83,11 @@ def get_kg(ctx: Context) -> KnowledgeGraph:
 def get_plan_queue(ctx: Context) -> AsyncPlanQueue:
     """Helper to retrieve the active operation plan queue from the FastMCP context"""
     return ctx.lifespan_context["plan_queue"]
+
+
+def get_asset_storage(ctx: Context) -> AssetStorage:
+    """Helper to retrieve the active asset storage from the FastMCP context"""
+    return ctx.lifespan_context["asset_storage"]
 
 
 mcp = FastMCP("Tamper", lifespan=app_lifespan)
@@ -180,10 +189,11 @@ async def load_media_asset(
     dataset_trn: str, file_path: PathLike[str], ctx: Context
 ) -> str:
     """
-    Loads a media asset into the knowledge graph.
+    Loads a media asset into the knowledge graph, uploading its file to Tamper's
+    asset storage under its content-addressed key.
 
     :param dataset_trn: The identifier of the dataset to load the media asset into
-    :param file_path: The file path of the media asset.
+    :param file_path: The path of a local media file to load.
     :return: The serialized media asset graph in Turtle format.
     """
     dataset_trn = URIRef(dataset_trn)
@@ -191,9 +201,13 @@ async def load_media_asset(
     if not kg.any((dataset_trn, RDF.type, DCAT.Dataset)):
         raise ToolError(f"Identifier {dataset_trn} is not associated a dataset")
 
-    kg = get_kg(ctx)
     subgraph = Graph()
-    load_asset_from_file(subgraph, file_path)
+    asset = load_asset_from_file(subgraph, file_path)
+
+    asset_storage = get_asset_storage(ctx)
+    digest = hex_digest(asset)
+    if not asset_storage.asset_file_exists(digest):
+        asset_storage.upload_asset_file(digest, str(file_path))
 
     with kg.tx():
         kg.insert_statements(dataset_trn, subgraph)

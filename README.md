@@ -76,7 +76,7 @@ There is a set of core classes available for interfacing with the graph.
 Each class instance is mapped to a resource in the graph:
 
 ```python
-from tamper.core import ImageAsset, load_asset_from_file
+from tamper.core import AssetWorkspace, ImageAsset, load_asset_from_file
 from tamper.ops import Compress
 from rdflib import Graph, BNode
 
@@ -92,14 +92,18 @@ audio_asset = AudioAsset.from_file(ctx, "some-audio.wav")
 # Load a video asset
 video_asset = VideoAsset.from_file(ctx, "some-video.mp4")
 
+# Asset files live in object storage; a workspace materializes them locally
+# for operations to read, and publishes whatever they generate back
+workspace = AssetWorkspace(asset_storage, "/tmp/tamper-work")
+
 # Run an operation on the image
 op = Compress.new(ctx, BNode())
 op.format = "jpeg"
 op.quality_factor = 90          # compress with quality 90
 op.used(img)                    # uses the image asset
 
-# Generate the compressed image and save it in /media 
-op.mutate(out_dir="/media")
+# Generate the compressed image and store it under its checksum
+op.mutate(workspace)
 ```
 
 
@@ -227,7 +231,6 @@ The server exposes the following tools to an MCP client:
 | Tool                | Purpose                                                                                          |
 | ------------------- | ------------------------------------------------------------------------------------------------ |
 | `InspectCatalog`    | Return the catalog graph listing all available datasets.                                         |
-| `ExportCatalog`     | Export the entire catalog and all referenced media files to a tarball.                           |
 | `CreateDataset`     | Create a new named dataset with a title and description.                                         |
 | `DescribeDataset`   | Retrieve top-level metadata about a dataset.                                                     |
 | `GetDatasetGraph`   | Return the full RDF graph of a dataset's contents.                                     |

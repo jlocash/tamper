@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from rdflib import PROV, RDF, Graph, URIRef
 
-from tamper.core import OperationPlan, load_asset_from_file
+from tamper.core import OperationPlan
 from tamper.errors import GraphValidationError
 from tamper.plans.thread_executor import ThreadPoolPlanExecutor, materialize_operations
 from tamper.vocabularies import TAMPER
@@ -116,10 +116,10 @@ class TestMaterializeOperations:
 
 
 class TestThreadPoolPlanExecutor:
-    def test_executes_chained_plan(self, tmp_path):
+    def test_executes_chained_plan(self, asset_storage, tmp_path, load_asset):
         seed = Graph()
-        asset = load_asset_from_file(seed, JPG)
-        executor = ThreadPoolPlanExecutor(tmp_path, max_workers=2)
+        asset = load_asset(seed, JPG)
+        executor = ThreadPoolPlanExecutor(asset_storage, tmp_path, max_workers=2)
 
         result = executor.execute(
             _plan(CHAINED_PLAN), seed, {URIRef("trn:plan:test:v0"): asset.identifier}
@@ -136,10 +136,12 @@ class TestThreadPoolPlanExecutor:
         assert noisy is not None
         assert len({asset.identifier, compressed, noisy}) == 3
 
-    def test_generated_assets_written_to_out_dir(self, tmp_path):
+    def test_generated_assets_published_to_asset_storage(
+        self, asset_storage, tmp_path, load_asset
+    ):
         seed = Graph()
-        asset = load_asset_from_file(seed, JPG)
-        executor = ThreadPoolPlanExecutor(tmp_path, max_workers=2)
+        asset = load_asset(seed, JPG)
+        executor = ThreadPoolPlanExecutor(asset_storage, tmp_path, max_workers=2)
 
         result = executor.execute(
             _plan(CHAINED_PLAN), seed, {URIRef("trn:plan:test:v0"): asset.identifier}
@@ -148,14 +150,26 @@ class TestThreadPoolPlanExecutor:
         generated = set(result.subjects(PROV.wasGeneratedBy, None))
         assert len(generated) == 2
         for asset_uri in generated:
-            file_path = Path(str(result.value(asset_uri, TAMPER.filePath)))
-            assert file_path.exists()
-            assert file_path.parent == tmp_path
+            checksum = str(result.value(asset_uri, TAMPER.checksum))
+            assert asset_storage.asset_file_exists(checksum.removeprefix("sha256:"))
 
-    def test_records_operation_timestamps(self, tmp_path):
+    def test_generated_assets_carry_no_local_path(
+        self, asset_storage, tmp_path, load_asset
+    ):
         seed = Graph()
-        asset = load_asset_from_file(seed, JPG)
-        executor = ThreadPoolPlanExecutor(tmp_path)
+        asset = load_asset(seed, JPG)
+        executor = ThreadPoolPlanExecutor(asset_storage, tmp_path, max_workers=2)
+
+        result = executor.execute(
+            _plan(CHAINED_PLAN), seed, {URIRef("trn:plan:test:v0"): asset.identifier}
+        )
+
+        assert "filePath" not in result.serialize(format="turtle")
+
+    def test_records_operation_timestamps(self, asset_storage, tmp_path, load_asset):
+        seed = Graph()
+        asset = load_asset(seed, JPG)
+        executor = ThreadPoolPlanExecutor(asset_storage, tmp_path)
 
         result = executor.execute(
             _plan(CHAINED_PLAN), seed, {URIRef("trn:plan:test:v0"): asset.identifier}
@@ -168,7 +182,7 @@ class TestThreadPoolPlanExecutor:
             assert ended is not None
             assert started.toPython() <= ended.toPython()
 
-    def test_cyclic_plan_raises(self, tmp_path):
+    def test_cyclic_plan_raises(self, asset_storage, tmp_path, load_asset):
         ttl = (
             PREFIXES
             + """
@@ -195,6 +209,6 @@ class TestThreadPoolPlanExecutor:
     ] .
 """
         )
-        executor = ThreadPoolPlanExecutor(tmp_path)
+        executor = ThreadPoolPlanExecutor(asset_storage, tmp_path)
         with pytest.raises(CycleError):
             executor.execute(_plan(ttl), Graph(), {})

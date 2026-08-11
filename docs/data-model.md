@@ -34,7 +34,6 @@ img = ImageAsset.from_file(ctx, "/path/to/image.png")
 # Each field is mapped to a property in the graph
 assert img.media_type == "image/png"
 assert img.checksum == "sha256:aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e"
-assert img.file_path == "/path/to/image.png"
 assert img.width == 850
 assert img.height == 566
 assert img.pixel_format == "RGB"
@@ -46,7 +45,6 @@ ctx.print(format="turtle")
 <trn:asset:aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e> a tamper:ImageAsset ;
     tamper:checksum "sha256:aad96d410d92b5589d41e8462507e3af57682022db3d3711a236c0245fcf296e" ;
     tamper:height 566 ;
-    tamper:filePath "/path/to/image.png" ;
     tamper:mediaType "image/png" ;
     tamper:pixelFormat "RGB" ;
     tamper:width 850 .
@@ -66,7 +64,6 @@ audio_asset = AudioAsset.from_file(ctx, "/path/to/audio.wav")
 # Again, fields are mapped to properties in the graph
 assert audio_asset.media_type == "audio/mpeg"
 assert audio_asset.checksum == "sha256:0362a64f6c0dcb7347b4af8bb22828d765912d58a8becea58ff610460cd8396b"
-assert audio_asset.file_path == "/path/to/audio.wav"
 assert audio_asset.container_format == "WAV / WAVE (Waveform Audio)"
 assert audio_asset.streams[0].stream_index == 0
 assert audio_asset.streams[0].codec == "mp3"
@@ -82,7 +79,6 @@ ctx.print(format="turtle")
 <trn:asset:0362a64f6c0dcb7347b4af8bb22828d765912d58a8becea58ff610460cd8396b> a tamper:AudioAsset ;
     tamper:checksum "sha256:0362a64f6c0dcb7347b4af8bb22828d765912d58a8becea58ff610460cd8396b" ;
     tamper:mediaType "audio/mpeg" ;
-    tamper:filePath "/path/to/audio.wav" ;
     tamper:containerFormat "WAV / WAVE (Waveform Audio)" ;
     tamper:hasStream [
         a tamper:AudioStream ;
@@ -110,7 +106,6 @@ video_asset = VideoAsset.from_file(ctx, "/path/to/video.mp4")
 # on the media file
 assert video_asset.media_type == "video/mp4"
 assert video_asset.checksum == "sha256:8ab080c1406dff77f8897955cf977e9ad779e40ab3a07bc2f8694fbd2fc2be21"
-assert video_asset.file_path == "/path/to/video.mp4"
 assert video_asset.container_format == "QuickTime / MOV"
 assert video_asset.streams[0].stream_index == 0
 assert video_asset.streams[0].codec == "h264"
@@ -134,7 +129,6 @@ Vorbis audio stream:
 <trn:asset:8ab080c1406dff77f8897955cf977e9ad779e40ab3a07bc2f8694fbd2fc2be21> a tamper:VideoAsset ;
     tamper:checksum "sha256:8ab080c1406dff77f8897955cf977e9ad779e40ab3a07bc2f8694fbd2fc2be21" ;
     tamper:containerFormat "QuickTime / MOV" ;
-    tamper:filePath "/path/to/video.mp4" ;
     tamper:hasStream [ a tamper:AudioStream ;
             tamper:bitDepth 0 ;
             tamper:bitRate 160000 ;

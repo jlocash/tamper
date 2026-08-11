@@ -6,7 +6,7 @@ import ffmpeg
 import pytest
 from rdflib import PROV, Graph
 
-from tamper.core import MediaAsset, load_asset_from_file
+from tamper.core import MediaAsset
 from tamper.core.operation import OperationURI
 from tamper.ops import Resample
 
@@ -20,15 +20,15 @@ def _audio_stream(path: Path) -> dict:
     return next(s for s in streams if s["codec_type"] == "audio")
 
 
-def _run(op_cls, src: Path, out_dir: Path, **params):
+def _run(op_cls, src: Path, workspace, load_asset, **params):
     """Run ``op_cls`` over ``src``, returning (input asset, output asset, op)."""
     g = Graph()
-    asset = load_asset_from_file(g, src)
+    asset = load_asset(g, src)
     op = op_cls.new(g, OperationURI())
     for name, value in params.items():
         setattr(op, name, value)
     op.used(asset.identifier)
-    op.mutate(out_dir)
+    op.mutate(workspace)
 
     generated = next(op.get_generated(), None)
     assert generated is not None, "operation did not record a generated asset"
@@ -36,33 +36,35 @@ def _run(op_cls, src: Path, out_dir: Path, **params):
 
 
 class TestResample:
-    def test_changes_sample_rate(self, tmp_path):
+    def test_changes_sample_rate(self, workspace, load_asset):
         assert int(_audio_stream(WAV)["sample_rate"]) == 44100
 
-        _, out, _ = _run(Resample, WAV, tmp_path, target_sample_rate=8000)
-        assert int(_audio_stream(Path(str(out.file_path)))["sample_rate"]) == 8000
+        _, out, _ = _run(Resample, WAV, workspace, load_asset, target_sample_rate=8000)
+        assert int(_audio_stream(workspace.cache_path(out))["sample_rate"]) == 8000
 
-    def test_records_provenance(self, tmp_path):
-        src, out, op = _run(Resample, WAV, tmp_path, target_sample_rate=8000)
+    def test_records_provenance(self, workspace, load_asset):
+        src, out, op = _run(
+            Resample, WAV, workspace, load_asset, target_sample_rate=8000
+        )
 
         assert (out.identifier, PROV.wasGeneratedBy, op.identifier) in op.graph
         assert op.get_used() == [src.identifier]
         assert out.media_type.startswith("audio/")
 
-    def test_input_without_audio_stream_raises(self, tmp_path):
+    def test_input_without_audio_stream_raises(self, workspace, load_asset):
         g = Graph()
-        asset = load_asset_from_file(g, PNG)
+        asset = load_asset(g, PNG)
         op = Resample.new(g, OperationURI())
         op.target_sample_rate = 8000
         op.used(asset.identifier)
 
         with pytest.raises(ValueError):
-            op.mutate(tmp_path)
+            op.mutate(workspace)
 
-    def test_mutate_without_input_raises(self, tmp_path):
+    def test_mutate_without_input_raises(self, workspace, load_asset):
         g = Graph()
         op = Resample.new(g, OperationURI())
         op.target_sample_rate = 8000
 
         with pytest.raises(ValueError):
-            op.mutate(tmp_path)
+            op.mutate(workspace)

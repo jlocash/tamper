@@ -1,7 +1,6 @@
 import abc
 from contextlib import contextmanager
 from datetime import datetime
-import mimetypes
 import os
 from pathlib import Path
 import secrets
@@ -10,6 +9,7 @@ import tempfile
 from rdflib import PROV, XSD, Node
 
 from tamper.core.assets import load_asset_from_file
+from tamper.core.workspace import AssetWorkspace
 from tamper.vocabularies import TAMPER
 
 from ._common import Resource, MappedProperty, TamperURI
@@ -47,23 +47,30 @@ class Operation(Resource, abc.ABC):
         return self.subjects(PROV.wasGeneratedBy)
 
     @abc.abstractmethod
-    def mutate(self, out_dir: os.PathLike[str] | None = None):
+    def mutate(self, workspace: AssetWorkspace):
+        """
+        Runs the operation, writing the asset it generates into ``workspace``.
+
+        :param workspace: resolves the operation's input assets to local files
+            and publishes the generated one back to asset storage
+        """
         pass
 
     @contextmanager
-    def _generates_file(self, *args, **kwargs):
-        fd, tmp_path = tempfile.mkstemp(*args, **kwargs)
+    def _generates_file(self, workspace: AssetWorkspace, *args, **kwargs):
+        """
+        Yields a temporary path for the operation to write its output to. On a
+        clean exit the file is described as an asset, published to asset
+        storage, and attributed to this operation.
+        """
+        fd, tmp_path = tempfile.mkstemp(*args, dir=workspace.work_dir, **kwargs)
         os.close(fd)
         try:
             yield tmp_path
             asset = load_asset_from_file(self.graph, tmp_path)
-            suffix = Path(asset.file_path).suffix
-            if suffix is None:
-                suffix = mimetypes.guess_extension(asset.media_type)
-            checksum = asset.checksum.split(":")[-1]
-            new_file_path = Path(tmp_path).parent / (checksum + suffix)
-            asset.move_file(new_file_path)
+            workspace.publish(asset, tmp_path)
             asset.was_generated_by = self.identifier
-        except Exception:
+        finally:
+            # publish() moves the file into the workspace cache, so this only
+            # cleans up when the operation failed part way through
             Path(tmp_path).unlink(missing_ok=True)
-            raise
