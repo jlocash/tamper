@@ -7,6 +7,8 @@ license = "Apache-2.0"
 requires-python = ">=3.14"
 dependencies = [
     "fastmcp[tasks]>=3.4.5",
+    "boto3>=1.43.63",
+    "fastapi[standard]>=0.141.1",
     "ffmpeg-python>=0.2.0",
     "numpy>=2.5.1",
     "opencv-python>=5.0.0.93",
@@ -14,6 +16,7 @@ dependencies = [
     "pillow>=12.3.0",
     "pyshacl>=0.40.1",
     "pytest>=9.1.1",
+    "pydantic-settings>=2.14.1",
     "python-magic>=0.4.27",
     "rdflib>=7.6.0",
     "reasonable>=0.4.4",
