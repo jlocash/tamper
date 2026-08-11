@@ -11,6 +11,7 @@ from .assets import (
     VideoAsset,
     load_asset_from_file,
 )
+from .workspace import AssetWorkspace
 from .dataset import DatasetURI, Dataset
 from .catalog import Catalog
 from .operation import OperationURI, Operation
@@ -30,6 +31,7 @@ __all__ = [
     "AudioAsset",
     "VideoAsset",
     "load_asset_from_file",
+    "AssetWorkspace",
     "DatasetURI",
     "Dataset",
     "Catalog",
