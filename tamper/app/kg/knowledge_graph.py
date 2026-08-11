@@ -85,3 +85,7 @@ class KnowledgeGraph(abc.ABC):
     def describe(self, identifier: URIRef) -> Graph:
         """Alias for a DESCRIBE query that executes on the default graph"""
         pass
+
+    @abc.abstractmethod
+    def move_to_default(self, graph_name: URIRef):
+        pass

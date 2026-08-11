@@ -9,7 +9,7 @@ from rdflib import Graph
 from tamper.app.kg import KnowledgeGraph, LocalKnowledgeGraph
 from tamper.core import Catalog
 from tamper.core._common import TamperURI
-from tamper.storage import AssetStorage, ObjectStorage
+from tamper.storage import AssetStorage, IngestStorage, ObjectStorage
 
 CATALOG_URI = TamperURI("catalog")
 
@@ -84,6 +84,9 @@ class Settings(BaseSettings):
 
     def get_asset_storage(self) -> AssetStorage:
         return AssetStorage(self.get_object_storage(), self.tamper_assets_bucket)
+
+    def get_ingest_storage(self) -> IngestStorage:
+        return IngestStorage(self.get_object_storage(), self.tamper_ingest_bucket)
 
 
 @lru_cache

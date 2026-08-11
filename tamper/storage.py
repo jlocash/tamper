@@ -130,13 +130,12 @@ class AssetStorage:
 
 
 class IngestStorage:
-    def __init__(self, object_storage: ObjectStorage, bucket_name: str, ingest_id: str):
+    def __init__(self, object_storage: ObjectStorage, bucket_name: str):
         self.object_storage = object_storage
         self.bucket_name = bucket_name
-        self.ingest_id = ingest_id
 
-    def presign_put(self):
-        key = f"{self.ingest_id}/{uuid7()}"
+    def presign_put(self, ingest_id: str):
+        key = f"{ingest_id}/{uuid7()}"
         url = self.object_storage.presign_put(self.bucket_name, key)
         return key, url
 

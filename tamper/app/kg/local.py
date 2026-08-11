@@ -228,3 +228,10 @@ class LocalKnowledgeGraph(KnowledgeGraph):
         else:
             result = self.query(query_str)
         return result.graph
+
+    def move_to_default(self, graph_name: URIRef):
+        with self.tx():
+            g = self.dataset.graph(graph_name)
+            self.dataset.default_graph += g
+            g -= g
+            self.dataset.remove_graph(g)
