@@ -1,17 +1,13 @@
 """Tests for the KnowledgeGraph interface and LocalKnowledgeGraph-specific helpers."""
 
-import tarfile
-
 import pytest
-from rdflib import Graph, URIRef, Literal, Dataset, XSD, RDF
+from rdflib import Graph, URIRef, Literal, XSD, RDF
 
 from tamper.app.kg.local import (
     LocalKnowledgeGraph,
     InconsistencyError,
     _check_consistency,
 )
-from tamper.core.assets import AssetURI
-from tamper.utils.make_tarball import get_asset_files, make_tarball
 from tamper.vocabularies import TAMPER
 
 _SUBJECT = URIRef("https://example.org/subject")
@@ -374,77 +370,3 @@ class TestCheckConsistency:
         g.add((_SUBJECT, RDF.type, TAMPER.AudioAsset))
         with pytest.raises(InconsistencyError):
             _check_consistency(g)
-
-
-# ---------------------------------------------------------------------------
-# make_tarball / get_asset_files
-# ---------------------------------------------------------------------------
-
-
-class TestGetAssetFiles:
-    def test_empty_dataset_yields_nothing(self):
-        ds = Dataset()
-        assert list(get_asset_files(ds)) == []
-
-    def test_yields_asset_with_file_path_and_checksum(self, tmp_path):
-        dummy = tmp_path / "dummy.txt"
-        dummy.write_text("data")
-
-        ds = Dataset()
-        asset_uri = AssetURI("abc123")
-        ds.default_graph.add((asset_uri, TAMPER.filePath, Literal(str(dummy))))
-        ds.default_graph.add((asset_uri, TAMPER.checksum, Literal("sha256:abc123")))
-
-        rows = list(get_asset_files(ds))
-        assert len(rows) == 1
-        uri, file_path, checksum = rows[0]
-        assert uri == asset_uri
-        assert "sha256:abc123" in checksum
-
-
-class TestMakeTarball:
-    def test_creates_tarball_with_dataset_trig(self, tmp_path):
-        ds = Dataset()
-        out = tmp_path / "out.tar.gz"
-        make_tarball(ds, out)
-        assert out.exists()
-        with tarfile.open(out, "r:gz") as tar:
-            names = tar.getnames()
-        assert "dataset.trig" in names
-
-    def test_tarball_includes_media_asset(self, tmp_path):
-        dummy = tmp_path / "image.jpg"
-        dummy.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
-
-        ds = Dataset()
-        asset_uri = AssetURI("deadbeef")
-        checksum_str = "sha256:deadbeef"
-        ds.default_graph.add((asset_uri, TAMPER.filePath, Literal(str(dummy))))
-        ds.default_graph.add((asset_uri, TAMPER.checksum, Literal(checksum_str)))
-
-        out = tmp_path / "out.tar.gz"
-        make_tarball(ds, out)
-
-        with tarfile.open(out, "r:gz") as tar:
-            names = tar.getnames()
-        assert any("deadbeef" in n for n in names)
-
-    def test_tarball_rewrites_file_path_in_dataset(self, tmp_path):
-        dummy = tmp_path / "video.mp4"
-        dummy.write_bytes(b"\x00" * 50)
-
-        ds = Dataset()
-        asset_uri = AssetURI("cafebabe")
-        ds.default_graph.add((asset_uri, TAMPER.filePath, Literal(str(dummy))))
-        ds.default_graph.add((asset_uri, TAMPER.checksum, AssetURI("cafebabe")))
-
-        out = tmp_path / "out.tar.gz"
-        make_tarball(ds, out)
-
-        with tarfile.open(out, "r:gz") as tar:
-            trig_member = tar.getmember("dataset.trig")
-            f = tar.extractfile(trig_member)
-            content = f.read().decode("utf-8")
-
-        assert str(dummy) not in content
-        assert "cafebabe" in content

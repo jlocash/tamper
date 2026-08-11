@@ -26,7 +26,6 @@ from tamper.vocabularies import (
     load_core_ontology,
     load_plan_ontology,
 )
-from tamper.utils.make_tarball import make_tarball
 from tamper.app.config import config
 
 
@@ -459,23 +458,6 @@ async def query_sparql(
         result.graph.bind("tamper", TAMPER)
         return serialize_graph(result.graph)
     return result.serialize(format="json")
-
-
-@mcp.tool("ExportCatalog", task=True)
-async def export_catalog(output_filename: PathLike[str], ctx: Context) -> None:
-    """
-    Exports the entire Tamper catalog, with all datasets and all referenced media asset files
-    to a tarball archive. The dataset is stored in TriG format in <archive root>/catalog.trig.
-    Media assets are stored under <archive root>/assets and are renamed to <checksum>.<ext>.
-
-    :param dataset_uri: the identifier of the dataset to export.
-    :param output_filename: The filename of the output tarball.
-    """
-    kg = get_kg(ctx)
-    try:
-        make_tarball(kg.dataset, output_filename)
-    except Exception as e:
-        raise ToolError(str(e)) from e
 
 
 @mcp.resource("vocabulary://tamper/core")
