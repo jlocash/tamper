@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from os import PathLike
 
 import ffmpeg
@@ -6,9 +7,10 @@ from magic import Magic
 from rdflib import PROV, XSD, BNode, Graph, URIRef, RDF
 from tamper.core._common import MappedProperty
 from tamper.vocabularies import TAMPER
-from PIL import Image as PILImage
+from PIL import Image as PILImage, UnidentifiedImageError
 from ._common import Resource, TamperURI
 
+logger = logging.getLogger(__name__)
 
 magic = Magic(mime=True)
 
@@ -123,7 +125,10 @@ class ImageAsset(MediaAsset):
         if not asset.media_type.startswith("image/"):
             raise ValueError(f"Expected iamge file, got {asset.media_type}")
         asset = cls.new(asset.graph, asset.identifier)
-        _extract_image_metadata(asset, file)
+        try:
+            _extract_image_metadata(asset, file)
+        except UnidentifiedImageError:
+            logger.warning("Unable to extract metadata for image %s", file)
         return asset
 
 
