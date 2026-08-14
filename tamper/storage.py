@@ -98,7 +98,7 @@ class AssetStorage:
         key = self._format_key(hex_digest)
         return self.object_storage.object_exists(self.bucket_name, key)
 
-    def presign_get(self, hex_digest: str, filename: str, content_type: str) -> str:
+    def presign_get(self, hex_digest: str, content_type: str) -> str:
         return self.object_storage.presign_get(
             self.bucket_name,
             self._format_key(hex_digest),

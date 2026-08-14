@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     tamper_assets_bucket: str = "tamper-assets"
     tamper_ingest_bucket: str = "tamper-ingest"
 
+    cors_allow_origins: list[str] = Field(
+        default_factory=list,
+        description="Browser origins permitted to call the API, e.g. a frontend dev server",
+    )
+
     @computed_field
     @property
     def plans_dir(self) -> Path:

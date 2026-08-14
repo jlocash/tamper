@@ -1,11 +1,13 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from tamper.app.config import get_settings
 from tamper.app.ingest import IngestQueue
 from tamper.app.ingest.ingest_worker import SimpleIngestWorker
+from .assets_router import router as assets_router
 from .ingest_router import router as ingest_router
 from .sparql_router import router as sparql_router
 
@@ -32,5 +34,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=get_settings().cors_allow_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.include_router(assets_router)
 app.include_router(ingest_router)
 app.include_router(sparql_router)

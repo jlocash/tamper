@@ -37,7 +37,13 @@ class SimpleIngestWorker(IngestWorker):
         logger.info("Processing ingest job %s", ingest.id)
         ingest_graph_uri = TamperURI("ingest", ingest.id)
         for staged in ingest.assets.values():
+            logger.debug("(ingest %s): processing key %s", ingest.id, staged.key)
             if staged.status is StagedAssetStatus.PROCESSED:
+                logger.debug(
+                    "(ingest %s): asset %s already processed, skipping",
+                    ingest.id,
+                    staged.key,
+                )
                 continue
             try:
                 subgraph, asset_trn = self._materialize(staged.key)
@@ -51,7 +57,7 @@ class SimpleIngestWorker(IngestWorker):
 
             except Exception as e:
                 logger.exception(
-                    "Ingest %s: error processing key %s", ingest.id, staged.key
+                    "(ingest %s): error processing key %s", ingest.id, staged.key
                 )
                 staged.status = StagedAssetStatus.FAILED
                 staged.error = str(e)
