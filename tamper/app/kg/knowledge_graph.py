@@ -2,6 +2,13 @@ import abc
 
 from rdflib import Graph, URIRef
 from rdflib.graph import _TripleOrQuadPatternType
+from rdflib.query import Result
+
+
+class MalformedQueryError(Exception):
+    """Raised when attempting to execute a malformed query"""
+
+    pass
 
 
 class GraphNotFoundError(ValueError):
@@ -51,9 +58,9 @@ class KnowledgeGraph(abc.ABC):
     def query(
         self,
         sparql_query: str,
-        default_graph: bool = True,
-        named_graphs: list[URIRef] | None = None,
-    ):
+        default_graph_uris: list[URIRef] | None = None,
+        named_graph_uris: list[URIRef] | None = None,
+    ) -> Result:
         """
         Executes a read-only SPARQL query on the graph union of the
         default graph and any provided named graphs.
@@ -64,7 +71,7 @@ class KnowledgeGraph(abc.ABC):
 
     def query_named(self, identifier: URIRef, sparql_query: str):
         """An alias of ``query`` that scopes the given SPARQL query to the given named graph."""
-        return self.query(sparql_query, False, [identifier])
+        return self.query(sparql_query, default_graph_uris=[identifier])
 
     @abc.abstractmethod
     def get_default_graph(self) -> Graph:

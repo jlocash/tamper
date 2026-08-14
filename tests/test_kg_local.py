@@ -64,8 +64,7 @@ class TestInsertAndQuery:
         result = list(
             kg.query(
                 f"SELECT ?o WHERE {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}",
-                default_graph=False,
-                named_graphs=[graph_name],
+                default_graph_uris=[graph_name],
             )
         )
         assert len(result) == 1
@@ -100,9 +99,7 @@ class TestQueryScoping:
 
     def test_named_graph_excluded_from_default_only_query(self, kg, simple_graph):
         kg.insert_statements_default(simple_graph)
-        assert not self._ask(
-            kg, default_graph=False, named_graphs=[URIRef("https://example.org/g1")]
-        )
+        assert not self._ask(kg, named_graph_uris=[URIRef("https://example.org/g1")])
 
     def test_union_of_default_and_named(self, kg):
         default_g = Graph()
@@ -112,19 +109,18 @@ class TestQueryScoping:
         named = URIRef("https://example.org/g1")
         named_g = Graph()
         named_g.add(
-            (URIRef("https://example.org/s2"), _PREDICATE, Literal("from-named"))
-        )
-        kg.insert_statements(named, named_g)
-
-        rows = list(
-            kg.query(
-                "SELECT ?o WHERE { ?s ?p ?o }",
-                default_graph=True,
-                named_graphs=[named],
+            (
+                URIRef("https://example.org/s2"),
+                _PREDICATE,
+                Literal("from-named"),
             )
         )
+        kg.insert_statements(named, named_g)
+        rows = list(
+            kg.query("SELECT ?o WHERE { ?s ?p ?o }", default_graph_uris=[named])
+        )
         values = {str(r.o) for r in rows}
-        assert values == {"from-default", "from-named"}
+        assert values == {"from-named"}
 
     def test_query_named_helper_scopes_to_single_graph(self, kg, simple_graph):
         kg.insert_statements_default(simple_graph)  # noise in the default graph
@@ -216,8 +212,7 @@ class TestDelete:
         result = list(
             kg.query(
                 f"ASK {{ <{_SUBJECT}> <{_PREDICATE}> ?o }}",
-                default_graph=False,
-                named_graphs=[graph_name],
+                default_graph_uris=[graph_name],
             )
         )
         assert not result[0]

@@ -12,7 +12,11 @@ from rdflib.graph import (
 )
 
 from tamper.vocabularies import TAMPER, load_core_ontology
-from .knowledge_graph import GraphNotFoundError, KnowledgeGraph
+from .knowledge_graph import (
+    GraphNotFoundError,
+    KnowledgeGraph,
+    MalformedQueryError,
+)
 from pathlib import Path
 
 
@@ -195,16 +199,24 @@ class LocalKnowledgeGraph(KnowledgeGraph):
     def query(
         self,
         sparql_query: str,
-        default_graph: bool = True,
-        named_graphs: list[URIRef] | None = None,
+        default_graph_uris: list[URIRef] | None = None,
+        named_graph_uris: list[URIRef] | None = None,
     ):
-        ctx = Graph()
-        if default_graph:
-            ctx += self.dataset.default_graph
-        if named_graphs:
-            for named_graph in named_graphs:
-                ctx += self.dataset.graph(named_graph)
-        return ctx.query(sparql_query)
+        if default_graph_uris or named_graph_uris:
+            ctx = Dataset(store="Oxigraph")
+            if default_graph_uris:
+                for graph_uri in default_graph_uris:
+                    ctx.default_graph += self.dataset.get_context(graph_uri)
+            if named_graph_uris:
+                for graph_uri in named_graph_uris:
+                    ctx.add_graph(self.dataset.get_context(graph_uri))
+        else:
+            ctx = self.dataset
+
+        try:
+            return ctx.query(sparql_query)
+        except SyntaxError as e:
+            raise MalformedQueryError from e
 
     def get_named_graph(self, identifier: URIRef) -> Graph:
         copy = Graph(identifier=identifier)
@@ -222,9 +234,7 @@ class LocalKnowledgeGraph(KnowledgeGraph):
     def describe(self, identifier: URIRef, graph_name: URIRef | None = None) -> Graph:
         query_str = f"DESCRIBE {identifier.n3()}"
         if graph_name is not None:
-            result = self.query(
-                query_str, default_graph=False, named_graphs=[graph_name]
-            )
+            result = self.query(query_str, default_graph_uris=[graph_name])
         else:
             result = self.query(query_str)
         return result.graph

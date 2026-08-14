@@ -7,6 +7,7 @@ from tamper.app.config import get_settings
 from tamper.app.ingest import IngestQueue
 from tamper.app.ingest.ingest_worker import SimpleIngestWorker
 from .ingest_router import router as ingest_router
+from .sparql_router import router as sparql_router
 
 
 @asynccontextmanager
@@ -32,3 +33,4 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(ingest_router)
+app.include_router(sparql_router)
