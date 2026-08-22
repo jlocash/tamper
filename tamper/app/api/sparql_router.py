@@ -6,16 +6,15 @@ from fastapi import (
     Body,
     Depends,
     HTTPException,
-    Header,
     Query,
     status,
 )
-from pydantic import PlainValidator
 from rdflib import URIRef
 
-from tamper.app.api.rdf_content import sparql_route_extras, SPARQLResponse
+from tamper.app.api.rdf_content import AcceptHeader, sparql_route_extras, SPARQLResponse
 from tamper.app.api.dependencies import KnowledgeGraphDep
 
+from tamper.app.api.schemas import URI
 from tamper.app.kg.knowledge_graph import KnowledgeGraph, MalformedQueryError
 
 router = APIRouter(tags=["sparql"])
@@ -25,9 +24,6 @@ router = APIRouter(tags=["sparql"])
 class QueryContext:
     default_graph_uris: list[URIRef]
     named_graph_uris: list[URIRef]
-
-
-URI = Annotated[URIRef, PlainValidator(URIRef, json_schema_input_type=str)]
 
 
 def get_query_context(
@@ -63,7 +59,7 @@ async def sparql_get(
     kg: KnowledgeGraphDep,
     query: str,
     query_context: QueryContextDep,
-    accept: Annotated[str | None, Header()] = None,
+    accept: AcceptHeader = None,
 ):
     return _sparql(kg, query, query_context, accept)
 
@@ -73,6 +69,6 @@ async def sparql_post(
     kg: KnowledgeGraphDep,
     query: Annotated[str, Body(media_type="application/sparql-query")],
     query_context: QueryContextDep,
-    accept: Annotated[str | None, Header()] = None,
+    accept: AcceptHeader = None,
 ):
     return _sparql(kg, query, query_context, accept)

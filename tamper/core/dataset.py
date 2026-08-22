@@ -1,5 +1,8 @@
 from datetime import datetime
-from rdflib import DCAT, DCTERMS, XSD, URIRef
+from rdflib import DCTERMS, PROV, XSD, URIRef
+
+from tamper.core import MediaAsset
+from tamper.vocabularies import TAMPER
 from ._common import MappedProperty, Resource, TamperURI
 
 
@@ -11,7 +14,7 @@ class DatasetURI(TamperURI):
 class Dataset(Resource):
     """A dataset is an RDF graph describing media assets"""
 
-    __rdf_type__ = DCAT.Dataset
+    __rdf_type__ = TAMPER.Dataset
 
     title: MappedProperty[str] = MappedProperty(DCTERMS.title, XSD.string)
     description: MappedProperty[str] = MappedProperty(DCTERMS.description, XSD.string)
@@ -26,3 +29,13 @@ class Dataset(Resource):
     language: MappedProperty[str | URIRef] = MappedProperty(
         DCTERMS.language, XSD.string
     )
+
+    @property
+    def members(self) -> list[MediaAsset]:
+        return [
+            MediaAsset(self.graph, asset.identifier)
+            for asset in self.objects(PROV.hadMember)
+        ]
+
+    def add_member(self, asset: MediaAsset | URIRef):
+        self.add(PROV.hadMember, asset)

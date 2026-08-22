@@ -10,6 +10,7 @@ from tamper.app.ingest.ingest_worker import SimpleIngestWorker
 from .assets_router import router as assets_router
 from .ingest_router import router as ingest_router
 from .sparql_router import router as sparql_router
+from .datasets_router import router as dataset_router
 
 
 @asynccontextmanager
@@ -43,3 +44,4 @@ app.add_middleware(
 app.include_router(assets_router)
 app.include_router(ingest_router)
 app.include_router(sparql_router)
+app.include_router(dataset_router)

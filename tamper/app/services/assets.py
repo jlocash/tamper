@@ -21,7 +21,6 @@ ASSET_TYPES = (
 def asset_exists(kg: KnowledgeGraph, asset_uri: URIRef) -> bool:
     asset_types = " ".join(t.n3() for t in ASSET_TYPES)
     result = kg.query(f"""
-    PREFIX tamper: <{TAMPER}>
     ASK {{
         {asset_uri.n3()} a ?assetType .
         VALUES ?assetType {{{asset_types}}}
@@ -33,58 +32,56 @@ def asset_exists(kg: KnowledgeGraph, asset_uri: URIRef) -> bool:
 def get_asset(kg: KnowledgeGraph, asset_uri: URIRef) -> MediaAsset:
     asset_types = " ".join(t.n3() for t in ASSET_TYPES)
     result = kg.query(f"""
-    PREFIX tamper: <{TAMPER}>
-
     CONSTRUCT {{
         {asset_uri.n3()} a ?assetType ;
-            tamper:mediaType ?mediaType ;
-            tamper:checksum ?checksum ;
-            tamper:width ?width ;
-            tamper:height ?height ;
-            tamper:pixelFormat ?pixelFormat ;
-            tamper:containerFormat ?containerFormat ;
-            tamper:hasStream ?stream .
+            {TAMPER.mediaType.n3()} ?mediaType ;
+            {TAMPER.checksum.n3()} ?checksum ;
+            {TAMPER.width.n3()} ?width ;
+            {TAMPER.height.n3()} ?height ;
+            {TAMPER.pixelFormat.n3()} ?pixelFormat ;
+            {TAMPER.containerFormat.n3()} ?containerFormat ;
+            {TAMPER.hasStream.n3()} ?stream .
 
         ?stream a ?streamType ;
-            tamper:streamIndex ?streamIndex ;
-            tamper:codec ?streamCodec ;
-            tamper:bitRate ?streamBitRate ;
-            tamper:language ?streamLanguage ;
-            tamper:sampleRate ?streamSampleRate ;
-            tamper:channels ?streamChannels ;
-            tamper:bitDepth ?streamBitDepth ;
-            tamper:width ?streamWidth ;
-            tamper:height ?streamHeight ;
-            tamper:pixelFormat ?streamPixelFormat ;
-            tamper:frameRate ?streamFrameRate .
+            {TAMPER.streamIndex.n3()} ?streamIndex ;
+            {TAMPER.codec.n3()} ?streamCodec ;
+            {TAMPER.bitRate.n3()} ?streamBitRate ;
+            {TAMPER.language.n3()} ?streamLanguage ;
+            {TAMPER.sampleRate.n3()} ?streamSampleRate ;
+            {TAMPER.channels.n3()} ?streamChannels ;
+            {TAMPER.bitDepth.n3()} ?streamBitDepth ;
+            {TAMPER.width.n3()} ?streamWidth ;
+            {TAMPER.height.n3()} ?streamHeight ;
+            {TAMPER.pixelFormat.n3()} ?streamPixelFormat ;
+            {TAMPER.frameRate.n3()} ?streamFrameRate .
     }} WHERE {{
         {asset_uri.n3()} a ?assetType ;
-            tamper:mediaType ?mediaType ;
-            tamper:checksum ?checksum .
+            {TAMPER.mediaType.n3()} ?mediaType ;
+            {TAMPER.checksum.n3()} ?checksum .
             
         # if the asset is an image
-        OPTIONAL {{ {asset_uri.n3()} tamper:width ?width . }}
-        OPTIONAL {{ {asset_uri.n3()} tamper:height ?height . }}
-        OPTIONAL {{ {asset_uri.n3()} tamper:pixelFormat ?pixelFormat . }}
+        OPTIONAL {{ {asset_uri.n3()} {TAMPER.width.n3()} ?width . }}
+        OPTIONAL {{ {asset_uri.n3()} {TAMPER.height.n3()} ?height . }}
+        OPTIONAL {{ {asset_uri.n3()} {TAMPER.pixelFormat.n3()} ?pixelFormat . }}
             
         # If the asset is audio or video
         OPTIONAL {{
-            {asset_uri.n3()} tamper:containerFormat ?containerFormat ;
-                tamper:hasStream ?stream .
+            {asset_uri.n3()} {TAMPER.containerFormat.n3()} ?containerFormat ;
+                {TAMPER.hasStream.n3()} ?stream .
 
             ?stream a ?streamType ;
-                tamper:streamIndex ?streamIndex .
+                {TAMPER.streamIndex.n3()} ?streamIndex .
 
-            OPTIONAL {{ ?stream tamper:codec ?streamCodec . }}
-            OPTIONAL {{ ?stream tamper:bitRate ?streamBitRate . }}
-            OPTIONAL {{ ?stream tamper:language ?streamLanguage . }}
-            OPTIONAL {{ ?stream tamper:sampleRate ?streamSampleRate . }}
-            OPTIONAL {{ ?stream tamper:channels ?streamChannels . }}
-            OPTIONAL {{ ?stream tamper:bitDepth ?streamBitDepth . }}
-            OPTIONAL {{ ?stream tamper:width ?streamWidth . }}
-            OPTIONAL {{ ?stream tamper:height ?streamHeight . }}
-            OPTIONAL {{ ?stream tamper:pixelFormat ?streamPixelFormat . }}
-            OPTIONAL {{ ?stream tamper:frameRate ?streamFrameRate . }}
+            OPTIONAL {{ ?stream {TAMPER.codec.n3()} ?streamCodec . }}
+            OPTIONAL {{ ?stream {TAMPER.bitRate.n3()} ?streamBitRate . }}
+            OPTIONAL {{ ?stream {TAMPER.language.n3()} ?streamLanguage . }}
+            OPTIONAL {{ ?stream {TAMPER.sampleRate.n3()} ?streamSampleRate . }}
+            OPTIONAL {{ ?stream {TAMPER.channels.n3()} ?streamChannels . }}
+            OPTIONAL {{ ?stream {TAMPER.bitDepth.n3()} ?streamBitDepth . }}
+            OPTIONAL {{ ?stream {TAMPER.width.n3()} ?streamWidth . }}
+            OPTIONAL {{ ?stream {TAMPER.height.n3()} ?streamHeight . }}
+            OPTIONAL {{ ?stream {TAMPER.pixelFormat.n3()} ?streamPixelFormat . }}
+            OPTIONAL {{ ?stream {TAMPER.frameRate.n3()} ?streamFrameRate . }}
         }}
 
         VALUES ?assetType {{ {asset_types} }}

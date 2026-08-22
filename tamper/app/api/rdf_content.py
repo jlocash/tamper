@@ -1,5 +1,6 @@
+from typing import Annotated
 
-from fastapi import HTTPException, Response, status
+from fastapi import HTTPException, Header, Response, status
 from rdflib import Graph
 from rdflib.query import Result
 
@@ -35,6 +36,9 @@ DEFAULT_RESPONSE_FORMAT = {
     "CONSTRUCT": DEFAULT_GRAPH_RESPONSE_FORMAT,
     "DESCRIBE": DEFAULT_GRAPH_RESPONSE_FORMAT,
 }
+
+
+AcceptHeader = Annotated[str | None, Header(alias="Accept")]
 
 
 def _negotiate(accept: str | None, formats: dict[str, str], default: str) -> str:
