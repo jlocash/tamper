@@ -1,10 +1,31 @@
-from fastapi import APIRouter, HTTPException, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Header, status
 from fastapi.responses import RedirectResponse
 
 from tamper.app.api.dependencies import AssetStorageDep, KnowledgeGraphDep
-from tamper.core.assets import AssetURI, MediaAsset
+from tamper.app.api.rdf_content import RDFResponse, rdf_route_extras
+from tamper.app.services import assets
+from tamper.core import MediaAsset
+from tamper.core.assets import AssetURI
 
 router = APIRouter(tags=["assets"])
+
+
+def requires_asset(checksum: str, kg: KnowledgeGraphDep) -> MediaAsset:
+    asset_uri = AssetURI(checksum)
+    try:
+        return assets.get_asset(kg, asset_uri)
+    except assets.AssetNotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.get("/assets/{checksum}", **rdf_route_extras(status.HTTP_200_OK))
+async def get_asset(
+    asset: Annotated[MediaAsset, Depends(requires_asset)],
+    accept: Annotated[str | None, Header()] = None,
+):
+    return RDFResponse(content=asset.graph, accepts=accept)
 
 
 @router.get(
@@ -13,14 +34,10 @@ router = APIRouter(tags=["assets"])
     status_code=status.HTTP_307_TEMPORARY_REDIRECT,
 )
 async def get_asset_content(
-    checksum: str, asset_storage: AssetStorageDep, kg: KnowledgeGraphDep
+    checksum: str,
+    asset: Annotated[MediaAsset, Depends(requires_asset)],
+    asset_storage: AssetStorageDep,
 ):
-    asset_uri = AssetURI(checksum)
-    asset_description = kg.describe(asset_uri)
-    if len(asset_description) == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-    asset = MediaAsset(asset_description, asset_uri)
     presigned_url = asset_storage.presign_get(checksum, asset.media_type)
     return RedirectResponse(
         url=presigned_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT

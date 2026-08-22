@@ -8,65 +8,17 @@ from fastapi import (
     HTTPException,
     Header,
     Query,
-    Response,
     status,
 )
 from pydantic import PlainValidator
 from rdflib import URIRef
 
+from tamper.app.api.rdf_content import sparql_route_extras, SPARQLResponse
 from tamper.app.api.dependencies import KnowledgeGraphDep
 
 from tamper.app.kg.knowledge_graph import KnowledgeGraph, MalformedQueryError
 
 router = APIRouter(tags=["sparql"])
-
-ASK_FORMATS = {
-    "application/sparql-results+json": "json",
-    "application/sparql-results+xml": "xml",
-}
-
-SELECT_FORMATS = {**ASK_FORMATS, "text/csv": "csv"}
-
-CONSTRUCT_FORMATS = {
-    "text/turtle": "turtle",
-    "application/ld+json": "json-ld",
-    "application/rdf+xml": "xml",
-    "application/n-triples": "nt",
-    "application/n-quads": "nq",
-}
-
-DESCRIBE_FORMATS = CONSTRUCT_FORMATS
-
-RESPONSE_FORMATS = {
-    "ASK": ASK_FORMATS,
-    "SELECT": SELECT_FORMATS,
-    "CONSTRUCT": CONSTRUCT_FORMATS,
-    "DESCRIBE": DESCRIBE_FORMATS,
-}
-
-DEFAULT_RESPONSE_FORMATS = {
-    "SELECT": "application/sparql-results+json",
-    "ASK": "application/sparql-results+json",
-    "CONSTRUCT": "text/turtle",
-    "DESCRIBE": "text/turtle",
-}
-
-SPARQL_RESPONSE_TYPES = {
-    k: {}
-    for k in {**ASK_FORMATS, **SELECT_FORMATS, **CONSTRUCT_FORMATS, **DESCRIBE_FORMATS}
-}
-
-
-def _negotiate(accept: str | None, formats: dict[str, str], default: str) -> str:
-    if not accept:
-        return default
-    for entry in accept.split(","):
-        media_type = entry.split(";")[0].strip()
-        if media_type in formats:
-            return media_type
-        if media_type == "*/*":
-            return default
-    raise HTTPException(status_code=status.HTTP_406_NOT_ACCEPTABLE)
 
 
 @dataclass
@@ -103,27 +55,10 @@ def _sparql(kg: KnowledgeGraph, query: str, query_context: QueryContext, accept:
             status_code=status.HTTP_400_BAD_REQUEST, detail="malformed query"
         )
 
-    media_type = _negotiate(
-        accept, RESPONSE_FORMATS[result.type], DEFAULT_RESPONSE_FORMATS[result.type]
-    )
-
-    resp_content = result.serialize(format=RESPONSE_FORMATS[result.type][media_type])
-    resp = Response(content=resp_content, media_type=media_type)
-    resp.headers["Vary"] = "Accept"
-    return resp
+    return SPARQLResponse(content=result, accepts=accept)
 
 
-@router.get(
-    "/sparql",
-    status_code=status.HTTP_200_OK,
-    response_class=Response,
-    responses={
-        status.HTTP_200_OK: {"content": SPARQL_RESPONSE_TYPES},
-        status.HTTP_406_NOT_ACCEPTABLE: {
-            "description": "No acceptable response media type"
-        },
-    },
-)
+@router.get("/sparql", **sparql_route_extras())
 async def sparql_get(
     kg: KnowledgeGraphDep,
     query: str,
@@ -133,17 +68,7 @@ async def sparql_get(
     return _sparql(kg, query, query_context, accept)
 
 
-@router.post(
-    "/sparql",
-    status_code=status.HTTP_200_OK,
-    response_class=Response,
-    responses={
-        status.HTTP_200_OK: {"content": SPARQL_RESPONSE_TYPES},
-        status.HTTP_406_NOT_ACCEPTABLE: {
-            "description": "No acceptable response media type"
-        },
-    },
-)
+@router.post("/sparql", **sparql_route_extras())
 async def sparql_post(
     kg: KnowledgeGraphDep,
     query: Annotated[str, Body(media_type="application/sparql-query")],
