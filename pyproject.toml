@@ -30,3 +30,6 @@ dev = ["pytest-cov>=6.0.0"]
 
 [project.scripts]
 tamper = "tamper.app.cli.main:app"
+
+[tool.fastapi]
+entrypoint = "tamper.app.api.server:app"
