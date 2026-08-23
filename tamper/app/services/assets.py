@@ -1,13 +1,9 @@
 from rdflib import RDF, URIRef
 
 from tamper.app.kg import KnowledgeGraph
+from tamper.app.services.errors import ResourceNotFoundError
 from tamper.core.assets import AudioAsset, ImageAsset, MediaAsset, VideoAsset
 from tamper.vocabularies import TAMPER
-
-
-class AssetNotFoundError(Exception):
-    def __init__(self, asset_uri: URIRef):
-        super().__init__(f"Asset {asset_uri.n3()} not found")
 
 
 ASSET_TYPES = (
@@ -89,7 +85,7 @@ def get_asset(kg: KnowledgeGraph, asset_uri: URIRef) -> MediaAsset:
     """)
     graph = result.graph
     if len(graph) == 0:
-        raise AssetNotFoundError(asset_uri)
+        raise ResourceNotFoundError(asset_uri)
 
     if (asset_uri, RDF.type, TAMPER.ImageAsset) in graph:
         return ImageAsset(graph, asset_uri)

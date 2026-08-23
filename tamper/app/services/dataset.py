@@ -4,6 +4,7 @@ from rdflib import DCTERMS, PROV, RDF, URIRef
 
 from tamper.app.api.schemas import CreateDataset
 from tamper.app.kg import KnowledgeGraph
+from tamper.app.services.errors import ResourceAlreadyExistsError
 from tamper.core import Dataset
 from tamper.vocabularies import TAMPER
 
@@ -11,11 +12,6 @@ from tamper.vocabularies import TAMPER
 class DatasetNotFoundError(Exception):
     def __init__(self, dataset_uri: URIRef):
         super().__init__(f"Dataset {dataset_uri.n3()} not found")
-
-
-class DatasetAlreadyExistsError(Exception):
-    def __init__(self, dataset_uri: URIRef):
-        super().__init__(f"Dataset {dataset_uri.n3()} already exists")
 
 
 def dataset_exists(kg: KnowledgeGraph, dataset_uri: URIRef) -> bool:
@@ -82,7 +78,7 @@ def create_dataset(kg: KnowledgeGraph, dataset: CreateDataset) -> Dataset:
         model.created = datetime.now()
 
         if dataset_exists(kg, model.identifier):
-            raise DatasetAlreadyExistsError(model.identifier)
+            raise ResourceAlreadyExistsError(model.identifier)
 
         kg.insert_statements_default(model.graph)
     return model

@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse
 from tamper.app.api.dependencies import AssetStorageDep, KnowledgeGraphDep
 from tamper.app.api.rdf_content import AcceptHeader, RDFResponse, rdf_route_extras
 from tamper.app.services import assets
+from tamper.app.services.errors import ResourceNotFoundError
 from tamper.core import MediaAsset
 from tamper.core.identifiers import AssetURI
 
@@ -16,7 +17,7 @@ def requires_asset(checksum: str, kg: KnowledgeGraphDep) -> MediaAsset:
     asset_uri = AssetURI(checksum)
     try:
         return assets.get_asset(kg, asset_uri)
-    except assets.AssetNotFoundError as e:
+    except ResourceNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 

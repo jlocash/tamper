@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from rdflib import Graph
 
+from tamper.app.services.errors import ResourceAlreadyExistsError
 from tamper.core.identifiers import DatasetURI
 from .rdf_content import rdf_route_extras, RDFResponse, AcceptHeader
 from .dependencies import KnowledgeGraphDep
@@ -25,7 +26,7 @@ async def create_dataset(
 ):
     try:
         ds = dataset.create_dataset(kg, body)
-    except dataset.DatasetAlreadyExistsError as e:
+    except ResourceAlreadyExistsError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     return RDFResponse(ds.graph, status.HTTP_201_CREATED, accept)
