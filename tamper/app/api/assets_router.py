@@ -23,7 +23,7 @@ def requires_asset(checksum: str, kg: KnowledgeGraphDep) -> MediaAsset:
 @router.get("/assets/{checksum}", **rdf_route_extras(status.HTTP_200_OK))
 async def get_asset(
     asset: Annotated[MediaAsset, Depends(requires_asset)],
-    accept: AcceptHeader = None,
+    accept: AcceptHeader,
 ):
     return RDFResponse(content=asset.graph, accepts=accept)
 

@@ -10,7 +10,7 @@ router = APIRouter()
 
 
 @router.get("/datasets", **rdf_route_extras(status.HTTP_200_OK))
-async def list_datasets(kg: KnowledgeGraphDep, accept: AcceptHeader = None):
+async def list_datasets(kg: KnowledgeGraphDep, accept: AcceptHeader):
     datasets = dataset.list_datasets(kg)
     if len(datasets) > 0:
         return RDFResponse(datasets[0].graph, status.HTTP_200_OK, accept)
@@ -19,7 +19,7 @@ async def list_datasets(kg: KnowledgeGraphDep, accept: AcceptHeader = None):
 
 @router.post("/datasets", **rdf_route_extras(status.HTTP_201_CREATED))
 async def create_dataset(
-    body: CreateDataset, kg: KnowledgeGraphDep, accept: AcceptHeader = None
+    body: CreateDataset, kg: KnowledgeGraphDep, accept: AcceptHeader
 ):
     try:
         ds = dataset.create_dataset(kg, body)
@@ -30,7 +30,7 @@ async def create_dataset(
 
 
 @router.get("/dataset/{slug}", **rdf_route_extras(status.HTTP_200_OK))
-async def get_dataset(slug: str, kg: KnowledgeGraphDep, accept: AcceptHeader = None):
+async def get_dataset(slug: str, kg: KnowledgeGraphDep, accept: AcceptHeader):
     dataset_uri = DatasetURI(slug)
     try:
         ds = dataset.get_dataset(kg, dataset_uri)

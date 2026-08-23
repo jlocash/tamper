@@ -59,7 +59,7 @@ async def sparql_get(
     kg: KnowledgeGraphDep,
     query: str,
     query_context: QueryContextDep,
-    accept: AcceptHeader = None,
+    accept: AcceptHeader,
 ):
     return _sparql(kg, query, query_context, accept)
 
@@ -69,6 +69,6 @@ async def sparql_post(
     kg: KnowledgeGraphDep,
     query: Annotated[str, Body(media_type="application/sparql-query")],
     query_context: QueryContextDep,
-    accept: AcceptHeader = None,
+    accept: AcceptHeader,
 ):
     return _sparql(kg, query, query_context, accept)
