@@ -4,9 +4,9 @@ from os import PathLike
 
 import ffmpeg
 from magic import Magic
-from rdflib import PROV, XSD, BNode, Graph, URIRef, RDF
+from rdflib import PROV, XSD, Graph, URIRef, RDF
 from tamper.core._common import MappedProperty
-from tamper.core.identifiers import AssetURI
+from tamper.core.identifiers import AssetURI, StreamURI
 from tamper.vocabularies import TAMPER
 from PIL import Image as PILImage, UnidentifiedImageError
 from ._common import Resource
@@ -45,7 +45,8 @@ def _extract_container_metadata(asset: StreamContainer, file: PathLike[str]):
         asset.container_format = format_long_name
 
     for stream_data in probe_result["streams"]:
-        stream_uri = BNode()
+        stream_index = stream_data["index"]
+        stream_uri = StreamURI(f"{asset.identifier.resource_id}/{stream_index}")
         stream = Stream.new(asset.graph, stream_uri)
 
         stream.stream_index = stream_data["index"]
