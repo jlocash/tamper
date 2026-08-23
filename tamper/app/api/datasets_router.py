@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
 from rdflib import Graph
+
+from tamper.core.identifiers import DatasetURI
 from .rdf_content import rdf_route_extras, RDFResponse, AcceptHeader
 from .dependencies import KnowledgeGraphDep
-from .schemas import CreateDataset, DatasetURI
+from .schemas import CreateDataset
 
 from tamper.app.services import dataset
 

@@ -6,18 +6,14 @@ import ffmpeg
 from magic import Magic
 from rdflib import PROV, XSD, BNode, Graph, URIRef, RDF
 from tamper.core._common import MappedProperty
+from tamper.core.identifiers import AssetURI
 from tamper.vocabularies import TAMPER
 from PIL import Image as PILImage, UnidentifiedImageError
-from ._common import Resource, TamperURI
+from ._common import Resource
 
 logger = logging.getLogger(__name__)
 
 magic = Magic(mime=True)
-
-
-class AssetURI(TamperURI):
-    def __new__(cls, value: str):
-        return super().__new__(cls, "asset", value)
 
 
 def get_file_sha256(path: PathLike[str]):

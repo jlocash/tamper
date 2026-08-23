@@ -3,8 +3,8 @@ from typing import Annotated
 from pydantic import BaseModel, Field, PlainValidator
 from rdflib import Graph, URIRef
 
-from tamper.core import Dataset, DatasetURI
-
+from tamper.core import Dataset
+from tamper.core.identifiers import DatasetURI
 
 URI = Annotated[URIRef, PlainValidator(URIRef, json_schema_input_type=str)]
 

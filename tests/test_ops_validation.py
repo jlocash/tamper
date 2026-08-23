@@ -10,7 +10,7 @@ forms.
 import pytest
 from rdflib import RDF, Graph, Literal
 
-from tamper.core.operation import OperationURI
+from tamper.core.identifiers import OperationURI
 from tamper.errors import GraphValidationError
 from tamper.ops import (
     Resample,

@@ -6,18 +6,6 @@ from rdflib.resource import Resource as RDFResource
 T = TypeVar("T")
 
 
-class TamperURI(URIRef):
-    def __new__(cls, *parts: str):
-        base = "trn"
-        value = ":".join([base, *parts])
-        return super().__new__(cls, value)
-
-    def __eq__(self, other):
-        return URIRef(self) == other
-
-    __hash__ = str.__hash__
-
-
 class Resource(RDFResource):
     __rdf_type__: URIRef | None = None
     _property_map: "dict[URIRef, MappedProperty]" = {}

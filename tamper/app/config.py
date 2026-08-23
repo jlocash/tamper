@@ -8,10 +8,10 @@ from rdflib import Graph
 
 from tamper.app.kg import KnowledgeGraph, LocalKnowledgeGraph
 from tamper.core import Catalog
-from tamper.core._common import TamperURI
+from tamper.core.identifiers import TamperURI
 from tamper.storage import AssetStorage, IngestStorage, ObjectStorage
 
-CATALOG_URI = TamperURI("catalog")
+CATALOG_URI = TamperURI("catalog", "0")
 
 
 class Settings(BaseSettings):

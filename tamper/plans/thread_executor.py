@@ -4,7 +4,7 @@ from os import PathLike
 
 from rdflib import Graph, Node, URIRef
 
-from tamper.core.operation import OperationURI
+from tamper.core.identifiers import OperationURI
 from tamper.storage import AssetStorage
 from tamper.ops import (
     Transcode,

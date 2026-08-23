@@ -7,7 +7,7 @@ import pytest
 from rdflib import PROV, Graph
 
 from tamper.core import MediaAsset
-from tamper.core.operation import OperationURI
+from tamper.core.identifiers import OperationURI
 from tamper.ops import Resample
 
 TEST_MEDIA = Path(__file__).parent / "test-media"

@@ -3,7 +3,6 @@ from contextlib import contextmanager
 from datetime import datetime
 import os
 from pathlib import Path
-import secrets
 import tempfile
 
 from rdflib import PROV, XSD, Node
@@ -12,14 +11,7 @@ from tamper.core.assets import load_asset_from_file
 from tamper.core.workspace import AssetWorkspace
 from tamper.vocabularies import TAMPER
 
-from ._common import Resource, MappedProperty, TamperURI
-
-
-class OperationURI(TamperURI):
-    def __new__(cls, value: str | None = None):
-        if value is None:
-            value = secrets.token_urlsafe(12)
-        return super().__new__(cls, "operation", value)
+from ._common import Resource, MappedProperty
 
 
 class Operation(Resource, abc.ABC):

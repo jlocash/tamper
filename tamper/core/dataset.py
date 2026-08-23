@@ -3,12 +3,7 @@ from rdflib import DCTERMS, PROV, XSD, URIRef
 
 from tamper.core import MediaAsset
 from tamper.vocabularies import TAMPER
-from ._common import MappedProperty, Resource, TamperURI
-
-
-class DatasetURI(TamperURI):
-    def __new__(cls, slug: str):
-        return super().__new__(cls, "dataset", slug)
+from ._common import MappedProperty, Resource
 
 
 class Dataset(Resource):

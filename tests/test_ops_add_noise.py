@@ -3,7 +3,7 @@ from pathlib import Path
 from rdflib import Graph
 
 from tamper.core import ImageAsset
-from tamper.core.operation import OperationURI
+from tamper.core.identifiers import OperationURI
 from tamper.ops import AddGaussianNoise, AddSaltPepperNoise
 
 IMAGES = Path(__file__).parent / "test-media" / "images"

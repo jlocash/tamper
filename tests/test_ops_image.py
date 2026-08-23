@@ -4,7 +4,7 @@ import pytest
 from rdflib import PROV, Graph
 
 from tamper.core import ImageAsset
-from tamper.core.operation import OperationURI
+from tamper.core.identifiers import OperationURI
 from tamper.ops import (
     Compress,
     AddGaussianBlur,

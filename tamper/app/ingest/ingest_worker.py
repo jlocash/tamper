@@ -6,8 +6,8 @@ import tempfile
 from rdflib import Graph
 
 from tamper.app.kg.knowledge_graph import KnowledgeGraph
-from tamper.core._common import TamperURI
 from tamper.core.assets import load_asset_from_file
+from tamper.core.identifiers import TamperURI
 from tamper.core.workspace import hex_digest as hex_digest_of
 from tamper.storage import AssetStorage, IngestStorage
 

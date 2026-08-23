@@ -7,7 +7,7 @@ from tamper.app.api.dependencies import AssetStorageDep, KnowledgeGraphDep
 from tamper.app.api.rdf_content import AcceptHeader, RDFResponse, rdf_route_extras
 from tamper.app.services import assets
 from tamper.core import MediaAsset
-from tamper.core.assets import AssetURI
+from tamper.core.identifiers import AssetURI
 
 router = APIRouter(tags=["assets"])
 

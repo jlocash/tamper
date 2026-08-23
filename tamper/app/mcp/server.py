@@ -11,7 +11,7 @@ from rdflib.plugins.parsers.notation3 import BadSyntax
 
 from tamper.app.kg.knowledge_graph import GraphNotFoundError, KnowledgeGraph
 from tamper.core import Catalog, Dataset as TamperDataset, load_asset_from_file
-from tamper.core.dataset import DatasetURI
+from tamper.core.identifiers import DatasetURI
 from tamper.core.workspace import hex_digest
 from tamper.plans import (
     validate_plan_graph,

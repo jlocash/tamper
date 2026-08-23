@@ -1,6 +1,5 @@
-from ._common import Resource, MappedProperty, TamperURI
+from ._common import Resource, MappedProperty
 from .assets import (
-    AssetURI,
     MediaAsset,
     ImageAsset,
     Stream,
@@ -12,16 +11,14 @@ from .assets import (
     load_asset_from_file,
 )
 from .workspace import AssetWorkspace
-from .dataset import DatasetURI, Dataset
+from .dataset import Dataset
 from .catalog import Catalog
-from .operation import OperationURI, Operation
+from .operation import Operation
 from .operation_plan import OperationPlan, OperationParameters, PlanStep, PlanVariable
 
 __all__ = [
     "Resource",
     "MappedProperty",
-    "TamperURI",
-    "AssetURI",
     "MediaAsset",
     "ImageAsset",
     "Stream",
@@ -32,10 +29,8 @@ __all__ = [
     "VideoAsset",
     "load_asset_from_file",
     "AssetWorkspace",
-    "DatasetURI",
     "Dataset",
     "Catalog",
-    "OperationURI",
     "Operation",
     "OperationPlan",
     "OperationParameters",

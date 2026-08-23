@@ -12,7 +12,7 @@ import pytest
 from rdflib import PROV, Graph
 
 from tamper.core.assets import StreamContainer
-from tamper.core.operation import OperationURI
+from tamper.core.identifiers import OperationURI
 from tamper.ops import Transcode
 
 TEST_MEDIA = Path(__file__).parent / "test-media"
