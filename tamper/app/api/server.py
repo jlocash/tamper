@@ -11,6 +11,7 @@ from .assets_router import router as assets_router
 from .ingest_router import router as ingest_router
 from .sparql_router import router as sparql_router
 from .datasets_router import router as dataset_router
+from .scalar_router import router as scalar_router
 
 
 @asynccontextmanager
@@ -34,7 +35,7 @@ async def lifespan(app: FastAPI):
     await app.state.ingest_queue.stop()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(title="Tamper API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().cors_allow_origins,
@@ -45,3 +46,4 @@ app.include_router(assets_router)
 app.include_router(ingest_router)
 app.include_router(sparql_router)
 app.include_router(dataset_router)
+app.include_router(scalar_router)
