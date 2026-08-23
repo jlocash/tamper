@@ -12,11 +12,10 @@ URI = Annotated[URIRef, PlainValidator(URIRef, json_schema_input_type=str)]
 class CreateDataset(BaseModel):
     title: str
     description: str
-    slug: str
     members: list[URI] = Field(default_factory=list)
 
     def get_uri(self) -> URIRef:
-        return DatasetURI(self.slug)
+        return DatasetURI()
 
     def as_model(self, graph: Graph | None = None) -> Dataset:
         if graph is None:

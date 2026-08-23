@@ -31,9 +31,9 @@ async def create_dataset(
     return RDFResponse(ds.graph, status.HTTP_201_CREATED, accept)
 
 
-@router.get("/dataset/{slug}", **rdf_route_extras(status.HTTP_200_OK))
-async def get_dataset(slug: str, kg: KnowledgeGraphDep, accept: AcceptHeader):
-    dataset_uri = DatasetURI(slug)
+@router.get("/dataset/{dataset_id}", **rdf_route_extras(status.HTTP_200_OK))
+async def get_dataset(dataset_id: str, kg: KnowledgeGraphDep, accept: AcceptHeader):
+    dataset_uri = DatasetURI(dataset_id)
     try:
         ds = dataset.get_dataset(kg, dataset_uri)
     except dataset.DatasetNotFoundError as e:
