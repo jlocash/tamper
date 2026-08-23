@@ -1,6 +1,7 @@
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -42,6 +43,8 @@ class Settings(BaseSettings):
         default_factory=list,
         description="Browser origins permitted to call the API, e.g. a frontend dev server",
     )
+
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
     @computed_field
     @property

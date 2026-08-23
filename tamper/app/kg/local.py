@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import logging
 from os import PathLike
 
 import reasonable
@@ -19,6 +20,8 @@ from .knowledge_graph import (
 )
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 
 class InconsistencyError(Exception):
     pass
@@ -29,7 +32,9 @@ def _check_consistency(graph: Graph) -> None:
     Raise InconsistencyError if any individual is (inferred to be) a member
     of two disjoint classes.
     """
-    data = Graph()
+
+    logger.debug(f"Running consistency check on graph {graph.identifier.n3()}")
+    data = Graph(store="Oxigraph")
     data += graph
     data += load_core_ontology()
 
@@ -174,6 +179,7 @@ class LocalKnowledgeGraph(KnowledgeGraph):
             g = self.dataset.graph(identifier)
             g += statements
             _check_consistency(g)
+        logger.debug(f"added {len(statements)} to graph {identifier.n3()}")
 
     def insert_statements_default(self, statements: Graph):
         self.insert_statements(DATASET_DEFAULT_GRAPH_ID, statements)
@@ -181,6 +187,9 @@ class LocalKnowledgeGraph(KnowledgeGraph):
     def delete_statements(self, identifier: URIRef, statements: Graph):
         g = self.dataset.graph(identifier)
         g -= statements
+        logger.debug(
+            f"removed {len(statements)} statements from graph {identifier.n3()}"
+        )
 
     def delete_statements_default(self, statements: Graph):
         return self.delete_statements(DATASET_DEFAULT_GRAPH_ID, statements)

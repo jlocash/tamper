@@ -16,8 +16,12 @@ from .scalar_router import router as scalar_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logging.basicConfig(level="INFO")
     settings = get_settings()
+    logging.basicConfig(
+        level=settings.log_level,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
     app.state.kg = settings.get_kg()
     app.state.asset_storage = settings.get_asset_storage()
     app.state.ingest_storage = settings.get_ingest_storage()
