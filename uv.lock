@@ -1561,7 +1561,7 @@ wheels = [
 
 [[package]]
 name = "ray"
-version = "2.56.1"
+version = "2.57.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1574,9 +1574,9 @@ dependencies = [
     { name = "requests" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d9/71/e921682f4027459f261a8db2a56a25760458e12c95359f1ce56d525a28d3/ray-2.56.1-cp314-cp314-macosx_12_0_arm64.whl", hash = "sha256:76f6268a669c1d9910f1d7b73903de3ede9850ed94d3e28318d495559bd37d0e", size = 66300044, upload-time = "2026-07-17T21:29:15.61Z" },
-    { url = "https://files.pythonhosted.org/packages/ed/94/066849822fdd1c7a9221f3e2f9130e2a5eda83f47efc685211fb178b5a58/ray-2.56.1-cp314-cp314-manylinux2014_aarch64.whl", hash = "sha256:ea372c7f95b14f1f76f0bdd2abc9602c56e88bc30699d2228f78133e7749b2f1", size = 73243912, upload-time = "2026-07-17T21:29:20.98Z" },
-    { url = "https://files.pythonhosted.org/packages/63/ac/74597352f729f9f7d998a93c6dd1de5efca3e6a5750f720d04a42f22bb3e/ray-2.56.1-cp314-cp314-manylinux2014_x86_64.whl", hash = "sha256:ae91fe578fadea38c13a208a0fec27e1ced238ccdf5fff95ef3e30ac3071dec9", size = 74099698, upload-time = "2026-07-17T21:29:26.649Z" },
+    { url = "https://files.pythonhosted.org/packages/41/4c/a54c6e9ec0aed04d2234f4a0f4ed9f0a16fe3df8503d194589cfbb78d259/ray-2.57.0-cp314-cp314-macosx_12_0_arm64.whl", hash = "sha256:798a1ee24e4ede39e900fcc935d86db5f080d27a74c57e3238a5004ba9171200", size = 66700561, upload-time = "2026-08-11T00:21:56.657Z" },
+    { url = "https://files.pythonhosted.org/packages/79/7c/bd6f79a92ac056fb5eed558d07d294a028bc72493969d8f9a99dc2fb3701/ray-2.57.0-cp314-cp314-manylinux2014_aarch64.whl", hash = "sha256:e248939296f0c8f46b3e73421555776094972b1dbc73d4802479b99177c2269e", size = 76816843, upload-time = "2026-08-11T00:22:02.399Z" },
+    { url = "https://files.pythonhosted.org/packages/37/8d/d5638e9d83a3574327af29afb5a49903cfd31d70c2a45599b6a6ccd6b37c/ray-2.57.0-cp314-cp314-manylinux2014_x86_64.whl", hash = "sha256:02cb2b5fdf41246f6b9306c85247ee7131bfeee9d36a4edae54653e02ed7890c", size = 77797246, upload-time = "2026-08-11T00:22:08.316Z" },
 ]
 
 [[package]]
@@ -1922,19 +1922,19 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastmcp", extras = ["tasks"], specifier = ">=3.4.5" },
     { name = "boto3", specifier = ">=1.43.63" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.141.1" },
+    { name = "fastmcp", extras = ["tasks"], specifier = ">=3.4.5" },
     { name = "ffmpeg-python", specifier = ">=0.2.0" },
     { name = "numpy", specifier = ">=2.5.1" },
     { name = "opencv-python", specifier = ">=5.0.0.93" },
     { name = "oxrdflib", specifier = ">=0.5.0" },
     { name = "pillow", specifier = ">=12.3.0" },
+    { name = "pydantic-settings", specifier = ">=2.14.1" },
     { name = "pyshacl", specifier = ">=0.40.1" },
     { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pydantic-settings", specifier = ">=2.14.1" },
     { name = "python-magic", specifier = ">=0.4.27" },
-    { name = "ray", marker = "extra == 'ray'", specifier = ">=2.56.1" },
+    { name = "ray", marker = "extra == 'ray'", specifier = ">=2.57.0" },
     { name = "rdflib", specifier = ">=7.6.0" },
     { name = "reasonable", specifier = ">=0.4.4" },
     { name = "scalar-fastapi", specifier = ">=1.8.2" },
