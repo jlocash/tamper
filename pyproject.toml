@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-ray = ["ray>=2.56.1"]
+ray = ["ray>=2.58.0"]
 
 [dependency-groups]
 dev = ["pytest-cov>=6.0.0"]
