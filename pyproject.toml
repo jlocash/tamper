@@ -20,7 +20,7 @@ dependencies = [
     "python-magic>=0.4.27",
     "rdflib>=7.6.0",
     "reasonable>=0.4.4",
-    "scalar-fastapi>=1.8.2",
+    "scalar-fastapi>=1.9.0",
 ]
 
 [project.optional-dependencies]
