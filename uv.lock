@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 
 [[package]]
@@ -1420,7 +1420,7 @@ wheels = [
 
 [[package]]
 name = "pyshacl"
-version = "0.40.1"
+version = "0.40.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "owlrl" },
@@ -1428,9 +1428,9 @@ dependencies = [
     { name = "prettytable" },
     { name = "rdflib", extra = ["html"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1f/b8/f92465fead905b7c5365631a3997107c896cf1e32f4f9a163bdaee54e4fb/pyshacl-0.40.1.tar.gz", hash = "sha256:011e3cf1a68b31747cb762ba3d755ae1bdcc464c8fad0dc212a9adc550719552", size = 1444205, upload-time = "2026-07-28T01:37:36.499Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/1d/c9b408e6d60ce6594a3301333875b2be1f60d55331d51fcfd871c08c01da/pyshacl-0.40.2.tar.gz", hash = "sha256:3b089fcfe82dccca2a9d560d88665ca0345f828b9cf21de554e611a55c2c7277", size = 1447035, upload-time = "2026-10-28T22:09:27.082Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/03/90/7f35a79db93032ef20db5b740062b54afba32a2c2475a6f0a43c141a69de/pyshacl-0.40.1-py3-none-any.whl", hash = "sha256:27dd58c8ddfa103303b4a8c40b2c666332ffc912dbcd3137f7adc7b7bc5e6bda", size = 1306209, upload-time = "2026-07-28T01:37:34.298Z" },
+    { url = "https://files.pythonhosted.org/packages/21/82/bda70658932e3129f591f26174d432c72a9aca809e0848ea7a2e48fe5f6e/pyshacl-0.40.2-py3-none-any.whl", hash = "sha256:edf0a7c15074902a1a420e8cfb89a764a9eed990b6ea15b8c30c40f2220eef61", size = 1306905, upload-time = "2026-10-28T22:09:24.829Z" },
 ]
 
 [[package]]
@@ -1922,17 +1922,17 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fastmcp", extras = ["tasks"], specifier = ">=3.4.5" },
     { name = "boto3", specifier = ">=1.43.63" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.141.1" },
+    { name = "fastmcp", extras = ["tasks"], specifier = ">=3.4.5" },
     { name = "ffmpeg-python", specifier = ">=0.2.0" },
     { name = "numpy", specifier = ">=2.5.1" },
     { name = "opencv-python", specifier = ">=5.0.0.93" },
     { name = "oxrdflib", specifier = ">=0.5.0" },
     { name = "pillow", specifier = ">=12.3.0" },
-    { name = "pyshacl", specifier = ">=0.40.1" },
-    { name = "pytest", specifier = ">=9.1.1" },
     { name = "pydantic-settings", specifier = ">=2.14.1" },
+    { name = "pyshacl", specifier = ">=0.40.2" },
+    { name = "pytest", specifier = ">=9.1.1" },
     { name = "python-magic", specifier = ">=0.4.27" },
     { name = "ray", marker = "extra == 'ray'", specifier = ">=2.56.1" },
     { name = "rdflib", specifier = ">=7.6.0" },
